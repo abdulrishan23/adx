@@ -1,6 +1,6 @@
 # ADX architecture and decisions
 
-The decisions that span features and phases, what each one costs us, and what's deferred or set aside. Definitions and the feature list are in `reference.md`. Open questions and outside dependencies are GitHub issues (see the end of this doc).
+The decisions that span features and phases, what each one costs us, and what's deferred or set aside. Definitions and the feature list are in `reference.md`. Open questions and outside dependencies are tracked in two pinned GitHub issues (see the end of this doc).
 
 Many of these decisions come from answers Hisham bhayya (WokeWorks CTO) gave in October 2026 (`research/sources/hisham-answers-*.md`). They're the current direction. Points in those answers that still need checking are open issues.
 
@@ -35,14 +35,14 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. About 30 people. Sales, telesales and brokers never log in, so Sales OS's rep desk, inbox and assignment don't come across.
 
 - **Why.** Reportage wants a marketing tool. Sales already work in GoHighLevel and Akarati.
-- **Cost.** What happens on the sales side only reaches us as GoHighLevel statuses, and half of those are blank (#32).
+- **Cost.** What happens on the sales side only reaches us as GoHighLevel statuses, and half of those are blank (#35).
 - **Revisit if.** Reportage wants sales on the same tool.
 
 #### D-03. ADX sends no outreach
 2026-10-09. No calls, WhatsApp or email to leads. Messages to staff, like approval links, are fine. Leads that went cold are re-engaged through ad audiences instead.
 
 - **Why.** Outreach is out of scope for Reportage, and they're not open to automated calls.
-- **Cost.** The direct re-engagement Sales OS was built for is gone. Tying website visits to leads also gets harder, because ADX never sends a link (#3).
+- **Cost.** The direct re-engagement Sales OS was built for is gone. Tying website visits to leads also gets harder, because ADX never sends a link (#34).
 - **Revisit if.** Reportage asks ADX to message leads.
 
 #### D-04. Reportage first, one client
@@ -67,7 +67,7 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. It reads Instagram, Facebook, LinkedIn and Search Console. Posting and scheduling come later, behind approval.
 
 - **Why.** Organic is part of the marketing team's job, and reading it carries no risk. Posting changes public accounts, so it waits until approvals have proven reliable.
-- **Open.** Whether TikTok or YouTube count (#7).
+- **Open.** Whether TikTok or YouTube count (#34).
 
 ### Data
 
@@ -81,7 +81,7 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. ADX reads leads and statuses from GoHighLevel. It writes only its own fields (`adx_temperature`, `adx_score`, `adx_reason`, `adx_updated_at`) and tags starting with `adx:`, never statuses, pipeline stages or GoHighLevel's own fields. Akarati data reaches ADX only through GoHighLevel. Reportage's monthly lead sheet (one Google Sheet per month, from January 2025) is only for backfilling history.
 
 - **Why.** GoHighLevel is Reportage's marketing CRM, and Akarati already syncs into it. Their GoHighLevel admin builds workflows on ADX's own fields, so ADX writes only those.
-- **Cost.** Revenue reporting depends on Akarati sending deal values into GoHighLevel, which we don't control (#19).
+- **Cost.** Revenue reporting depends on Akarati sending deal values into GoHighLevel, which we don't control (#35).
 - **Revisit if.** Akarati offers an API and GoHighLevel falls short.
 
 #### D-10. Personal data
@@ -93,13 +93,13 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. Marketers track cost per qualified lead daily. The CMO and CEO track revenue and return on ad spend monthly.
 
 - **Why.** About 58 deals a month is too few to act on daily, and deals close slowly.
-- **Cost.** Cost per qualified lead depends on sales updating statuses (#32).
+- **Cost.** Cost per qualified lead depends on sales updating statuses (#35).
 
 #### D-12. Hosting in Frankfurt
 2026-10-09. Likely Frankfurt.
 
 - **Why.** UAE data centres aren't an option today.
-- **Open.** Reportage has to approve it in writing before real lead data moves (#31).
+- **Open.** Reportage has to approve it in writing before real lead data moves (#35).
 
 ### Writes
 
@@ -108,7 +108,7 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 
 - **Why.** Changing ad accounts is where mistakes cost money.
 - **Cost.** Every change is slower than editing in Google Ads directly, and every write needs a dry run and an undo built for it.
-- **Open.** Who runs a proposal after approval (#16), whether Allowed actions still create a proposal (#17), and whether the CMO can change caps inside ADX (#18).
+- **Open.** Who runs a proposal after approval, whether Allowed actions still create a proposal, and whether the CMO can change caps inside ADX (#34).
 
 Every write follows these rules.
 
@@ -152,13 +152,13 @@ Default permissions for marketers are below. In general, anything that lowers sp
 - **Why.** Marketing OS already uses the Reportage brand, and we preferred its plain look.
 
 #### D-16. No frontend-only prototype
-2026-10-09. We'll scaffold the real app once the tech stack is decided (#1).
+2026-10-09. We'll scaffold the real app once the tech stack is decided (#34).
 
 - **Why.** We'd rather put the time into the real app than build the screens twice.
 - **Revisit if.** We need to test flows with Reportage before building.
 
 #### D-17. ADX reuses the logic of both old products
-2026-10-09. Whether it reuses their code depends on the tech stack (#1).
+2026-10-09. Whether it reuses their code depends on the tech stack (#34).
 
 - **Why.** Both products hold logic that took a long time to get right, like the correctness rules, the scoring engine and the proposal model.
 
@@ -168,7 +168,7 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 
 - Rewrite its detectors, which were written for course pages, for Reportage's project pages.
 - Change how it combines the scores. Today it multiplies readiness by fit, so a lead with no fit data scores zero, and every portal lead would end up at the bottom.
-- Match visitors to leads by phone and other fields, not only by email (#3).
+- Match visitors to leads by phone and other fields, not only by email (#34).
 
 ## Deferred
 
@@ -177,7 +177,7 @@ Wanted, but not in the first version.
 - **Automating approved actions.** See D-13. Revisit once proposals have proven reliable.
 - **Connecting to portal accounts,** managing portal spend, and portal sync gap reports. See D-06.
 - **Organic posting and scheduling.** See D-07.
-- **Call tracking for telesales.** Telesales closed the most deals per lead in September, but it needs call tracking on the 800 number (#14).
+- **Call tracking for telesales.** Telesales closed the most deals per lead in September, but it needs call tracking on the 800 number (#34).
 - **An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.
 - **Multi-tenancy.** See D-04.
 - **Approval rights for a team under the Head of Marketing & AI,** if they hire one.
@@ -201,7 +201,7 @@ Wanted, but not in the first version.
 
 ## Open questions and outside dependencies
 
-Both are GitHub issues.
+Both are pinned GitHub issues, each a checklist with one line per item.
 
-- **[Open questions](https://github.com/WokeWorks/adx/issues?q=is%3Aissue+is%3Aopen+label%3Aquestion)** are labelled `question`. The biggest are the tech stack (#1), the `marketing-platform` spec Twaha's tech draft refers to (#2), and how website visits get tied to leads (#3).
-- **[Outside dependencies](https://github.com/WokeWorks/adx/issues?q=is%3Aissue+is%3Aopen+label%3Aexternal)** are labelled `external`. Revenue reporting is blocked until Akarati sends deal values into GoHighLevel (#19).
+- **[Open questions (#34)](https://github.com/WokeWorks/adx/issues/34).** The biggest are the tech stack, the `marketing-platform` spec Twaha's tech draft refers to, and how website visits get tied to leads.
+- **[Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35).** Revenue reporting is blocked until Akarati sends deal values into GoHighLevel.

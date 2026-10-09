@@ -34,13 +34,13 @@ If a feature uses one of these words, it means what's written here.
 - **Campaign, ad set, ad.** The Google and Meta objects. Most campaigns are for one project.
 - **Project.** A Reportage development, such as The Wadi, Verdana or Oceana. ADX reads it from the campaign and keeps one list of project names, so the same project isn't spelled two ways.
 - **Spend.** Comes from the ad platforms. Portal spend is typed in by hand each month.
-- **Done-Deal.** A sale, and the only revenue event. Its value is in AED. It should come from Akarati through GoHighLevel, but today the value and date don't arrive as real fields (#19).
+- **Done-Deal.** A sale, and the only revenue event. Its value is in AED. It should come from Akarati through GoHighLevel, but today the value and date don't arrive as real fields (#35).
 
 ### Pipeline
 
-- **Status.** A lead's status in GoHighLevel. There are about 14. ADX never writes them (D-09). Which GoHighLevel column this is, "Status" or "Lead Status", is open (#4).
+- **Status.** A lead's status in GoHighLevel. There are about 14. ADX never writes them (D-09). Which GoHighLevel column this is, "Status" or "Lead Status", is open (#34).
 - **Stage.** ADX's own grouping of statuses, used for funnel maths. ADX never writes it back to GoHighLevel, and it's separate from GoHighLevel's pipeline stages. Admins edit the status-to-stage table in Settings, and ADX flags any status that isn't in it yet.
-- **Qualified.** A lead with the status Follow Up, Meeting, Potential or Done-Deal. Whether a hot score should also count is open (#5).
+- **Qualified.** A lead with the status Follow Up, Meeting, Potential or Done-Deal. Whether a hot score should also count is open (#34).
 
 Google and Meta have no lead stages. A conversion there is just an event someone defines, so a qualified lead or a Done-Deal only reaches a platform if ADX sends it.
 
@@ -58,7 +58,7 @@ Money is in AED, converted at the rate on the day. Google and Meta conversions a
 - **Fit score.** How closely a lead matches what sells. It comes from the form answers (when they want to buy, how they'll pay, unit type, purpose) and from the phone country code. Portal leads have almost none of these.
 - **Intent score.** How engaged a lead is now. It goes up or down as signals come in (see Signal below).
 - **Temperature.** Hot, warm or cold, set from fit and intent. ADX writes it to GoHighLevel in its own fields.
-- **Signal.** A behaviour that changes the intent score, such as a second form, a WhatsApp tap on the thank-you screen, a pricing or floor plan page view, or a status moving back to Follow Up. Website signals only count once a visit is tied to a lead, and how that happens is open (#3).
+- **Signal.** A behaviour that changes the intent score, such as a second form, a WhatsApp tap on the thank-you screen, a pricing or floor plan page view, or a status moving back to Follow Up. Website signals only count once a visit is tied to a lead, and how that happens is open (#34).
 - **Page catalogue.** A table that maps each website URL to its project, page type, intent weight and market. ADX drafts it by crawling the site, and a marketer confirms it.
 
 A phone country code shows where someone lives, not their nationality. Buyers from India who live in the UAE have +971 numbers (see D-10).
@@ -100,7 +100,7 @@ Each row is one feature. The Area column is the Area field on GitHub, and it run
 | Copilot | Copilot | Answers questions from real data and drafts proposals | Likely |
 | Leadership reports | Leadership reports | Packages Revenue attribution's monthly figures into a report for the CMO and CEO | Likely |
 | Settings | Settings | Roles, the permission checklist, caps and kill switch, the stage table, the page catalogue and the project list | Likely |
-| Stock-aware ads | Stock-aware ads | Flags ads promoting sold-out unit types, using a daily availability snapshot from Akarati (#24) | Possible |
+| Stock-aware ads | Stock-aware ads | Flags ads promoting sold-out unit types, using a daily availability snapshot from Akarati (#35) | Possible |
 | Broker monitor | Broker monitor | Watches brokers running ads on Reportage projects. Meta's Ad Library API only returns all ads for the EU, so this may need another source | Possible |
 | Proposals | Automated actions | Runs approved kinds of change without asking each time (see Deferred) | Later |
 | Portal reporting | Portal connections | Connects to portal accounts to pull spend and manage listings (see Deferred) | Later |

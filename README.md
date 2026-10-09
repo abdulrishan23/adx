@@ -17,7 +17,7 @@ ADX draws on two products WokeWorks already built:
 - **Marketing OS** (`WokeWorks/ads-mcp`). Google and Meta reporting and analysis. Reportage never used it properly.
 - **Sales OS** (`WokeWorks/dead-leads-stafford`, built for Stafford Global). Lead scoring and a sales desk.
 
-What ADX takes from each is decision D-17 in `docs/architecture.md`. Whether it reuses their code depends on the tech stack, which isn't decided yet (#1). There is no app code in this repo yet.
+What ADX takes from each is decision D-17 in `docs/architecture.md`. Whether it reuses their code depends on the tech stack, which isn't decided yet (#34). There is no app code in this repo yet.
 
 ## Docs
 
@@ -45,8 +45,8 @@ Work lives in the ADX GitHub Project.
 - **A parent issue** is one area within one phase. It finishes inside that phase.
 - **Sub-issues** are the tasks inside a parent.
 - **Blocked by** links one issue to another it can't start without. Most cross-feature dependencies are these.
-- **Labels.** `question` for an open question, assigned to whoever has to answer it. `external` for something we're waiting on outside the team, linked as blocking the work it gates. `deferred` for work moved to a later phase, with the reason in a comment.
+- **Labels.** `deferred` marks work moved to a later phase, with the reason in a comment. `question` and `external` mark the two pinned checklist issues.
 
-Open questions and outside dependencies are issues too, labelled `question` and `external`.
+Open questions and outside dependencies are two pinned issues with checklists: Open questions (#34) and Waiting on others (#35). They stay off the board.
 
 Change the docs through a pull request, so everyone sees when a definition or decision moves. When a decision changes, add the new one and mark the old one as replaced instead of deleting it.
