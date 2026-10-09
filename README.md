@@ -14,17 +14,17 @@ It's built for Reportage first. It could become a product, or a service for othe
 
 ADX draws on two products WokeWorks already built:
 
-- **Marketing OS** (`WokeWorks/ads-mcp`). Google and Meta reporting, automated findings, a proposal model, an AI copilot and a GoHighLevel adapter. It was never used properly by Reportage.
-- **Sales OS** (`WokeWorks/dead-leads-stafford`, built for Stafford Global). A signal and scoring engine and an AI copilot. Its sales desk and outreach don't come across, because ADX has no sales users.
+- **Marketing OS** (`WokeWorks/ads-mcp`). Google and Meta reporting and analysis. Reportage never used it properly.
+- **Sales OS** (`WokeWorks/dead-leads-stafford`, built for Stafford Global). Lead scoring and a sales desk.
 
-Whether ADX reuses their code or only their logic depends on the tech stack, which isn't decided yet. There is no app code in this repo yet.
+What ADX takes from each is decision D-17 in `docs/architecture.md`. Whether it reuses their code depends on the tech stack, which isn't decided yet (#1). There is no app code in this repo yet.
 
 ## Docs
 
 | Path | What it holds |
 |---|---|
 | `docs/reference.md` | Roles, shared definitions and the features we've considered, with their scope labels |
-| `docs/architecture.md` | Decisions and their tradeoffs, what's deferred, what's set aside, open questions and what we're waiting on from others |
+| `docs/architecture.md` | How ADX fits together, the decisions and what each costs us, and what's deferred or set aside |
 | `research/` | Raw inputs: what the two old products do, notes on Reportage, answers from Hisham bhayya (WokeWorks CTO), and early drafts |
 
 ## Scope labels
@@ -40,11 +40,13 @@ Features, deferred items and set-aside ideas carry one of four scope labels. Dec
 
 Work lives in the ADX GitHub Project.
 
-- **Area** is a field on every issue. It's the feature name from `docs/reference.md`, and it runs across phases.
+- **Area** is a field on every issue. It's the Area column of the features table in `docs/reference.md`, and it runs across phases.
 - **Phase** is a field on every issue. It says when the work happens. The phases aren't set yet.
 - **A parent issue** is one area within one phase. It finishes inside that phase.
 - **Sub-issues** are the tasks inside a parent.
 - **Blocked by** links one issue to another it can't start without. Most cross-feature dependencies are these.
 - **Labels.** `question` for an open question, assigned to whoever has to answer it. `external` for something we're waiting on outside the team, linked as blocking the work it gates. `deferred` for work moved to a later phase, with the reason in a comment.
+
+Open questions and outside dependencies are issues too, labelled `question` and `external`.
 
 Change the docs through a pull request, so everyone sees when a definition or decision moves. When a decision changes, add the new one and mark the old one as replaced instead of deleting it.
