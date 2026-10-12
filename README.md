@@ -48,7 +48,7 @@ Features, deferred items and set-aside ideas carry one of four scope labels. Dec
 
 ## How work is tracked
 
-Work lives in the ADX GitHub Project.
+Work lives in the [ADX GitHub Project](https://github.com/orgs/WokeWorks/projects/2).
 
 - **Area** is a field on every issue. It's the Area column of the features table in `docs/reference.md`, and it runs across phases.
 - **Phase** is a field on every issue. It says when the work happens. The whole team works through the phases in order.
@@ -57,7 +57,7 @@ Work lives in the ADX GitHub Project.
 - **Blocked by** links one issue to another it can't start without. Most cross-feature dependencies are these.
 - **Labels.** `deferred` marks work moved to a later phase, with the reason in a comment. `question` and `external` mark the two pinned checklist issues.
 
-Open questions and outside dependencies are two pinned issues with checklists: Open questions (#34) and Waiting on others (#35). They stay off the board.
+Open questions and outside dependencies are two pinned issues with checklists: [Open questions (#34)](https://github.com/WokeWorks/adx/issues/34) and [Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35). They stay off the board.
 
 Change the docs through a pull request, so everyone sees when a definition or decision moves. When a decision changes, add the new one and mark the old one as replaced instead of deleting it.
 

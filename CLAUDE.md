@@ -25,3 +25,4 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 - Queries: edit `server/store/queries/*.sql`, then `make gen`.
 - API types: Go structs with json tags reach `web/src/api/types.gen.ts` through `make gen`. Commit generated files.
 - Run `make check` and `make test` before committing.
+- Commit messages are one-line Conventional Commits: `type: message`, with no scope and no body.
