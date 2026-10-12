@@ -35,7 +35,6 @@ To run it you need Go 1.26, Node 22, pnpm and [air](https://github.com/air-verse
 |---|---|
 | `docs/reference.md` | Roles, shared definitions and the features we've considered, with their scope labels |
 | `docs/architecture.md` | How ADX fits together, the decisions and what each costs us, and what's deferred or set aside |
-| `docs/github.md` | Setting up `gh`, and the commands for tickets and the Project |
 | `research/` | Raw inputs: what the two old products do, notes on Reportage, answers from Hisham bhayya (WokeWorks CTO), and early drafts |
 
 ## Scope labels
@@ -68,4 +67,4 @@ Change the docs through a pull request, so everyone sees when a definition or de
 2. **Build.** One branch per ticket, named `{number}-{short-name}`, merged through a PR once CI passes.
 3. **Wrap up.** Run `/adx-update`. It closes finished sub-issues, records what was done differently or deferred, files new tickets, and proposes doc changes for decisions that reach beyond the ticket.
 
-Both commands need `gh` set up with the project scope. See `docs/github.md`.
+Both commands need `gh` signed in with the project scope: `gh auth refresh -s project`.

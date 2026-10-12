@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 End-of-work command. Bring the ticket, the Project and the docs in line with what was built. Nothing is written until the person confirms.
 
-`docs/github.md` has the `gh` setup and every command used here.
+Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status, Area and Phase. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
 
 ## 1. Gather
 

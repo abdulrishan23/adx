@@ -11,7 +11,7 @@ Start-of-work command. Find where the team is, offer what to pick up, and once s
 
 Whoever picks a ticket owns it: what the feature does, how it touches other features, how it gets built, and the decisions made on the way. Your job is to do the reading and digging, and bring them clear choices. They make the calls.
 
-`docs/github.md` has the `gh` setup and every command used here. If `gh` isn't signed in or lacks the project scope, walk the person through that first.
+Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status, Area and Phase. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
 
 ## 1. Read the board
 
