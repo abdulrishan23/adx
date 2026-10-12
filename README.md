@@ -17,7 +17,17 @@ ADX draws on two products WokeWorks already built:
 - **Marketing OS** (`WokeWorks/ads-mcp`). Google and Meta reporting and analysis. Reportage never used it properly.
 - **Sales OS** (`WokeWorks/dead-leads-stafford`, built for Stafford Global). Lead scoring and a sales desk.
 
-What ADX takes from each is decision D-17 in `docs/architecture.md`. Whether it reuses their code depends on the tech stack, which isn't decided yet (#34). There is no app code in this repo yet.
+What ADX takes from each is decision D-17 in `docs/architecture.md`. ADX reuses their logic, not their code, because the stack is new (D-18).
+
+## Code
+
+`server/` is the Go backend and `web/` is the React frontend. They deploy separately behind one domain. `CLAUDE.md` has the layout and conventions in short.
+
+To run it you need Go 1.26, Node 22, pnpm and [air](https://github.com/air-verse/air). Then:
+
+- `make dev` runs both, at http://localhost:5173.
+- `make gen` regenerates sqlc code and the TypeScript API types.
+- `make test` and `make check` run the tests and linters. `make check` also needs [golangci-lint](https://golangci-lint.run).
 
 ## Docs
 

@@ -170,6 +170,14 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 - Change how it combines the scores. Today it multiplies readiness by fit, so a lead with no fit data scores zero, and every portal lead would end up at the bottom.
 - Match visitors to leads by phone and other fields, not only by email (#34).
 
+#### D-18. The stack
+2026-10-12. A Go backend and a React frontend in this repo, deployed separately behind one domain. The backend uses chi, SQLite with sqlc and goose, and River for background jobs. The API's TypeScript types are generated from Go structs with guts. The frontend uses Vite, TanStack Router and Query, and shadcn with Tailwind. `CLAUDE.md` has the layout.
+
+- **Why.** About 30 internal users, so one server and one SQLite file are enough, with no database server to run. River commits a job in the same transaction as the change that needs it, so an approved proposal can't lose its execution job. Plain handlers keep every rule visible in code we review.
+- **Cost.** No code carries over from the old products, since Marketing OS is Python and Sales OS is TypeScript. SQLite means one machine and one writer at a time, and backups need Litestream. River's SQLite support is still experimental. If ADX serves several clients later, moving to Postgres means rewriting the migrations and some queries.
+- **Open.** Login and MCP sign-in aren't designed yet. They depend on Reportage's identity provider and on how MCP clients connect. The copilot's model SDK and the hosting provider are also open.
+- **Revisit if.** SQLite's single writer becomes a bottleneck, or a second client signs on.
+
 ## Deferred
 
 Wanted, but not in the first version.
@@ -198,10 +206,14 @@ Wanted, but not in the first version.
 | Attribution by channel only | ADX aims for campaign level, using match levels | Doesn't apply |
 | A frontend-only prototype | See D-16 | Needing to test flows with Reportage before building |
 | The Sales OS glass look | See D-15 | Doesn't apply |
+| Postgres on a managed host | See D-18. SQLite is enough for about 30 users | Write contention, or a second client |
+| Huma and orval for the API contract | Struct tags hide rules that are easy to miss in review. Plain handlers plus guts keep the shared types | Many more endpoints, or a need for a published API spec |
+| Embedding the React build in the Go binary | We'd rather deploy the frontend on its own | Needing a single artifact to ship |
+| Atlas for generating migrations | Hand-written goose files are enough for now | Table rebuilds in SQLite migrations getting painful |
 
 ## Open questions and outside dependencies
 
 Both are pinned GitHub issues, each a checklist with one line per item.
 
-- **[Open questions (#34)](https://github.com/WokeWorks/adx/issues/34).** The biggest are the tech stack, the `marketing-platform` spec Twaha's tech draft refers to, and how website visits get tied to leads.
+- **[Open questions (#34)](https://github.com/WokeWorks/adx/issues/34).** The biggest are the `marketing-platform` spec Twaha's tech draft refers to, and how website visits get tied to leads.
 - **[Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35).** Revenue reporting is blocked until Akarati sends deal values into GoHighLevel.
