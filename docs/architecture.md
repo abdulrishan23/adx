@@ -178,6 +178,22 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 - **Open.** Login and MCP sign-in aren't designed yet. They depend on Reportage's identity provider and on how MCP clients connect. The copilot's model SDK and the hosting provider are also open.
 - **Revisit if.** SQLite's single writer becomes a bottleneck, or a second client signs on.
 
+### Order
+
+#### D-19. MCP comes before the web app
+2026-10-12. Each feature reaches Claude over MCP before it gets a web screen. The web app gets screens people need daily, and screens for jobs MCP can't do: signing in, connecting accounts, approving changes and settings. This replaces the MCP server's place under Deferred.
+
+- **Why.** Hisham bhayya set MCP and the read layer as the first priority on 2026-10-12. Every feature is a core function first (D-18), so an MCP tool is a thin wrapper and the web screen can follow.
+- **Cost.** People who don't use Claude see less at first. Sign-in has to cover MCP from the start, which makes auth a bigger first piece of work.
+- **Revisit if.** Reportage's marketers don't use Claude, or Reportage's data approval doesn't cover ADX data reaching Claude.
+
+#### D-20. Google before Meta
+2026-10-12. When a feature covers both platforms, Google lands first and Meta follows as its permissions arrive. Meta's Business Verification and App Review are submitted in the first week.
+
+- **Why.** Meta needs App Review for anything beyond `ads_read`, which takes weeks. Google only needs its OAuth app moved to production. This was Hisham bhayya's call on 2026-10-12.
+- **Cost.** Meta brought 61% of September's leads and 28 of its 58 deals. Google brought 2 deals. Until Meta access lands, Meta leads are only seen through GoHighLevel, without their form answers or the real source of relabelled leads.
+- **Revisit if.** Meta's approval comes through early.
+
 ## Deferred
 
 Wanted, but not in the first version.
@@ -186,7 +202,7 @@ Wanted, but not in the first version.
 - **Connecting to portal accounts,** managing portal spend, and portal sync gap reports. See D-06.
 - **Organic posting and scheduling.** See D-07.
 - **Call tracking for telesales.** Telesales closed the most deals per lead in September, but it needs call tracking on the 800 number (#34).
-- **An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.
+- ~~**An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.~~ Replaced by D-19.
 - **Multi-tenancy.** See D-04.
 - **Approval rights for a team under the Head of Marketing & AI,** if they hire one.
 

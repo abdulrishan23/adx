@@ -98,12 +98,13 @@ Each row is one feature. The Area column is the Area field on GitHub, and it run
 | Website | Website | GA4 traffic and landing page performance, and flags for broken or password-gated pages | Likely |
 | Marketer performance | Marketer performance | Results split by source owner | Likely |
 | Copilot | Copilot | Answers questions from real data and drafts proposals | Likely |
+| Copilot | MCP server | Lets Claude use ADX's tools. Each feature reaches it before its web screen (D-19) | Likely |
 | Leadership reports | Leadership reports | Packages Revenue attribution's monthly figures into a report for the CMO and CEO | Likely |
 | Settings | Settings | Roles, the permission checklist, caps and kill switch, the stage table, the page catalogue and the project list | Likely |
+| Platform | Platform | Deploys, backups, email, monitoring and the web app shell. The work every feature needs that belongs to none of them | Likely |
 | Stock-aware ads | Stock-aware ads | Flags ads promoting sold-out unit types, using a daily availability snapshot from Akarati (#35) | Possible |
 | Broker monitor | Broker monitor | Watches brokers running ads on Reportage projects. Meta's Ad Library API only returns all ads for the EU, so this may need another source | Possible |
 | Proposals | Automated actions | Runs approved kinds of change without asking each time (see Deferred) | Later |
 | Portal reporting | Portal connections | Connects to portal accounts to pull spend and manage listings (see Deferred) | Later |
 | Organic | Organic posting | Posts and schedules organic content, behind approval (see Deferred) | Later |
 | Data quality | Call tracking | Tracks calls to the 800 number so telesales leads get a source (see Deferred) | Later |
-| Copilot | MCP server | Lets other AI clients use ADX's tools (see Deferred) | Later |
