@@ -96,10 +96,17 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 - **Cost.** Cost per qualified lead depends on sales updating statuses (#35).
 
 #### D-12. Hosting in Frankfurt
-2026-10-09. Likely Frankfurt.
+2026-10-09. Likely Frankfurt. Replaced by D-21.
 
 - **Why.** UAE data centres aren't an option today.
 - **Open.** Reportage has to approve it in writing before real lead data moves (#35).
+
+#### D-21. Hosting on our Hostinger server
+2026-10-12. ADX runs on WokeWorks' existing Hostinger server, with Caddy in front. We think it's in Mumbai, to confirm in the Hostinger panel. This replaces D-12.
+
+- **Why.** The server is already set up, so deploying is a matter of getting the code onto it.
+- **Cost.** Reportage's written approval has to name this location before real lead data moves (#35). Hisham bhayya's note on UAE data law only covered transfers to the EU.
+- **Revisit if.** Reportage won't approve the location.
 
 ### Writes
 
@@ -143,6 +150,7 @@ Default permissions for marketers are below. In general, anything that lowers sp
 2026-10-09. The roles are Viewer, Marketer and Admin, and the CMO is the admin. Approvals go out as secure links in email or WhatsApp. The roles are described in `reference.md`.
 
 - **Why.** The CMO won't use a new dashboard.
+- **Open.** Whether approvals go by email, Slack or WhatsApp. Email comes first (#34).
 
 ### Build
 
@@ -175,7 +183,7 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 
 - **Why.** About 30 internal users, so one server and one SQLite file are enough, with no database server to run. River commits a job in the same transaction as the change that needs it, so an approved proposal can't lose its execution job. Plain handlers keep every rule visible in code we review.
 - **Cost.** No code carries over from the old products, since Marketing OS is Python and Sales OS is TypeScript. SQLite means one machine and one writer at a time, and backups need Litestream. River's SQLite support is still experimental. If ADX serves several clients later, moving to Postgres means rewriting the migrations and some queries.
-- **Open.** Login and MCP sign-in aren't designed yet. They depend on Reportage's identity provider and on how MCP clients connect. The copilot's model SDK and the hosting provider are also open.
+- **Open.** Login and MCP sign-in aren't designed yet. They depend on Reportage's identity provider and on how MCP clients connect. The copilot's model SDK is also open. Hosting is D-21.
 - **Revisit if.** SQLite's single writer becomes a bottleneck, or a second client signs on.
 
 ### Order
@@ -193,6 +201,14 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 - **Why.** Meta needs App Review for anything beyond `ads_read`, which takes weeks. Google only needs its OAuth app moved to production. This was Hisham bhayya's call on 2026-10-12.
 - **Cost.** Meta brought 61% of September's leads and 28 of its 58 deals. Google brought 2 deals. Until Meta access lands, Meta leads are only seen through GoHighLevel, without their form answers or the real source of relabelled leads.
 - **Revisit if.** Meta's approval comes through early.
+- **Since D-22,** Meta waits on a Standard Access test instead of App Review. Google still goes first in Phase 1, and Meta starts as soon as the test passes.
+
+#### D-22. Meta through Standard Access
+2026-10-12. ADX reaches Reportage's Meta accounts through Standard Access. The person at Reportage who manages their ad accounts gets a tester role on our Meta app and connects it once.
+
+- **Why.** Meta gives Business apps Standard Access to their permissions automatically, but only for people with a role on the app. ADX has one client, and one or two people connect Meta, so App Review and Business Verification aren't needed. Meta brought 28 of September's 58 deals, so waiting weeks for review was expensive.
+- **Cost.** Anyone who connects Meta needs a role on our app. Standard Access may come with lower rate limits.
+- **Revisit if.** The test fails for ads or lead forms, or ADX takes a second client.
 
 ## Deferred
 
@@ -205,6 +221,11 @@ Wanted, but not in the first version.
 - ~~**An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.~~ Replaced by D-19.
 - **Multi-tenancy.** See D-04.
 - **Approval rights for a team under the Head of Marketing & AI,** if they hire one.
+- **The in-app assistant.** With MCP first (D-19), marketers use ADX's tools from Claude, and an in-app chat would rebuild Claude inside ADX. Revisit if people without Claude need it.
+- **Website signals and the page catalogue.** Tying visits to leads is still open (#34), and 61% of leads never visit the site. PostHog still goes on Reportage's sites early, so history builds up.
+- **Creating campaigns and ads through ADX.** Writes start with budgets, pauses, negative keywords, bids and targets.
+- **Editing the permission checklist inside ADX,** with per-person overrides. D-13's defaults are set in code first. Revisit if the CMO asks.
+- **Currency conversion.** Reportage's accounts probably bill in AED, and money already carries a currency code. Revisit if an account bills in another currency.
 
 ## Set aside
 
@@ -226,6 +247,8 @@ Wanted, but not in the first version.
 | Huma and orval for the API contract | Struct tags hide rules that are easy to miss in review. Plain handlers plus guts keep the shared types | Many more endpoints, or a need for a published API spec |
 | Embedding the React build in the Go binary | We'd rather deploy the frontend on its own | Needing a single artifact to ship |
 | Atlas for generating migrations | Hand-written goose files are enough for now | Table rebuilds in SQLite migrations getting painful |
+| Broker monitor | Meta's Ad Library API only returns all ads for the EU. In the UAE it returns political ads only, so there's no source we can use | A data source for UAE ads |
+| In-app support access for WokeWorks | We run the server, so it would guard nothing. WokeWorks people get normal accounts and show in the user list | Reportage asking for it |
 
 ## Open questions and outside dependencies
 

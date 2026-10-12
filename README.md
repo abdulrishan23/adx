@@ -51,9 +51,9 @@ Features, deferred items and set-aside ideas carry one of four scope labels. Dec
 Work lives in the [ADX GitHub Project](https://github.com/orgs/WokeWorks/projects/2).
 
 - **Area** is a field on every issue. It's the Area column of the features table in `docs/reference.md`, and it runs across phases.
-- **Phase** is a field on every issue. It says when the work happens. The whole team works through the phases in order.
+- **Phase** is a field on every issue. It says when the work happens. The team works through the phases in order, and a ticket from a later phase can start early once nothing blocks it.
 - **A parent issue** is one area within one phase. It finishes inside that phase.
-- **Sub-issues** are the tasks inside a parent.
+- **Sub-issues** are the tasks inside a parent that someone has scoped. A checklist in a parent holds tasks nobody has scoped yet, and each one becomes a sub-issue when someone scopes it.
 - **Blocked by** links one issue to another it can't start without. Most cross-feature dependencies are these.
 - **Labels.** `deferred` marks work moved to a later phase, with the reason in a comment. `question` and `external` mark the two pinned checklist issues.
 

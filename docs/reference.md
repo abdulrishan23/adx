@@ -15,7 +15,7 @@ ADX is used by Reportage's marketing team, about 30 people. Sales, telesales and
 - An admin can give one marketer approval rights without a new role. This is off at first.
 - Nobody below the CMO approves their own proposal. The CMO's own proposals go through, marked "self-approved".
 - Every role sees all marketing leads for now. Reportage gave no rules on this.
-- WokeWorks support access isn't one of these roles. It's logged, time-limited and visible to the CMO.
+- WokeWorks people get normal accounts, so they show in the user list with everyone else.
 
 ## Concepts
 
@@ -88,22 +88,21 @@ Each row is one feature. The Area column is the Area field on GitHub, and it run
 | Revenue attribution | Revenue attribution | Campaign to lead to qualified lead to Done-Deal, by project, updated daily. Computes the monthly revenue and return on ad spend | Likely |
 | Alerts | Alerts | Runs the checks: pacing, wasted spend, search-term cleanup, creative fatigue, frequency and CTR drops, delivery problems, and anomalies such as cost spikes, zero-lead days and disapproved ads. Which checks run depends on campaign type. The Morning brief shows them | Likely |
 | Campaigns | Campaigns | Campaign, ad set and ad views with spend, leads, qualified leads, deals and the temperature mix | Likely |
-| Proposals | Proposals | Every write to Google, Meta or GoHighLevel goes through proposal, approval, execution and the log. Approvals arrive as links in email or WhatsApp | Likely |
-| Lead scoring | Lead scoring | Fit and intent scores, a temperature written to GoHighLevel, and weights recalibrated against outcomes | Likely |
+| Proposals | Proposals | Every write to Google, Meta or GoHighLevel goes through proposal, approval, execution and the log. Approvals arrive as links, by email first (#34) | Likely |
+| Lead scoring | Lead scoring | Fit and intent scores, a temperature written to GoHighLevel, and weights tuned by hand against outcomes | Likely |
 | Audiences | Audiences | Meta custom audiences and Google Customer Match built from leads that went cold. A lead that re-engages turns hot | Likely |
 | Outcome sync | Outcome sync | Sends qualified leads and Done-Deals to Google and Meta, and audits Reportage's current Conversions API setup | Likely |
 | Data quality | Data quality | Platform leads against GoHighLevel leads per form, status coverage and attribution coverage | Likely |
 | Portal reporting | Portal reporting | Leads, qualified leads, deals and cost per lead for each portal, with spend typed in by hand | Likely |
-| Organic | Organic reporting | Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, Search Console data, and content suggestions | Likely |
+| Organic | Organic reporting | Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, and Search Console data, which Claude can use to suggest content | Likely |
 | Website | Website | GA4 traffic and landing page performance, and flags for broken or password-gated pages | Likely |
 | Marketer performance | Marketer performance | Results split by source owner | Likely |
-| Copilot | Copilot | Answers questions from real data and drafts proposals | Likely |
+| Copilot | Copilot | Answers questions from real data and drafts proposals, inside the web app (see Deferred) | Later |
 | Copilot | MCP server | Lets Claude use ADX's tools. Each feature reaches it before its web screen (D-19) | Likely |
 | Leadership reports | Leadership reports | Packages Revenue attribution's monthly figures into a report for the CMO and CEO | Likely |
 | Settings | Settings | Roles, the permission checklist, caps and kill switch, the stage table, the page catalogue and the project list | Likely |
 | Platform | Platform | Deploys, backups, email, monitoring and the web app shell. The work every feature needs that belongs to none of them | Likely |
 | Stock-aware ads | Stock-aware ads | Flags ads promoting sold-out unit types, using a daily availability snapshot from Akarati (#35) | Possible |
-| Broker monitor | Broker monitor | Watches brokers running ads on Reportage projects. Meta's Ad Library API only returns all ads for the EU, so this may need another source | Possible |
 | Proposals | Automated actions | Runs approved kinds of change without asking each time (see Deferred) | Later |
 | Portal reporting | Portal connections | Connects to portal accounts to pull spend and manage listings (see Deferred) | Later |
 | Organic | Organic posting | Posts and schedules organic content, behind approval (see Deferred) | Later |

@@ -11,6 +11,8 @@ End-of-work command. Bring the ticket, the Project and the docs in line with wha
 
 Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status, Area and Phase. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
 
+Checklists: a checklist in a parent ticket holds tasks nobody has scoped yet. Once a task is scoped, it becomes a sub-issue and its checklist line goes away.
+
 ## 1. Gather
 
 Read in parallel:
@@ -62,7 +64,7 @@ On approval:
 - Set Status. Done only when every sub-issue is closed and the work is merged or in an open PR.
 - Comment on the ticket for anything done differently: what was planned, what happened instead, why, and what it changes for other tickets. Be thorough here. It's how the next person learns the code differs from the ticket.
 - For deferred work, add the `deferred` label, comment with the reason and the phase it fits, and move its Phase field if it moves.
-- Create new tickets with their Area and Phase, attach them as sub-issues where they belong, and add Blocked by links.
+- New work that's scoped becomes a ticket with its Area and Phase, attached as a sub-issue where it belongs, with Blocked by links. New work that isn't scoped yet becomes a checklist line on the parent it belongs to.
 - Docs: a decision that reaches beyond one ticket or one phase goes in `docs/architecture.md`, and definitions go in `docs/reference.md`. A changed decision gets a new number and the old one is marked replaced, never deleted. Follow the README on how doc changes land.
 - #34 and #35: tick answered lines with the answer underneath, and add new lines. Keep them as checklists.
 

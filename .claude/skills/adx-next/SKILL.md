@@ -13,6 +13,8 @@ Whoever picks a ticket owns it: what the feature does, how it touches other feat
 
 Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status, Area and Phase. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
 
+Checklists: a checklist in a parent ticket holds tasks nobody has scoped yet. Once a task is scoped, it becomes a sub-issue and its checklist line goes away. Nobody builds straight from a checklist line.
+
 ## 1. Read the board
 
 Read in parallel:
@@ -33,7 +35,7 @@ Priority:
 1. The caller's own In Progress work
 2. Deferred tickets that are now unblocked
 3. Free tickets in the current phase, following what other tickets depend on
-4. The next phase, if the current one is nearly done
+4. Unblocked tickets from later phases, when the current phase has nothing free for this person, so nobody sits idle
 
 ```
 Phase N: X of Y tickets done
@@ -69,6 +71,7 @@ Ask the owner to decide. Go one decision at a time if they prefer. If you fill a
 ## 5. Write it down, then build
 
 Once decided:
+- If the ticket holds a checklist, turn the lines this work covers into sub-issues, with the parent's Area and Phase and any Blocked by links, and remove those lines. Lines nobody is taking stay as they are.
 - Comment on the ticket with the goal, each decision with a one-line reason, and anything left for later. This is what the next person reads.
 - If a decision reaches beyond this ticket, say it belongs in `docs/architecture.md`. `/adx-update` proposes the change at the end.
 - Propose the build steps, files and tests. Wait for a go.
