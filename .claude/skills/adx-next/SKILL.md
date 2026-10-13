@@ -68,6 +68,8 @@ Bring back, kept short:
 
 Ask the owner to decide. Go one decision at a time if they prefer. If you fill a gap with your own pick, say so.
 
+Use the business-rule questions in `CLAUDE.md` to discover missing context with the owner before proposing code. Revisit unclear outcomes as you build, then test the agreed rules.
+
 ## 5. Post the plan, then build
 
 Once decided:
@@ -87,6 +89,8 @@ The plan comment has two headings:
 ```
 
 Write it for a teammate who opens the ticket cold and has two minutes. Use short, plain sentences, and say each thing once. Don't repeat the title or the ticket body, and skip filler, hedging and extra headings. It should fit on one screen. If it doesn't, the ticket is probably two tickets.
+
+Record significant edge cases actually discussed or discovered. Mention relevant tests added or considered in one or two sentences per test. Distinguish planned tests from added tests, and skip routine test lists.
 
 ## Rules
 

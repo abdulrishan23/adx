@@ -6,7 +6,7 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 
 - `server/` is the Go module. `web/` is the React app. They deploy separately behind one domain, and `/api` goes to Go.
 - `server/core` holds business logic, one package per domain. Every function takes a `core.Actor`.
-- `server/api` and `server/jobs` are thin wrappers that call core.
+- Build features in core first. `server/api`, MCP and `server/jobs` are thin wrappers that call the same core functions.
 - `server/store` is SQLite: migrations, queries, sqlc output. Core may use it directly.
 - `server/providers` holds outside API clients. Core never imports them. It declares the interface it needs, and `cmd/adx` passes the client in.
 
@@ -18,6 +18,21 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 - A missing figure is null and shows as "Not available", never 0.
 - Writes that must happen together go through `store.DB.Tx`. Keep it short and never call an outside API inside it.
 - Auth isn't designed yet. `api/actor.go` gives every request a dev admin, in dev only.
+
+## Business rules
+
+- For every applicable ticket, use known context and ask focused steering questions before coding. Establish permissions, data meaning, valid changes and expected outcomes.
+- Use concrete examples of missing, duplicate or conflicting data and failed or repeated actions to expose unclear rules. Ask the user what the result must be, rather than silently choosing a rule.
+- If context is missing, help the user identify who can supply it or which source to consult. Keep dependent decisions open and continue work that does not need those answers.
+- Revisit these questions as new cases emerge during implementation. Turn agreed rules into tests.
+
+## Tests
+
+- Ask which wrong behavior each test catches, without an exhaustive bug list.
+- Test core functions directly with real temporary SQLite databases and fake outside providers. Assert results and stored state.
+- Keep domain tests in one `<domain>_test.go` file beside the core code. Split only when navigation needs it.
+- HTTP/MCP integration tests include real core and check parsing, identity, responses and error mapping. Job tests check wiring and failure handling. Provider tests check outgoing requests and incoming responses. Browser tests cover a few critical user journeys.
+- Write tests alongside implementation and add regression tests for bugs. Run focused tests during work. Review changed tests with the feature. CI runs the full suite.
 
 ## Changing things
 

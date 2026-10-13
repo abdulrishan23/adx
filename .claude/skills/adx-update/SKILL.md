@@ -70,6 +70,8 @@ On approval:
 
 The follow-up comment is plain prose with no headings. It covers what changed from the plan and why, what that changes for other tickets, anything the build turned up that the next person needs, and new tickets or checklist lines by number. If the work matched the plan, it's one line saying so. Write it like the plan comment: for a teammate who opens the ticket cold, in short, plain sentences, saying each thing once.
 
+Include significant edge cases discovered during work and relevant tests added or considered, in one or two sentences per test. Distinguish added tests from proposed tests and state relevant test results. Skip routine test lists.
+
 ## Rules
 
 - Finished work is a close or a tick, with no extra prose.
