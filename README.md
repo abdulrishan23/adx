@@ -63,8 +63,20 @@ Change the docs through a pull request, so everyone sees when a definition or de
 
 ## How we work
 
-1. **Pick up.** Run `/adx-next` in Claude Code. It shows what's free in the current phase, assigns the ticket you pick, and goes through what the feature does, what it touches and the decisions it needs. Whoever picks a ticket owns those decisions. Before code starts, the problem, the plan and the decisions go on the ticket as a short comment.
+1. **Pick up.** Run `/adx-next` in Claude Code or `$adx-next` in Codex. It shows what's free in the current phase, assigns the ticket you pick, and goes through what the feature does, what it touches and the decisions it needs. Whoever picks a ticket owns those decisions. Before code starts, the problem, the plan and the decisions go on the ticket as a short comment.
 2. **Build.** One branch per ticket, named `{number}-{short-name}`, merged through a PR once CI passes.
-3. **Wrap up.** Run `/adx-update`. It closes finished sub-issues, posts a follow-up comment with anything that changed from the plan, files new tickets, and proposes doc changes for decisions that reach beyond the ticket.
+3. **Wrap up.** Run `/adx-update` in Claude Code or `$adx-update` in Codex. It closes finished sub-issues, posts a follow-up comment with anything that changed from the plan, files new tickets, and proposes doc changes for decisions that reach beyond the ticket.
 
 Both commands need `gh` signed in with the project scope: `gh auth refresh -s project`.
+
+## Shared agent instructions and skills
+
+Claude Code and Codex use the same instructions and skills:
+
+- `CLAUDE.md` holds the project instructions. `AGENTS.md` is a relative symlink to that file.
+- `.claude/skills/` holds the skills. `.agents/skills` is a relative symlink to that directory, so new skills are shared too.
+- Each skill's `agents/openai.yaml` preserves explicit invocation in Codex, alongside Claude Code's `disable-model-invocation: true`.
+
+Edit `CLAUDE.md` and `.claude/skills/` to keep both agents in sync. Keep product-specific metadata in the shared skill folder.
+
+Git stores the relative symlinks with the repo. Clones need no personal Codex configuration, but the checkout must preserve symlinks.
