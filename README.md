@@ -51,7 +51,7 @@ Features, deferred items and set-aside ideas carry one of four scope labels. Dec
 Work lives in the [ADX GitHub Project](https://github.com/orgs/WokeWorks/projects/2).
 
 - **Area** is a field on every issue. It's the Area column of the features table in `docs/reference.md`, and it runs across phases.
-- **Phase** is a field on every issue. It says when the work happens. The team works through the phases in order, and a ticket from a later phase can start early once nothing blocks it.
+- **Phase** is a milestone on every issue, from `1. Foundations` to `6. Breadth`. It says when the work happens, and the milestones page shows each phase's progress. The team works through the phases in order, and a ticket from a later phase can start early once nothing blocks it. Unplanned work has no milestone.
 - **A parent issue** is one area within one phase. It finishes inside that phase.
 - **Sub-issues** are the tasks inside a parent that someone has scoped. A checklist in a parent holds tasks nobody has scoped yet, and each one becomes a sub-issue when someone scopes it.
 - **Blocked by** links one issue to another it can't start without. Most cross-feature dependencies are these.
@@ -63,8 +63,8 @@ Change the docs through a pull request, so everyone sees when a definition or de
 
 ## How we work
 
-1. **Pick up.** Run `/adx-next` in Claude Code. It shows what's free in the current phase, assigns the ticket you pick, and goes through what the feature does, what it touches and the decisions it needs. Whoever picks a ticket owns those decisions, and they go on the ticket before code starts.
+1. **Pick up.** Run `/adx-next` in Claude Code. It shows what's free in the current phase, assigns the ticket you pick, and goes through what the feature does, what it touches and the decisions it needs. Whoever picks a ticket owns those decisions. Before code starts, the problem, the plan and the decisions go on the ticket as a short comment.
 2. **Build.** One branch per ticket, named `{number}-{short-name}`, merged through a PR once CI passes.
-3. **Wrap up.** Run `/adx-update`. It closes finished sub-issues, records what was done differently or deferred, files new tickets, and proposes doc changes for decisions that reach beyond the ticket.
+3. **Wrap up.** Run `/adx-update`. It closes finished sub-issues, posts a follow-up comment with anything that changed from the plan, files new tickets, and proposes doc changes for decisions that reach beyond the ticket.
 
 Both commands need `gh` signed in with the project scope: `gh auth refresh -s project`.

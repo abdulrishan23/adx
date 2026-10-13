@@ -11,20 +11,20 @@ Start-of-work command. Find where the team is, offer what to pick up, and once s
 
 Whoever picks a ticket owns it: what the feature does, how it touches other features, how it gets built, and the decisions made on the way. Your job is to do the reading and digging, and bring them clear choices. They make the calls.
 
-Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status, Area and Phase. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
+Setup: if `gh auth status` fails or lacks the `project` scope, have them run `gh auth login`, then `gh auth refresh -s project`. The board is Project 2 under WokeWorks, with the fields Status and Area. Each phase is a milestone, from `1. Foundations` to `6. Breadth`, and unplanned work has none. Sub-issues and Blocked by links go through `gh api` (`repos/WokeWorks/adx/issues/N/sub_issues` and `.../dependencies/blocked_by`), and they take the issue's internal `id`, not its number.
 
 Checklists: a checklist in a parent ticket holds tasks nobody has scoped yet. Once a task is scoped, it becomes a sub-issue and its checklist line goes away. Nobody builds straight from a checklist line.
 
 ## 1. Read the board
 
 Read in parallel:
-- The Project's tickets with Status, Area, Phase, assignees and labels
+- The Project's tickets with Status, Area, milestone, assignees and labels
 - Who is calling (`gh api user --jq .login`)
 - #34 (open questions) and #35 (waiting on others), only to know what's blocked
 - `git log --oneline -10` and the current branch
 
 Work out:
-- The current phase: the earliest Phase that still has open tickets
+- The current phase: the earliest milestone that still has open tickets
 - What's In Progress, the caller's own first
 - Free tickets in the current phase: unassigned, and not blocked by an open ticket or an unticked line in #35
 - Tickets labelled `deferred` whose reason no longer holds
@@ -68,13 +68,25 @@ Bring back, kept short:
 
 Ask the owner to decide. Go one decision at a time if they prefer. If you fill a gap with your own pick, say so.
 
-## 5. Write it down, then build
+## 5. Post the plan, then build
 
 Once decided:
-- If the ticket holds a checklist, turn the lines this work covers into sub-issues, with the parent's Area and Phase and any Blocked by links, and remove those lines. Lines nobody is taking stay as they are.
-- Comment on the ticket with the goal, each decision with a one-line reason, and anything left for later. This is what the next person reads.
+- If the ticket holds a checklist, turn the lines this work covers into sub-issues, with the parent's Area and milestone and any Blocked by links, and remove those lines. Lines nobody is taking stay as they are.
+- Post the plan comment on the ticket. Show the draft first.
 - If a decision reaches beyond this ticket, say it belongs in `docs/architecture.md`. `/adx-update` proposes the change at the end.
 - Propose the build steps, files and tests. Wait for a go.
+
+The plan comment has two headings:
+
+```
+### Problem
+{One or two sentences: what's missing or wrong today, and who feels it.}
+
+### Solution
+{What we'll build and how, the decisions with their reasons, and anything left out. Prose, or a short list where the points are separate.}
+```
+
+Write it for a teammate who opens the ticket cold and has two minutes. Use short, plain sentences, and say each thing once. Don't repeat the title or the ticket body, and skip filler, hedging and extra headings. It should fit on one screen. If it doesn't, the ticket is probably two tickets.
 
 ## Rules
 
