@@ -102,7 +102,7 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 - **Open.** Reportage has to approve it in writing before real lead data moves (#35).
 
 #### D-21. Hosting on our Hostinger server
-2026-10-12. ADX runs on WokeWorks' existing Hostinger server, with Caddy in front. We think it's in Mumbai, to confirm in the Hostinger panel. This replaces D-12.
+2026-10-12. ADX runs on WokeWorks' existing Hostinger server in Mumbai, with Caddy in front. This replaces D-12.
 
 - **Why.** The server is already set up, so deploying is a matter of getting the code onto it.
 - **Cost.** Reportage's written approval has to name this location before real lead data moves (#35). Hisham bhayya's note on UAE data law only covered transfers to the EU.
