@@ -30,12 +30,12 @@ Check what happened against the ticket and its plan comment, and sort it into:
 - **Done differently.** What changed from the ticket or its decisions, and why.
 - **Deferred.** Planned work that was pushed out, with the reason and where it fits now.
 - **New.** Work or tickets discovered along the way.
-- **Decisions.** Every choice made during the work, including small ones made in code.
+- **Decisions.** Material choices that differ from the agreed proposal or remain unresolved.
 - **Docs.** Decisions that reach beyond this ticket, new or changed definitions, answered or new open questions, and new outside dependencies.
 
 ## 3. Check the decisions are owned
 
-Show the decisions as a short list, one line each with its reason. Then ask: "Anything here you'd decide differently, or that's still open?"
+Review only unresolved or changed decisions with the owner. Skip decisions already agreed.
 
 Keep it a quick review. If a decision was made by the AI without the person weighing in, say so plainly and let them confirm or change it.
 
@@ -62,15 +62,15 @@ Ask: "Does this look right?"
 On approval:
 - Close finished sub-issues and tick finished checklist items.
 - Set Status. Done only when every sub-issue is closed and the work is merged or in an open PR.
-- Post the follow-up comment on the ticket. It's how the next person learns where the code differs from the plan.
+- Post one short completion comment when the task is done. If it already exists, edit it instead of adding another.
 - For deferred work, add the `deferred` label, comment with the reason and the phase it fits, and move its milestone if it moves.
 - New work that's scoped becomes a ticket with its Area and milestone, attached as a sub-issue where it belongs, with Blocked by links. New work that isn't scoped yet becomes a checklist line on the parent it belongs to.
 - Docs: a decision that reaches beyond one ticket or one phase goes in `docs/architecture.md`, and definitions go in `docs/reference.md`. A changed decision gets a new number and the old one is marked replaced, never deleted. Follow the README on how doc changes land.
 - #34 and #35: tick answered lines with the answer underneath, and add new lines. Keep them as checklists.
 
-The follow-up comment is plain prose with no headings. It covers what changed from the plan and why, what that changes for other tickets, anything the build turned up that the next person needs, and new tickets or checklist lines by number. If the work matched the plan, it's one line saying so. Write it like the plan comment: for a teammate who opens the ticket cold, in short, plain sentences, saying each thing once.
+The completion comment is one short paragraph with no headings. Focus on deviations and their reasons, remaining work, and a brief validation result. Include another ticket's number only when the deviation affects it. If the work matched the proposal, one sentence is enough.
 
-Include significant edge cases discovered during work and relevant tests added or considered, in one or two sentences per test. Distinguish added tests from proposed tests and state relevant test results. Skip routine test lists.
+Mention an edge case or test only when it explains a deviation or remaining concern. Skip routine test lists, setup history and chronological progress reports. Keep interim questions and necessary updates brief and in chat.
 
 ## Rules
 

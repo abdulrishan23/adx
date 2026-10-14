@@ -34,6 +34,13 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 - HTTP/MCP integration tests include real core and check parsing, identity, responses and error mapping. Job tests check wiring and failure handling. Provider tests check outgoing requests and incoming responses. Browser tests cover a few critical user journeys.
 - Write tests alongside implementation and add regression tests for bugs. Run focused tests during work. Review changed tests with the feature. CI runs the full suite.
 
+## Ticket communication
+
+- Post one concise proposal before implementation and one short completion comment when the task is done.
+- Focus the completion comment on deviations and their reasons, remaining work, and a brief validation result. If work matched the proposal, one sentence is enough.
+- Keep questions and necessary progress updates brief and in chat. Do not post interim setup, progress, or test reports to tickets.
+- Update the existing proposal or completion comment instead of adding another for the same task.
+
 ## Changing things
 
 - Schema: `make migration name=...`, write the SQL, then `make gen`.
