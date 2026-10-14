@@ -84,6 +84,13 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 - **Cost.** Revenue reporting depends on Akarati sending deal values into GoHighLevel, which we don't control (#35).
 - **Revisit if.** Akarati offers an API and GoHighLevel falls short.
 
+#### D-23. GHL through private integration tokens
+2026-10-15. A GHL account admin issues a scoped Private Integration Token for ADX. Each sub-account has its own connection. A reconnect replaces only that account's credentials. ADX encrypts tokens in SQLite with a key outside the database.
+
+- **Why.** This avoids Marketplace installation for the first client.
+- **Cost.** An admin must replace tokens manually. OAuth support exists in code, but a live installation is unverified.
+- **Revisit if.** Customers need to connect their accounts themselves.
+
 #### D-10. Personal data
 2026-10-09. Phone and email are hashed before any upload. Opted-out leads never go into audiences. Nationality is never guessed from names, and the phone country code is used only to tell where someone lives. ADX doesn't exclude any country's leads. That's a targeting decision for the CMO.
 

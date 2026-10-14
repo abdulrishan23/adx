@@ -21,6 +21,10 @@ ADX is used by Reportage's marketing team, about 30 people. Sales, telesales and
 
 If a feature uses one of these words, it means what's written here.
 
+### Connections
+
+- **GHL connection.** ADX's saved authorization to one GoHighLevel sub-account, the CRM workspace that the API identifies with a location ID. Several connections can coexist. A connection verifies access. Lead imports and ongoing health checks are separate features.
+
 ### Leads and sources
 
 - **Lead.** A person who enquired. Leads live in GoHighLevel, and ADX reads them. There's no single reliable key, because phone numbers repeat and some emails are placeholders, so matching uses several fields.
