@@ -36,10 +36,12 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 
 ## Ticket communication
 
-- Post one concise proposal before implementation and one short completion comment when the task is done.
-- Focus the completion comment on deviations and their reasons, remaining work, and a brief validation result. If work matched the proposal, one sentence is enough.
-- Keep questions and necessary progress updates brief and in chat. Do not post interim setup, progress, or test reports to tickets.
-- Update the existing proposal or completion comment instead of adding another for the same task.
+- Normally use two comments per ticket: one concise Problem/Solution proposal before implementation, and one short outcome when the work is done or set aside.
+- For work set aside because it is paused or blocked, say what stopped it and what would unblock it. Active troubleshooting does not need a ticket comment.
+- Focus the outcome on deviations and their reasons, remaining work, and a brief validation result. If work matched the proposal, one sentence is enough.
+- Keep setup attempts, questions, progress and routine test reports in chat.
+- Read existing comments first. Edit the existing proposal or outcome for the same work, including after resuming.
+- Write tickets, docs and PR titles/descriptions in Tamim's voice. Run `/deslop` before publishing them.
 
 ## Changing things
 

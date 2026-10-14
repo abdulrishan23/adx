@@ -74,7 +74,7 @@ Use the business-rule questions in `CLAUDE.md` to discover missing context with 
 
 Once decided:
 - If the ticket holds a checklist, turn the lines this work covers into sub-issues, with the parent's Area and milestone and any Blocked by links, and remove those lines. Lines nobody is taking stay as they are.
-- Show one concise proposal covering the problem, solution and necessary build steps or tests. Once agreed, post it as the ticket's only proposal comment and build.
+- Read the existing comments, then show one concise Problem/Solution proposal. Once agreed, edit the existing proposal or post one if none exists, then build. Follow the writing rules in `CLAUDE.md`, including `/deslop` before posting.
 - If a decision reaches beyond this ticket, say it belongs in `docs/architecture.md`. `/adx-update` proposes the change at the end.
 
 The plan comment has two headings:
@@ -91,7 +91,7 @@ Write it for a teammate who opens the ticket cold and has two minutes. Use short
 
 Mention an agreed edge case only when it materially affects the proposal. Keep routine test details out of the comment.
 
-During implementation, keep questions and necessary progress updates brief and in chat. Do not post interim setup, progress, or test reports to the ticket. If the agreed plan changes, edit the existing proposal. Use `/adx-update` for the single completion comment.
+Keep setup attempts, questions, progress and routine test reports in chat. If the agreed plan changes, edit the existing proposal. Use `/adx-update` for one short outcome when the work is done or set aside because it is paused or blocked. Active troubleshooting does not need an outcome comment.
 
 ## Rules
 
