@@ -26,9 +26,11 @@ import (
 )
 
 type config struct {
-	Env    string `env:"ADX_ENV" envDefault:"dev"`
-	Addr   string `env:"ADX_ADDR" envDefault:"localhost:8080"`
-	DBPath string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
+	Env                string `env:"ADX_ENV" envDefault:"dev"`
+	Addr               string `env:"ADX_ADDR" envDefault:"localhost:8080"`
+	DBPath             string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
+	GHLCredentialsFile string `env:"ADX_GHL_CREDENTIALS_FILE"`
+	ConnectionKeyFile  string `env:"ADX_CONNECTION_KEY_FILE"`
 }
 
 func main() {
@@ -67,6 +69,10 @@ func run() error {
 	if err := db.Migrate(ctx); err != nil {
 		return err
 	}
+	connections, err := configuredConnections(db, cfg)
+	if err != nil {
+		return err
+	}
 	if err := jobs.Migrate(ctx, db); err != nil {
 		return err
 	}
@@ -88,9 +94,10 @@ func run() error {
 
 	srv := &http.Server{
 		Handler: api.NewRouter(api.Deps{
-			Log:      log,
-			Dev:      dev,
-			Projects: projects.New(db),
+			Log:         log,
+			Dev:         dev,
+			Projects:    projects.New(db),
+			Connections: connections,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

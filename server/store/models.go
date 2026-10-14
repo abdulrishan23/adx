@@ -5,8 +5,30 @@
 package store
 
 import (
+	"database/sql"
 	"time"
 )
+
+type Connection struct {
+	Provider        string
+	LocationID      string
+	CompanyID       string
+	Name            string
+	EncryptedTokens []byte
+	Scope           string
+	TokenExpiresAt  sql.NullTime
+	ConnectedAt     time.Time
+	VerifiedAt      time.Time
+	AuthMethod      string
+}
+
+type ConnectionOauthAttempt struct {
+	StateHash   string
+	Provider    string
+	UserID      int64
+	BindingHash string
+	ExpiresAt   time.Time
+}
 
 type Project struct {
 	ID        int64
