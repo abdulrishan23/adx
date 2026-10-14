@@ -9,6 +9,16 @@ import (
 	"time"
 )
 
+type AuditLog struct {
+	ID           int64
+	At           time.Time
+	ActorUserID  sql.NullInt64
+	Via          string
+	Action       string
+	TargetUserID sql.NullInt64
+	Detail       string
+}
+
 type Connection struct {
 	Provider        string
 	LocationID      string
@@ -34,4 +44,16 @@ type Project struct {
 	ID        int64
 	Name      string
 	CreatedAt time.Time
+}
+
+type User struct {
+	ID            int64
+	Email         string
+	Name          sql.NullString
+	Role          string
+	Status        string
+	AuthentikPk   int64
+	AuthentikUuid string
+	CreatedAt     time.Time
+	LastSignInAt  sql.NullTime
 }
