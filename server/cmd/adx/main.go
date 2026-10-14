@@ -33,7 +33,9 @@ import (
 )
 
 type config struct {
-	Env                string `env:"ADX_ENV" envDefault:"dev"`
+	// Env is "dev" only when set so explicitly. Anything else runs as
+	// production, because dev hands every request an admin without sign-in.
+	Env                string `env:"ADX_ENV" envDefault:"production"`
 	Addr               string `env:"ADX_ADDR" envDefault:"localhost:8080"`
 	DBPath             string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
 	GHLCredentialsFile string `env:"ADX_GHL_CREDENTIALS_FILE"`
@@ -109,6 +111,11 @@ func run() error {
 
 	// Claim the port before starting workers, so a busy port fails fast
 	// instead of leaving River running against a database about to close.
+	if dev {
+		if err := devAddrIsLocal(cfg.Addr); err != nil {
+			return err
+		}
+	}
 	ln, err := net.Listen("tcp", cfg.Addr)
 	if err != nil {
 		return err
@@ -216,3 +223,17 @@ func (u unconfigured) Create(context.Context, string) (users.Account, error) {
 func (u unconfigured) AddToGroup(context.Context, int64) error           { return u.err }
 func (u unconfigured) RemoveFromGroup(context.Context, int64) error      { return u.err }
 func (u unconfigured) SendSetPasswordEmail(context.Context, int64) error { return u.err }
+
+// devAddrIsLocal refuses to serve dev mode beyond this machine, since dev
+// mode has no sign-in.
+func devAddrIsLocal(addr string) error {
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		return fmt.Errorf("ADX_ADDR %q: %w", addr, err)
+	}
+	switch host {
+	case "localhost", "127.0.0.1", "::1":
+		return nil
+	}
+	return fmt.Errorf("ADX_ADDR %q: dev mode only listens on localhost, because it has no sign-in", addr)
+}

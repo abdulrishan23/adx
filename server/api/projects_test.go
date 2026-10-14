@@ -58,3 +58,16 @@ func TestOutsideDevEverythingIsRefused(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusUnauthorized, res.StatusCode)
 }
+
+// Catches: another website making a signed-in browser change data, which
+// http.NewCrossOriginProtection in the router stops.
+func TestCrossOriginWritesAreRefused(t *testing.T) {
+	srv := newServer(t, true)
+	req, err := http.NewRequest(http.MethodPost, srv.URL+"/api/projects", strings.NewReader(`{"name":"The Wadi"}`))
+	require.NoError(t, err)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Origin", "https://evil.example")
+	res, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusForbidden, res.StatusCode)
+}

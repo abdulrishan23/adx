@@ -25,7 +25,7 @@ What ADX takes from each is decision D-17 in `docs/architecture.md`. ADX reuses 
 
 To run it you need Go 1.26, Node 22, pnpm and [air](https://github.com/air-verse/air). Then:
 
-- `make dev` runs both, at http://localhost:5173.
+- `make dev` runs both, at http://localhost:5173. It sets `ADX_ENV=dev`. Without it the server runs as production.
 - `make gen` regenerates sqlc code and the TypeScript API types.
 - `make test` and `make check` run the tests and linters. `make check` also needs [golangci-lint](https://golangci-lint.run).
 

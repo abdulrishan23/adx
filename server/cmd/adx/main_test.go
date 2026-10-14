@@ -38,3 +38,13 @@ func TestDirectoryConfig(t *testing.T) {
 	require.ErrorAs(t, err, &ce)
 	assert.Contains(t, ce.Message, "authentik isn't configured", "the reason reaches the web, not only the CLI")
 }
+
+// Catches: dev mode, which has no sign-in, reachable from other machines.
+func TestDevOnlyListensLocally(t *testing.T) {
+	for _, addr := range []string{"localhost:8080", "127.0.0.1:8090", "[::1]:8080"} {
+		assert.NoError(t, devAddrIsLocal(addr), addr)
+	}
+	for _, addr := range []string{"0.0.0.0:8080", ":8080", "192.168.1.5:8080"} {
+		assert.Error(t, devAddrIsLocal(addr), addr)
+	}
+}
