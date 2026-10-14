@@ -1,4 +1,6 @@
 // Package gohighlevel implements the HighLevel OAuth and location API client.
+// Add API methods as features need them. Current reads verify connection access;
+// contacts, custom fields and pipelines are checked but not returned or imported.
 package gohighlevel
 
 import (

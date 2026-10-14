@@ -1,4 +1,7 @@
 // Package connections owns account connections and their credentials.
+// It currently supports only GoHighLevel. Extend it to other providers, such as
+// Google Ads and Search Console, and generalize shared credential handling as
+// those integrations are added. Keep provider-specific API calls in providers.
 package connections
 
 import (
