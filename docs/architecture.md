@@ -190,8 +190,28 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 
 - **Why.** About 30 internal users, so one server and one SQLite file are enough, with no database server to run. River commits a job in the same transaction as the change that needs it, so an approved proposal can't lose its execution job. Plain handlers keep every rule visible in code we review.
 - **Cost.** No code carries over from the old products, since Marketing OS is Python and Sales OS is TypeScript. SQLite means one machine and one writer at a time, and backups need Litestream. River's SQLite support is still experimental. If ADX serves several clients later, moving to Postgres means rewriting the migrations and some queries.
-- **Open.** Login and MCP sign-in aren't designed yet. They depend on Reportage's identity provider and on how MCP clients connect. The copilot's model SDK is also open. Hosting is D-21.
+- **Open.** Login and MCP sign-in are D-24. The copilot's model SDK is also open. Hosting is D-21.
 - **Revisit if.** SQLite's single writer becomes a bottleneck, or a second client signs on.
+
+#### D-24. Sign-in through authentik, with people managed in ADX
+2026-10-15. People sign in with WokeWorks' authentik on the web and in Claude. ADX keeps the people, their roles and their status. Only accounts in the authentik group `adx-users` can sign in to ADX. Web sessions, MCP tokens and jobs all become the same `core.Actor`, and core checks the role on every call.
+
+- **Why.** authentik already runs and handles passwords and email. Claude connects with one URL only if the server lets Claude register itself. authentik can't do that without a secret, so without a thin OAuth server in ADX every marketer would paste a client ID and secret into Claude. Roles kept in ADX apply on the next click. Creating accounts from ADX means admins don't wait for WokeWorks.
+- **Cost.** ADX holds an authentik API token that can create users and change `adx-users` membership, but can't change or delete users. Every new sign-in depends on authentik being up. The OAuth server is security-sensitive code we own. Someone switched off in authentik directly, not through ADX, keeps an open web session until it ends.
+- **Open.** Emails come from Twaha's address. A shared sender such as `noreply@wokeworks.ai` is needed before launch (#35).
+- **Revisit if.** Reportage wants Google or Microsoft sign-in (#34), a client that can't register from a URL, such as ChatGPT, needs supporting, or ADX gets a second client.
+
+Sign-in follows these rules.
+
+- There's no self sign-up. An admin adds an email and a role. ADX creates the authentik account in the `users/adx` path, adds it to `adx-users`, and has authentik email a link to set a password. The person shows as Invited until their first sign-in, then Active. An admin can resend the link, and anyone can use "Forgot password?" on the login page.
+- Sign-in matches only on the authentik account's UUID, which the provider sends as the subject, so nobody gets in by creating an authentik account with someone else's email. The email stays the one the admin entered.
+- The admin page reuses only authentik accounts ADX created, which sit in the `users/adx` path. Reusing any account by email would hand someone's access to whoever made an account with their email first. An existing account, such as a WokeWorks person's, is linked from the server's CLI with its UUID, after someone checks it's the right account.
+- Disabling someone blocks them at once, ends their web sessions and takes them out of `adx-users`. ADX never switches an authentik account off, so its API key can't change accounts and a Reportage admin can't lock a WokeWorks person out of authentik. ADX also refuses an account an authentik admin switched off, instead of switching it back on.
+- Adding writes to authentik first and ADX second. Disabling writes to ADX first and authentik second. A failure halfway leaves the person locked out, not half in. Each step skips work already done, so an admin can retry.
+- Web sessions live in SQLite. The cookie holds a random ID, and the table stores only its hash, so a copied database or backup holds nothing anyone can sign in with. ADX looks the session up on every request rather than trusting a JWT, a signed token that stays valid until it expires. Disabling someone or changing their role therefore applies on their next click. A session ends after 7 days idle or 30 days at most. Logout ends the ADX session only.
+- For Claude, ADX's OAuth server lets Claude register itself from the ADX URL (CIMD), so a marketer adds ADX with one URL. It sends the login to authentik and issues tokens that last 10 minutes and work only for ADX's MCP endpoint. An issued token can't be taken back, so the short life limits how long a removed person keeps access. Every refresh checks the person again in ADX and in `adx-users`.
+- Sign-ins, refused sign-ins, changes to people and MCP calls go to one audit log.
+- For whoever runs authentik, this setup has to stay as it is: the `adx-users` group bound to the ADX application; the `adx-auth` provider (confidential, subject mode "user's UUID", RS256); the recovery flow without its identification step, with its blueprint off; a separate `forgot-password` flow with "Pretend user exists" on; the `default-recovery-email` stage with the `adx-set-password` template; the `adx-provisioner` service account with only the rights above; and "Allow users to change email" off.
 
 ### Order
 
