@@ -68,13 +68,15 @@ Bring back, kept short:
 
 Ask the owner to decide. Go one decision at a time if they prefer. If you fill a gap with your own pick, say so.
 
+The owner has to show they understand the problem and have a solution that holds before anything is drafted. If their explanation misses something, explain that part with a concrete example and keep working through it with them. The owner writes the Problem/Solution comment where they can, and you help shape and review it.
+
 Use the business-rule questions in `CLAUDE.md` to discover missing context with the owner before proposing code. Revisit unclear outcomes as you build, then test the agreed rules.
 
 ## 5. Post the plan, then build
 
 Once decided:
 - If the ticket holds a checklist, turn the lines this work covers into sub-issues, with the parent's Area and milestone and any Blocked by links, and remove those lines. Lines nobody is taking stay as they are.
-- Read the existing comments, then show one concise Problem/Solution proposal. Once agreed, edit the existing proposal or post one if none exists, then build. Follow the writing rules in `CLAUDE.md`, including `/deslop` before posting.
+- Read the existing comments, then get one concise Problem/Solution proposal, written by the owner or drafted from their explanation. Once agreed, edit the existing proposal or post one if none exists, then build. Follow the writing rules in `CLAUDE.md`, including `/deslop` before posting.
 - If a decision reaches beyond this ticket, say it belongs in `docs/architecture.md`. `/adx-update` proposes the change at the end.
 
 The plan comment has two headings:
@@ -99,3 +101,4 @@ Keep setup attempts, questions, progress and routine test reports in chat. If th
 - Show every assignment, field change and comment before making it.
 - MCP first (D-19): a feature's MCP tools come before its web screen.
 - One clear question beats a list of five.
+- Name the exact number, field or record you mean, for example "the Conversions number for 1 Oct" instead of "recent activity".
