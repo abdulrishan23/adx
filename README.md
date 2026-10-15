@@ -29,6 +29,10 @@ To run it you need Go 1.26, Node 22, pnpm and [air](https://github.com/air-verse
 - `make gen` regenerates sqlc code and the TypeScript API types.
 - `make test` and `make check` run the tests and linters. `make check` also needs [golangci-lint](https://golangci-lint.run).
 
+The public privacy policy is at `/privacy`, with deletion instructions at `/privacy#data-deletion`.
+The web build generates HTML from the same React page, so crawlers can read it without JavaScript.
+The deployment must serve `privacy/index.html` before the app fallback. For Caddy, use `try_files {path} {path}/index.html /index.html`.
+
 ## Docs
 
 | Path | What it holds |
