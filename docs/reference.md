@@ -85,6 +85,8 @@ A phone country code shows where someone lives, not their nationality. Buyers fr
 
 Each row is one feature. The Area column is the Area field on GitHub, and it runs across phases. Ideas we decided against are under Set aside in `architecture.md`.
 
+Phase 1 delivers the read layer through Claude over MCP. Later work includes the ADX web app and its required in-app Copilot (D-25). GA4 and Copilot are in Phase 5. Organic social and Search Console reporting follow in Phase 6.
+
 | Area | Feature | What it does | Scope |
 |---|---|---|---|
 | Connections | Connections | Connects GoHighLevel, Google Ads, Meta, GA4, Search Console, organic social accounts and PostHog, and shows each one's health and last sync | Likely |
@@ -98,11 +100,11 @@ Each row is one feature. The Area column is the Area field on GitHub, and it run
 | Outcome sync | Outcome sync | Sends qualified leads and Done-Deals to Google and Meta, and audits Reportage's current Conversions API setup | Likely |
 | Data quality | Data quality | Platform leads against GoHighLevel leads per form, status coverage and attribution coverage | Likely |
 | Portal reporting | Portal reporting | Leads, qualified leads, deals and cost per lead for each portal, with spend typed in by hand | Likely |
-| Organic | Organic reporting | Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, and Search Console data, which Claude can use to suggest content | Likely |
+| Organic | Organic reporting | Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, and Search Console data. Claude and Copilot can use the results to suggest content | Likely |
 | Website | Website | GA4 traffic and landing page performance, and flags for broken or password-gated pages | Likely |
 | Marketer performance | Marketer performance | Results split by source owner | Likely |
-| Copilot | Copilot | Answers questions from real data and drafts proposals, inside the web app (see Deferred) | Later |
-| Copilot | MCP server | Lets Claude use ADX's tools. Each feature reaches it before its web screen (D-19) | Likely |
+| Copilot | Copilot | Answers questions from tool results and drafts proposals inside the web app, in Phase 5 | Likely |
+| Copilot | MCP server | Lets Claude use ADX's tools, with the first read layer in Phase 1 (D-25) | Likely |
 | Leadership reports | Leadership reports | Packages Revenue attribution's monthly figures into a report for the CMO and CEO | Likely |
 | Settings | Settings | Roles, the permission checklist, caps and kill switch, the stage table, the page catalogue and the project list | Likely |
 | Platform | Platform | Deploys, backups, email, monitoring and the web app shell. The work every feature needs that belongs to none of them | Likely |

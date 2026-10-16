@@ -196,11 +196,24 @@ From Sales OS: the signal and scoring engine and its readiness score (what ADX c
 ### Order
 
 #### D-19. MCP comes before the web app
+Replaced by D-25 on 2026-10-16.
+
 2026-10-12. Each feature reaches Claude over MCP before it gets a web screen. The web app gets screens people need daily, and screens for jobs MCP can't do: signing in, connecting accounts, approving changes and settings. This replaces the MCP server's place under Deferred.
 
 - **Why.** Hisham bhayya set MCP and the read layer as the first priority on 2026-10-12. Every feature is a core function first (D-18), so an MCP tool is a thin wrapper and the web screen can follow.
 - **Cost.** People who don't use Claude see less at first. Sign-in has to cover MCP from the start, which makes auth a bigger first piece of work.
 - **Revisit if.** Reportage's marketers don't use Claude, or Reportage's data approval doesn't cover ADX data reaching Claude.
+
+#### D-25. MCP in Phase 1, app and Copilot in later phases
+2026-10-16. Phase 1 delivers the read layer through Claude over MCP. The ADX web app and its in-app Copilot remain required. This replaces D-19.
+
+Later features follow their dependencies. A web screen does not need to wait for an MCP tool. Both interfaces use the same core functions and permissions (D-18).
+
+Phase 5 includes GA4 traffic and landing page performance (#119) and the in-app Copilot (#116), alongside leadership reports (#117). Copilot uses the earlier sign-in, read functions and proposal system. It answers questions from tool results and drafts proposals. Approval stays in the existing approval flow. Phase 6 adds organic social and Search Console reporting (#118), which Copilot can use when available.
+
+- **Why.** Tamim clarified that Claude was the first milestone's deliverable. It does not replace the app or make Copilot optional.
+- **Cost.** The app needs its own chat interface and model integration. The model choice and Reportage's data approval remain open.
+- **Dependencies.** Copilot needs web sign-in (#47), the Google Ads and GoHighLevel read functions (#55, #56), and proposals (#110). Neither Copilot nor GA4 waits for Phase 6. GA4 still needs Reportage's Viewer access (#35).
 
 #### D-20. Google before Meta
 2026-10-12. When a feature covers both platforms, Google lands first and Meta follows as its permissions arrive. Meta's Business Verification and App Review are submitted in the first week.
@@ -228,7 +241,6 @@ Wanted, but not in the first version.
 - ~~**An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.~~ Replaced by D-19.
 - **Multi-tenancy.** See D-04.
 - **Approval rights for a team under the Head of Marketing & AI,** if they hire one.
-- **The in-app assistant.** With MCP first (D-19), marketers use ADX's tools from Claude, and an in-app chat would rebuild Claude inside ADX. Revisit if people without Claude need it.
 - **Website signals and the page catalogue.** Tying visits to leads is still open (#34), and 61% of leads never visit the site. PostHog still goes on Reportage's sites early, so history builds up.
 - **Creating campaigns and ads through ADX.** Writes start with budgets, pauses, negative keywords, bids and targets.
 - **Editing the permission checklist inside ADX,** with per-person overrides. D-13's defaults are set in code first. Revisit if the CMO asks.

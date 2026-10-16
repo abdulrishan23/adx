@@ -99,6 +99,6 @@ Keep setup attempts, questions, progress and routine test reports in chat. If th
 
 - Keep the options tight. Group small sub-issues under their ticket.
 - Show every assignment, field change and comment before making it.
-- MCP first (D-19): a feature's MCP tools come before its web screen.
+- Phase 1 delivers the read layer over MCP (D-25). Later features follow their dependencies. Web screens and the required in-app Copilot do not wait for MCP tools.
 - One clear question beats a list of five.
 - Name the exact number, field or record you mean, for example "the Conversions number for 1 Oct" instead of "recent activity".
