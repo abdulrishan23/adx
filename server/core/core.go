@@ -19,16 +19,16 @@ var roleRank = map[Role]int{RoleViewer: 1, RoleMarketer: 2, RoleAdmin: 3}
 type Via string
 
 const (
-	ViaWeb Via = "web"
-	ViaMCP Via = "mcp"
-	ViaJob Via = "job"
-	ViaCLI Via = "cli"
+	ViaWeb     Via = "web"
+	ViaMCP     Via = "mcp"
+	ViaJob     Via = "job"
+	ViaStartup Via = "startup"
 )
 
 // Actor is who is calling a core function. Every core function takes one, so
 // web sessions, MCP tokens and jobs all go through the same checks. Core never
 // reads cookies or tokens itself. UserID 0 means ADX itself, such as a job or
-// the CLI, rather than a person.
+// startup, rather than a person.
 type Actor struct {
 	UserID int64
 	Role   Role

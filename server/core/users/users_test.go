@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	system = core.System(core.ViaCLI)
+	system = core.System(core.ViaStartup)
 	web    = core.Actor{Via: core.ViaWeb}
 )
 
@@ -108,42 +108,6 @@ func TestAddRefusesAccountsADXDidntCreate(t *testing.T) {
 	assert.Zero(t, e.dir.Created, "no second account is made either")
 }
 
-// Catches: the CLI being unable to add WokeWorks people who already have an
-// authentik account, or making them a second one.
-func TestAddLinksAnExistingAccountByUUID(t *testing.T) {
-	e := setup(t)
-	uuid := e.dir.Existing("Twaha@WokeWorks.ai", true)
-
-	found, err := e.u.FindAccounts(t.Context(), system, "twaha@wokeworks.ai")
-	require.NoError(t, err)
-	require.Len(t, found, 1, "the lookup ignores case")
-	assert.Equal(t, uuid, found[0].UUID)
-
-	added, err := e.u.Add(t.Context(), system, users.AddInput{Email: "twaha@wokeworks.ai", Role: core.RoleAdmin, LinkUUID: uuid})
-	require.NoError(t, err)
-	assert.Equal(t, uuid, added.AuthentikUUID)
-	assert.Zero(t, e.dir.Created)
-	assert.True(t, e.dir.ByEmail("twaha@wokeworks.ai").InGroup)
-
-	me, err := e.u.SignIn(t.Context(), web, users.Identity{Subject: uuid, InAllowedGroup: true})
-	require.NoError(t, err)
-	assert.Equal(t, "twaha@wokeworks.ai", me.Email)
-}
-
-// Catches: someone who changed their authentik email to B's address being
-// linked as B, because the CLI trusted the email instead of the account
-// it checked.
-func TestAddRefusesAUUIDThatDoesntMatchTheEmail(t *testing.T) {
-	e := setup(t)
-	checked := e.dir.Existing("omar@reportage.ae", true)
-	e.dir.Existing("sara@reportage.ae", true)
-
-	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleMarketer, LinkUUID: checked})
-	requireKind(t, err, core.KindConflict)
-	assert.False(t, e.dir.ByEmail("sara@reportage.ae").InGroup)
-	assert.False(t, e.dir.ByEmail("omar@reportage.ae").InGroup)
-}
-
 // Catches: a disabled person put back in adx-users because their authentik
 // email was changed to a new hire's, and a vague error about it.
 func TestAddRefusesAnAccountThatBelongsToSomeoneInADX(t *testing.T) {
@@ -160,22 +124,13 @@ func TestAddRefusesAnAccountThatBelongsToSomeoneInADX(t *testing.T) {
 	assert.False(t, acct.InGroup, "Omar isn't put back in the group")
 }
 
-// Catches: the CLI creating a second account when the checked account's
-// email changed after find-account.
-func TestAddWithALinkUUIDNeverCreates(t *testing.T) {
+// Catches: bootstrap, the one path that links an account ADX didn't make,
+// switching back on an account an authentik admin turned off.
+func TestBootstrapRefusesADeactivatedAccount(t *testing.T) {
 	e := setup(t)
+	e.dir.Existing("leaver@reportage.ae", false)
 
-	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer, LinkUUID: "uuid-9"})
-	requireKind(t, err, core.KindConflict)
-	assert.Zero(t, e.dir.Created)
-}
-
-// Catches: ADX switching back on an account an authentik admin turned off.
-func TestAddRefusesADeactivatedAccount(t *testing.T) {
-	e := setup(t)
-	uuid := e.dir.Existing("leaver@reportage.ae", false)
-
-	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "leaver@reportage.ae", Role: core.RoleViewer, LinkUUID: uuid})
+	_, _, err := e.u.Bootstrap(t.Context(), system, "leaver@reportage.ae")
 	requireKind(t, err, core.KindConflict)
 	acct := e.dir.ByEmail("leaver@reportage.ae")
 	assert.False(t, acct.Active)
@@ -189,7 +144,7 @@ func TestAddRefusesAnAmbiguousEmail(t *testing.T) {
 	e.dir.Existing("sara@reportage.ae", true)
 	e.dir.Existing("sara@reportage.ae", true)
 
-	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer, LinkUUID: "uuid-1"})
+	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer})
 	requireKind(t, err, core.KindConflict)
 	list, err := e.u.List(t.Context(), system)
 	require.NoError(t, err)
@@ -421,7 +376,7 @@ func TestLastAdminGuardHoldsUnderRace(t *testing.T) {
 	assert.Equal(t, 1, failed, "exactly one demotion goes through")
 }
 
-// Catches: ADX itself (the CLI or a job) being treated as a person.
+// Catches: ADX itself (startup or a job) being treated as a person.
 func TestMeRefusesTheSystemActor(t *testing.T) {
 	e := setup(t)
 	_, err := e.u.Me(t.Context(), system)
@@ -499,7 +454,8 @@ func TestBootstrapPromotesAnExistingPerson(t *testing.T) {
 	_, changed, err := e.u.Bootstrap(t.Context(), system, "cmo@reportage.ae")
 	require.NoError(t, err)
 	assert.True(t, changed)
-	cmo, err := e.u.FindByEmail(t.Context(), system, "cmo@reportage.ae")
+	list, err := e.u.List(t.Context(), system)
 	require.NoError(t, err)
-	assert.Equal(t, core.RoleAdmin, cmo.Role)
+	require.Len(t, list, 1)
+	assert.Equal(t, core.RoleAdmin, list[0].Role)
 }

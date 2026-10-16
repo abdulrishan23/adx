@@ -50,11 +50,6 @@ type User struct {
 type AddInput struct {
 	Email string    `json:"email"`
 	Role  core.Role `json:"role"`
-	// LinkUUID lets Add use an existing authentik account that ADX didn't
-	// create, but only the one with this UUID. Only the server's own CLI sets
-	// it, after someone has checked which account it is. An email alone isn't
-	// enough, because an account's email can be changed to anyone's.
-	LinkUUID string `json:"-"`
 }
 
 // Account is a person's authentik account.
@@ -134,29 +129,17 @@ func (u *Users) Me(ctx context.Context, actor core.Actor) (User, error) {
 	return fromRow(row), nil
 }
 
-// FindByEmail looks someone up for an admin, such as from the CLI.
-func (u *Users) FindByEmail(ctx context.Context, actor core.Actor, email string) (User, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return User{}, core.ErrForbidden
-	}
-	email, err := normalizeEmail(email)
-	if err != nil {
-		return User{}, err
-	}
-	row, err := u.db.Reader().GetUserByEmail(ctx, email)
-	if errors.Is(err, sql.ErrNoRows) {
-		return User{}, core.NotFound("nobody with the email %s is in ADX", email)
-	}
-	if err != nil {
-		return User{}, err
-	}
-	return fromRow(row), nil
-}
-
 // Add invites someone. It writes to authentik first and ADX second, then
 // sends the set-password email. If the email fails, the person is still
 // added as invited, and the error says to resend it.
 func (u *Users) Add(ctx context.Context, actor core.Actor, in AddInput) (User, error) {
+	return u.add(ctx, actor, in, "")
+}
+
+// add is Add, but it may also use the existing authentik account with
+// linkUUID, which ADX didn't create. Only Bootstrap passes one. An email
+// alone isn't enough, because an account's email can be changed to anyone's.
+func (u *Users) add(ctx context.Context, actor core.Actor, in AddInput, linkUUID string) (User, error) {
 	if !actor.AtLeast(core.RoleAdmin) {
 		return User{}, core.ErrForbidden
 	}
@@ -177,7 +160,7 @@ func (u *Users) Add(ctx context.Context, actor core.Actor, in AddInput) (User, e
 		return User{}, err
 	}
 
-	acct, err := u.authentikAccount(ctx, email, in.LinkUUID)
+	acct, err := u.authentikAccount(ctx, email, linkUUID)
 	if err != nil {
 		return User{}, err
 	}
@@ -225,7 +208,7 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 	switch len(found) {
 	case 0:
 		if linkUUID != "" {
-			return Account{}, core.Conflict("no authentik account has the email %s any more, so run find-account again", email)
+			return Account{}, core.Conflict("no authentik account has the email %s any more, so try again", email)
 		}
 		if acct, err = u.dir.Create(ctx, email); err != nil {
 			return Account{}, unavailable(err)
@@ -240,7 +223,7 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 			return Account{}, core.Conflict("the authentik account with %s is %s (%s), not %s",
 				email, acct.Username, acct.UUID, linkUUID)
 		case linkUUID == "" && !acct.CreatedByADX:
-			return Account{}, core.Conflict("%s already has an authentik account, so ask WokeWorks to add them from the command line", email)
+			return Account{}, core.Conflict("%s already has an authentik account that ADX didn't create, so ADX can't add them yet", email)
 		}
 	default:
 		return Account{}, core.Conflict("%d authentik accounts use %s, so fix that in authentik first", len(found), email)
@@ -259,23 +242,6 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 		return Account{}, unavailable(err)
 	}
 	return acct, nil
-}
-
-// FindAccounts lists the authentik accounts with this email, so someone
-// at the CLI can check which one to link before adding a person.
-func (u *Users) FindAccounts(ctx context.Context, actor core.Actor, email string) ([]Account, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return nil, core.ErrForbidden
-	}
-	email, err := normalizeEmail(email)
-	if err != nil {
-		return nil, err
-	}
-	found, err := u.dir.FindByEmail(ctx, email)
-	if err != nil {
-		return nil, unavailable(err)
-	}
-	return found, nil
 }
 
 // SendPasswordLink emails someone a link to set their password: again for
@@ -449,13 +415,13 @@ func (u *Users) Bootstrap(ctx context.Context, actor core.Actor, email string) (
 	}
 	row, err := u.db.Reader().GetUserByEmail(ctx, email)
 	if errors.Is(err, sql.ErrNoRows) {
-		in := AddInput{Email: email, Role: core.RoleAdmin}
+		var linkUUID string
 		if found, err := u.dir.FindByEmail(ctx, email); err != nil {
 			return User{}, false, unavailable(err)
 		} else if len(found) == 1 {
-			in.LinkUUID = found[0].UUID
+			linkUUID = found[0].UUID
 		}
-		user, err := u.Add(ctx, actor, in)
+		user, err := u.add(ctx, actor, AddInput{Email: email, Role: core.RoleAdmin}, linkUUID)
 		return user, true, err
 	}
 	if err != nil {

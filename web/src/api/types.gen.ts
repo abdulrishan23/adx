@@ -80,5 +80,5 @@ export interface User {
 }
 
 // From core/core.go
-export type Via = "cli" | "job" | "mcp" | "web";
+export type Via = "job" | "mcp" | "startup" | "web";
 

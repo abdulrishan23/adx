@@ -1,5 +1,5 @@
 // Command adx runs the ADX server: the HTTP API and the background workers in
-// one process. `adx users ...` manages people from the command line instead.
+// one process.
 package main
 
 import (
@@ -86,10 +86,6 @@ func run() error {
 	}
 	people := users.New(db, dir)
 
-	if len(os.Args) > 1 && os.Args[1] == "users" {
-		return runUsers(ctx, people, os.Args[2:], os.Stdout)
-	}
-
 	connections, err := configuredConnections(db, cfg)
 	if err != nil {
 		return err
@@ -100,7 +96,7 @@ func run() error {
 	if cfg.BootstrapAdmin != "" {
 		// A failure here is logged, not fatal, so ADX still starts while
 		// authentik is down. The next start tries again.
-		admin, changed, err := people.Bootstrap(ctx, core.System(core.ViaCLI), cfg.BootstrapAdmin)
+		admin, changed, err := people.Bootstrap(ctx, core.System(core.ViaStartup), cfg.BootstrapAdmin)
 		switch {
 		case err != nil:
 			log.Error("bootstrap admin failed", "email", cfg.BootstrapAdmin, "error", err)
