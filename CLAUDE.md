@@ -17,7 +17,7 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 - Money is int64 minor units plus a currency code. Times are stored in UTC, and the reporting day is Dubai time.
 - A missing figure is null and shows as "Not available", never 0.
 - Writes that must happen together go through `store.DB.Tx`. Keep it short and never call an outside API inside it.
-- Auth isn't designed yet. `api/actor.go` gives every request a dev admin, in dev only.
+- Auth isn't designed yet. `api/actor.go` gives every request a dev admin, only when `ADX_ENV=dev`.
 
 ## Business rules
 

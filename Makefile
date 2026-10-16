@@ -6,7 +6,7 @@ dev:
 	$(MAKE) -j2 dev-server dev-web
 
 dev-server:
-	cd server && air
+	cd server && ADX_ENV=dev air
 
 dev-web:
 	cd web && pnpm dev

@@ -40,6 +40,9 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 func (h *handlers) fail(w http.ResponseWriter, r *http.Request, err error) {
 	var ce *core.Error
 	if errors.As(err, &ce) {
+		if ce.Cause != nil {
+			h.log.ErrorContext(r.Context(), "request failed", "path", r.URL.Path, "error", err)
+		}
 		writeError(w, statusFor(ce.Kind), ce.Message)
 		return
 	}
@@ -57,6 +60,8 @@ func statusFor(k core.Kind) int {
 		return http.StatusNotFound
 	case core.KindConflict:
 		return http.StatusConflict
+	case core.KindUnavailable:
+		return http.StatusBadGateway
 	default:
 		return http.StatusInternalServerError
 	}

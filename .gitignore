@@ -5,3 +5,6 @@
 server/data/
 server/tmp/
 server/bin/
+
+# Local secrets
+.env
