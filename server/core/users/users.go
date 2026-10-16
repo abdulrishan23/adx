@@ -136,6 +136,207 @@ func (u *Users) Add(ctx context.Context, actor core.Actor, in AddInput) (User, e
 	return u.add(ctx, actor, in, "")
 }
 
+// SendPasswordLink emails someone a link to set their password: again for
+// someone invited who lost the first email, or for someone active who forgot
+// their password. Disabled people get nothing.
+func (u *Users) SendPasswordLink(ctx context.Context, actor core.Actor, id int64) error {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return core.ErrForbidden
+	}
+	row, err := u.get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if Status(row.Status) == StatusDisabled {
+		return core.Conflict("%s is disabled, so enable them first", row.Email)
+	}
+	if err := u.accounts.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
+		return core.Unavailable(err, "the set-password email to %s failed, so try again", row.Email)
+	}
+	return u.logPasswordLink(ctx, actor, row)
+}
+
+// SetRole changes someone's role. Setting the role they already have does
+// nothing.
+func (u *Users) SetRole(ctx context.Context, actor core.Actor, id int64, role core.Role) (User, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return User{}, core.ErrForbidden
+	}
+	if !role.Valid() {
+		return User{}, core.Invalid("role must be viewer, marketer or admin")
+	}
+	row, err := u.change(ctx, id, func(q *store.Queries, row store.User) error {
+		if row.Role == string(role) {
+			return nil
+		}
+		if err := q.SetUserRole(ctx, store.SetUserRoleParams{Role: string(role), ID: id}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, q, actor, audit.Entry{
+			Action:       audit.UserRoleChanged,
+			TargetUserID: id,
+			Detail:       map[string]string{"from": row.Role, "to": string(role)},
+		})
+	})
+	return fromRow(row), err
+}
+
+// Disable stops someone from using ADX. It writes to ADX first, so they're
+// out at once, then takes them out of the ADX group in authentik so they
+// can't sign in again. If authentik fails, run it again: the ADX part is
+// already done and is skipped.
+func (u *Users) Disable(ctx context.Context, actor core.Actor, id int64) (User, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return User{}, core.ErrForbidden
+	}
+	row, err := u.change(ctx, id, func(q *store.Queries, row store.User) error {
+		if Status(row.Status) == StatusDisabled {
+			return nil
+		}
+		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(StatusDisabled), ID: id}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserDisabled, TargetUserID: id})
+	})
+	if err != nil {
+		return User{}, err
+	}
+	if err := u.accounts.RemoveFromGroup(ctx, row.AuthentikPk); err != nil {
+		return fromRow(row), core.Unavailable(err,
+			"%s is disabled in ADX but still in the ADX group in authentik, so try again", row.Email)
+	}
+	return fromRow(row), nil
+}
+
+// Enable lets a disabled person back in with the role they had. It puts them
+// back in the ADX group in authentik first, then ADX.
+func (u *Users) Enable(ctx context.Context, actor core.Actor, id int64) (User, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return User{}, core.ErrForbidden
+	}
+	row, err := u.get(ctx, id)
+	if err != nil {
+		return User{}, err
+	}
+	if err := u.accounts.AddToGroup(ctx, row.AuthentikPk); err != nil {
+		return User{}, unavailable(err)
+	}
+	row, err = u.change(ctx, id, func(q *store.Queries, row store.User) error {
+		if Status(row.Status) != StatusDisabled {
+			return nil
+		}
+		status := StatusInvited
+		if row.LastSignInAt.Valid {
+			status = StatusActive
+		}
+		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(status), ID: id}); err != nil {
+			return err
+		}
+		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserEnabled, TargetUserID: id})
+	})
+	return fromRow(row), err
+}
+
+// Bootstrap makes email an admin when ADX has no admin who isn't disabled,
+// so a fresh install can be signed in to. Otherwise it does nothing and
+// returns false. It links the one authentik account with that email, which
+// is safe only because it runs on an empty install from the server's own
+// settings. The caller should log the returned person's AuthentikUUID.
+func (u *Users) Bootstrap(ctx context.Context, actor core.Actor, email string) (User, bool, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return User{}, false, core.ErrForbidden
+	}
+	email, err := normalizeEmail(email)
+	if err != nil {
+		return User{}, false, err
+	}
+	admins, err := u.db.Reader().CountEnabledAdmins(ctx)
+	if err != nil || admins > 0 {
+		return User{}, false, err
+	}
+	row, err := u.db.Reader().GetUserByEmail(ctx, email)
+	if errors.Is(err, sql.ErrNoRows) {
+		var linkUUID string
+		if found, err := u.accounts.FindByEmail(ctx, email); err != nil {
+			return User{}, false, unavailable(err)
+		} else if len(found) == 1 {
+			linkUUID = found[0].UUID
+		}
+		user, err := u.add(ctx, actor, AddInput{Email: email, Role: core.RoleAdmin}, linkUUID)
+		return user, true, err
+	}
+	if err != nil {
+		return User{}, false, err
+	}
+	if Status(row.Status) == StatusDisabled {
+		if _, err := u.Enable(ctx, actor, row.ID); err != nil {
+			return User{}, true, err
+		}
+	}
+	user, err := u.SetRole(ctx, actor, row.ID, core.RoleAdmin)
+	return user, true, err
+}
+
+// SignIn decides whether the person authentik signed in may use ADX. It
+// matches only on authentik's subject, which is the account UUID ADX saved
+// when adding them, never on the email. An invited person becomes active.
+// The name is refreshed for display. The email isn't: it stays the one the
+// admin entered, because admins look people up by it and authentik emails
+// can change. Every attempt is logged. actor only says where the attempt
+// came from.
+func (u *Users) SignIn(ctx context.Context, actor core.Actor, id Identity) (User, error) {
+	if id.Subject == "" {
+		return User{}, errors.New("sign-in has no subject")
+	}
+	email := strings.ToLower(strings.TrimSpace(id.Email))
+	var (
+		out     store.User
+		refused string
+	)
+	err := u.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+		row, err := q.GetUserByAuthentikUUID(ctx, id.Subject)
+		switch {
+		case errors.Is(err, sql.ErrNoRows):
+			refused = "unknown_account"
+		case err != nil:
+			return err
+		case !id.InAllowedGroup:
+			refused = "not_in_group"
+		case Status(row.Status) == StatusDisabled:
+			refused = "disabled"
+		}
+		if refused != "" {
+			return audit.Record(ctx, q, actor, audit.Entry{
+				Action:       audit.SignInRefused,
+				TargetUserID: row.ID,
+				Detail:       map[string]string{"email": email, "reason": refused},
+			})
+		}
+
+		name := row.Name
+		if n := strings.TrimSpace(id.Name); n != "" {
+			name = sql.NullString{String: n, Valid: true}
+		}
+		out, err = q.RecordSignIn(ctx, store.RecordSignInParams{
+			Name:         name,
+			LastSignInAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
+			ID:           row.ID,
+		})
+		if err != nil {
+			return err
+		}
+		person := core.Actor{UserID: row.ID, Role: core.Role(row.Role), Via: actor.Via}
+		return audit.Record(ctx, q, person, audit.Entry{Action: audit.SignIn, TargetUserID: row.ID})
+	})
+	if err != nil {
+		return User{}, err
+	}
+	if refused != "" {
+		return User{}, ErrNoAccess
+	}
+	return fromRow(out), nil
+}
+
 // add is Add, but it may also use the existing authentik account with
 // linkUUID, which ADX didn't create. Only Bootstrap passes one. An email
 // alone isn't enough, because an account's email can be changed to anyone's.
@@ -244,26 +445,6 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 	return acct, nil
 }
 
-// SendPasswordLink emails someone a link to set their password: again for
-// someone invited who lost the first email, or for someone active who forgot
-// their password. Disabled people get nothing.
-func (u *Users) SendPasswordLink(ctx context.Context, actor core.Actor, id int64) error {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return core.ErrForbidden
-	}
-	row, err := u.get(ctx, id)
-	if err != nil {
-		return err
-	}
-	if Status(row.Status) == StatusDisabled {
-		return core.Conflict("%s is disabled, so enable them first", row.Email)
-	}
-	if err := u.accounts.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
-		return core.Unavailable(err, "the set-password email to %s failed, so try again", row.Email)
-	}
-	return u.logPasswordLink(ctx, actor, row)
-}
-
 func (u *Users) sendInvite(ctx context.Context, actor core.Actor, row store.User) error {
 	if err := u.accounts.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
 		return core.Unavailable(err, "%s is added, but the set-password email failed, so send it again", row.Email)
@@ -275,87 +456,6 @@ func (u *Users) logPasswordLink(ctx context.Context, actor core.Actor, row store
 	return u.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserPasswordLinkSent, TargetUserID: row.ID})
 	})
-}
-
-// SetRole changes someone's role. Setting the role they already have does
-// nothing.
-func (u *Users) SetRole(ctx context.Context, actor core.Actor, id int64, role core.Role) (User, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return User{}, core.ErrForbidden
-	}
-	if !role.Valid() {
-		return User{}, core.Invalid("role must be viewer, marketer or admin")
-	}
-	row, err := u.change(ctx, id, func(q *store.Queries, row store.User) error {
-		if row.Role == string(role) {
-			return nil
-		}
-		if err := q.SetUserRole(ctx, store.SetUserRoleParams{Role: string(role), ID: id}); err != nil {
-			return err
-		}
-		return audit.Record(ctx, q, actor, audit.Entry{
-			Action:       audit.UserRoleChanged,
-			TargetUserID: id,
-			Detail:       map[string]string{"from": row.Role, "to": string(role)},
-		})
-	})
-	return fromRow(row), err
-}
-
-// Disable stops someone from using ADX. It writes to ADX first, so they're
-// out at once, then takes them out of the ADX group in authentik so they
-// can't sign in again. If authentik fails, run it again: the ADX part is
-// already done and is skipped.
-func (u *Users) Disable(ctx context.Context, actor core.Actor, id int64) (User, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return User{}, core.ErrForbidden
-	}
-	row, err := u.change(ctx, id, func(q *store.Queries, row store.User) error {
-		if Status(row.Status) == StatusDisabled {
-			return nil
-		}
-		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(StatusDisabled), ID: id}); err != nil {
-			return err
-		}
-		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserDisabled, TargetUserID: id})
-	})
-	if err != nil {
-		return User{}, err
-	}
-	if err := u.accounts.RemoveFromGroup(ctx, row.AuthentikPk); err != nil {
-		return fromRow(row), core.Unavailable(err,
-			"%s is disabled in ADX but still in the ADX group in authentik, so try again", row.Email)
-	}
-	return fromRow(row), nil
-}
-
-// Enable lets a disabled person back in with the role they had. It puts them
-// back in the ADX group in authentik first, then ADX.
-func (u *Users) Enable(ctx context.Context, actor core.Actor, id int64) (User, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return User{}, core.ErrForbidden
-	}
-	row, err := u.get(ctx, id)
-	if err != nil {
-		return User{}, err
-	}
-	if err := u.accounts.AddToGroup(ctx, row.AuthentikPk); err != nil {
-		return User{}, unavailable(err)
-	}
-	row, err = u.change(ctx, id, func(q *store.Queries, row store.User) error {
-		if Status(row.Status) != StatusDisabled {
-			return nil
-		}
-		status := StatusInvited
-		if row.LastSignInAt.Valid {
-			status = StatusActive
-		}
-		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(status), ID: id}); err != nil {
-			return err
-		}
-		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserEnabled, TargetUserID: id})
-	})
-	return fromRow(row), err
 }
 
 func (u *Users) get(ctx context.Context, id int64) (store.User, error) {
@@ -394,106 +494,6 @@ func (u *Users) change(ctx context.Context, id int64, fn func(q *store.Queries, 
 		return err
 	})
 	return out, err
-}
-
-// Bootstrap makes email an admin when ADX has no admin who isn't disabled,
-// so a fresh install can be signed in to. Otherwise it does nothing and
-// returns false. It links the one authentik account with that email, which
-// is safe only because it runs on an empty install from the server's own
-// settings. The caller should log the returned person's AuthentikUUID.
-func (u *Users) Bootstrap(ctx context.Context, actor core.Actor, email string) (User, bool, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
-		return User{}, false, core.ErrForbidden
-	}
-	email, err := normalizeEmail(email)
-	if err != nil {
-		return User{}, false, err
-	}
-	admins, err := u.db.Reader().CountEnabledAdmins(ctx)
-	if err != nil || admins > 0 {
-		return User{}, false, err
-	}
-	row, err := u.db.Reader().GetUserByEmail(ctx, email)
-	if errors.Is(err, sql.ErrNoRows) {
-		var linkUUID string
-		if found, err := u.accounts.FindByEmail(ctx, email); err != nil {
-			return User{}, false, unavailable(err)
-		} else if len(found) == 1 {
-			linkUUID = found[0].UUID
-		}
-		user, err := u.add(ctx, actor, AddInput{Email: email, Role: core.RoleAdmin}, linkUUID)
-		return user, true, err
-	}
-	if err != nil {
-		return User{}, false, err
-	}
-	if Status(row.Status) == StatusDisabled {
-		if _, err := u.Enable(ctx, actor, row.ID); err != nil {
-			return User{}, true, err
-		}
-	}
-	user, err := u.SetRole(ctx, actor, row.ID, core.RoleAdmin)
-	return user, true, err
-}
-
-// SignIn decides whether the person authentik signed in may use ADX. It
-// matches only on authentik's subject, which is the account UUID ADX saved
-// when adding them, never on the email. An invited person becomes active.
-// The name is refreshed for display. The email isn't: it stays the one the
-// admin entered, because admins look people up by it and authentik emails
-// can change. Every attempt is logged. actor only says where the attempt
-// came from.
-func (u *Users) SignIn(ctx context.Context, actor core.Actor, id Identity) (User, error) {
-	if id.Subject == "" {
-		return User{}, errors.New("sign-in has no subject")
-	}
-	email := strings.ToLower(strings.TrimSpace(id.Email))
-	var (
-		out     store.User
-		refused string
-	)
-	err := u.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
-		row, err := q.GetUserByAuthentikUUID(ctx, id.Subject)
-		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			refused = "unknown_account"
-		case err != nil:
-			return err
-		case !id.InAllowedGroup:
-			refused = "not_in_group"
-		case Status(row.Status) == StatusDisabled:
-			refused = "disabled"
-		}
-		if refused != "" {
-			return audit.Record(ctx, q, actor, audit.Entry{
-				Action:       audit.SignInRefused,
-				TargetUserID: row.ID,
-				Detail:       map[string]string{"email": email, "reason": refused},
-			})
-		}
-
-		name := row.Name
-		if n := strings.TrimSpace(id.Name); n != "" {
-			name = sql.NullString{String: n, Valid: true}
-		}
-		out, err = q.RecordSignIn(ctx, store.RecordSignInParams{
-			Name:         name,
-			LastSignInAt: sql.NullTime{Time: time.Now().UTC(), Valid: true},
-			ID:           row.ID,
-		})
-		if err != nil {
-			return err
-		}
-		person := core.Actor{UserID: row.ID, Role: core.Role(row.Role), Via: actor.Via}
-		return audit.Record(ctx, q, person, audit.Entry{Action: audit.SignIn, TargetUserID: row.ID})
-	})
-	if err != nil {
-		return User{}, err
-	}
-	if refused != "" {
-		return User{}, ErrNoAccess
-	}
-	return fromRow(out), nil
 }
 
 func unavailable(err error) error {

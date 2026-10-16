@@ -52,26 +52,6 @@ func NewAccounts(cfg AccountsConfig) *Accounts {
 	return &Accounts{cfg: cfg, http: &http.Client{Timeout: 20 * time.Second}}
 }
 
-type account struct {
-	PK       int64  `json:"pk"`
-	UUID     string `json:"uuid"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	IsActive bool   `json:"is_active"`
-	Path     string `json:"path"`
-}
-
-func (a account) toUsers() users.Account {
-	return users.Account{
-		PK:           a.PK,
-		UUID:         a.UUID,
-		Username:     a.Username,
-		Email:        a.Email,
-		Active:       a.IsActive,
-		CreatedByADX: a.Path == adxPath,
-	}
-}
-
 // FindByEmail returns the accounts whose email matches, ignoring case.
 // authentik's own email filter is exact, so a stored "Sara@Reportage.ae"
 // would be missed and a second account made. Search matches loosely and the
@@ -153,4 +133,25 @@ func (c *Accounts) do(ctx context.Context, method, path string, body, out any) e
 		return nil
 	}
 	return json.NewDecoder(res.Body).Decode(out)
+}
+
+// account is an authentik user as its API returns it.
+type account struct {
+	PK       int64  `json:"pk"`
+	UUID     string `json:"uuid"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	IsActive bool   `json:"is_active"`
+	Path     string `json:"path"`
+}
+
+func (a account) toUsers() users.Account {
+	return users.Account{
+		PK:           a.PK,
+		UUID:         a.UUID,
+		Username:     a.Username,
+		Email:        a.Email,
+		Active:       a.IsActive,
+		CreatedByADX: a.Path == adxPath,
+	}
 }

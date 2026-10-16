@@ -58,22 +58,6 @@ func (d *Authentik) ByEmail(email string) *Account {
 	return nil
 }
 
-func (d *Authentik) failing(method string) error {
-	if d.Fail[method] {
-		return ErrDown
-	}
-	return nil
-}
-
-func (d *Authentik) byPK(pk int64) (*Account, error) {
-	for _, a := range d.Accounts {
-		if a.PK == pk {
-			return a, nil
-		}
-	}
-	return nil, fmt.Errorf("no account %d", pk)
-}
-
 func (d *Authentik) FindByEmail(_ context.Context, email string) ([]users.Account, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
@@ -142,4 +126,20 @@ func (d *Authentik) SendSetPasswordEmail(_ context.Context, pk int64) error {
 	}
 	a.Invites++
 	return nil
+}
+
+func (d *Authentik) failing(method string) error {
+	if d.Fail[method] {
+		return ErrDown
+	}
+	return nil
+}
+
+func (d *Authentik) byPK(pk int64) (*Account, error) {
+	for _, a := range d.Accounts {
+		if a.PK == pk {
+			return a, nil
+		}
+	}
+	return nil, fmt.Errorf("no account %d", pk)
 }
