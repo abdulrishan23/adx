@@ -80,11 +80,11 @@ func run() error {
 	}
 	defer db.Close()
 
-	dir, err := directory(cfg, dev)
+	accounts, err := authentikAccounts(cfg, dev)
 	if err != nil {
 		return err
 	}
-	people := users.New(db, dir)
+	people := users.New(db, accounts)
 
 	connections, err := configuredConnections(db, cfg)
 	if err != nil {
@@ -169,10 +169,10 @@ func openDB(ctx context.Context, cfg config) (*store.DB, error) {
 	return db, nil
 }
 
-// directory connects to authentik. Outside dev all of its settings are
-// required. In dev, missing settings give a directory that explains what's
+// authentikAccounts connects to authentik. Outside dev all of its settings
+// are required. In dev, missing settings give accounts that explain what's
 // missing whenever someone is added or changed.
-func directory(cfg config, dev bool) (users.Directory, error) {
+func authentikAccounts(cfg config, dev bool) (users.Accounts, error) {
 	missing := []string{}
 	for name, v := range map[string]string{
 		"ADX_AUTHENTIK_ISSUER":         cfg.AuthentikIssuer,
@@ -200,7 +200,7 @@ func directory(cfg config, dev bool) (users.Directory, error) {
 	if issuer.Scheme != "https" && !dev {
 		return nil, fmt.Errorf("ADX_AUTHENTIK_ISSUER %q must use https", cfg.AuthentikIssuer)
 	}
-	return authentik.NewDirectory(authentik.DirectoryConfig{
+	return authentik.NewAccounts(authentik.AccountsConfig{
 		BaseURL:      issuer.Scheme + "://" + issuer.Host,
 		Token:        cfg.AuthentikAPIToken,
 		GroupID:      cfg.AuthentikGroupID,

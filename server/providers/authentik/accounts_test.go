@@ -20,7 +20,7 @@ type call struct {
 }
 
 // fakeAuthentik records each request and answers with the next reply.
-func fakeAuthentik(t *testing.T, replies ...string) (*authentik.Directory, *[]call) {
+func fakeAuthentik(t *testing.T, replies ...string) (*authentik.Accounts, *[]call) {
 	t.Helper()
 	var calls []call
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +41,7 @@ func fakeAuthentik(t *testing.T, replies ...string) (*authentik.Directory, *[]ca
 		_, _ = io.WriteString(w, reply)
 	}))
 	t.Cleanup(srv.Close)
-	return authentik.NewDirectory(authentik.DirectoryConfig{
+	return authentik.NewAccounts(authentik.AccountsConfig{
 		BaseURL:      srv.URL,
 		Token:        "tok",
 		GroupID:      "group-uuid",
@@ -51,8 +51,8 @@ func fakeAuthentik(t *testing.T, replies ...string) (*authentik.Directory, *[]ca
 
 // Catches: requests that don't match authentik's API, so provisioning fails
 // against the real server while the core tests with a fake still pass.
-func TestDirectoryRequests(t *testing.T) {
-	d, calls := fakeAuthentik(t,
+func TestAccountsRequests(t *testing.T) {
+	accounts, calls := fakeAuthentik(t,
 		`{"results":[{"pk":13,"uuid":"u-13","username":"sara","email":"Sara@Reportage.ae","is_active":false,"path":"users"},`+
 			`{"pk":15,"uuid":"u-15","username":"sarah","email":"sarah@reportage.ae","is_active":true,"path":"users"}]}`,
 		`{"pk":14,"uuid":"u-14","username":"omar@reportage.ae","email":"omar@reportage.ae","is_active":true,"path":"users/adx"}`,
@@ -60,16 +60,16 @@ func TestDirectoryRequests(t *testing.T) {
 	)
 	ctx := t.Context()
 
-	found, err := d.FindByEmail(ctx, "sara@reportage.ae")
+	found, err := accounts.FindByEmail(ctx, "sara@reportage.ae")
 	require.NoError(t, err)
 	assert.Equal(t, []users.Account{{PK: 13, UUID: "u-13", Username: "sara", Email: "Sara@Reportage.ae", Active: false}}, found,
 		"case is ignored, and search's looser matches are dropped")
-	created, err := d.Create(ctx, "omar@reportage.ae")
+	created, err := accounts.Create(ctx, "omar@reportage.ae")
 	require.NoError(t, err)
 	assert.Equal(t, users.Account{PK: 14, UUID: "u-14", Username: "omar@reportage.ae", Email: "omar@reportage.ae", Active: true, CreatedByADX: true}, created)
-	require.NoError(t, d.AddToGroup(ctx, 14))
-	require.NoError(t, d.RemoveFromGroup(ctx, 13))
-	require.NoError(t, d.SendSetPasswordEmail(ctx, 14))
+	require.NoError(t, accounts.AddToGroup(ctx, 14))
+	require.NoError(t, accounts.RemoveFromGroup(ctx, 13))
+	require.NoError(t, accounts.SendSetPasswordEmail(ctx, 14))
 
 	assert.Equal(t, []call{
 		{Method: "GET", Path: "/api/v3/core/users/", Query: "include_groups=false&include_roles=false&page_size=100&search=sara%40reportage.ae", Auth: "Bearer tok"},
@@ -84,9 +84,9 @@ func TestDirectoryRequests(t *testing.T) {
 
 // Catches: an authentik refusal being treated as success, which would save
 // a person in ADX whose authentik account was never set up.
-func TestDirectoryErrorsIncludeStatus(t *testing.T) {
-	d, _ := fakeAuthentik(t, "403")
-	err := d.AddToGroup(t.Context(), 14)
+func TestAccountsErrorsIncludeStatus(t *testing.T) {
+	accounts, _ := fakeAuthentik(t, "403")
+	err := accounts.AddToGroup(t.Context(), 14)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "403")
 	assert.NotContains(t, err.Error(), "tok", "the token must never reach an error message")

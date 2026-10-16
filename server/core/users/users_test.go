@@ -20,16 +20,16 @@ var (
 )
 
 type env struct {
-	u   *users.Users
-	db  *store.DB
-	dir *userstest.Directory
+	u         *users.Users
+	db        *store.DB
+	authentik *userstest.Authentik
 }
 
 func setup(t *testing.T) env {
 	t.Helper()
 	db := storetest.Open(t)
-	dir := userstest.NewDirectory()
-	return env{u: users.New(db, dir), db: db, dir: dir}
+	authentik := userstest.NewAuthentik()
+	return env{u: users.New(db, authentik), db: db, authentik: authentik}
 }
 
 func (e env) add(t *testing.T, email string, role core.Role) users.User {
@@ -42,7 +42,7 @@ func (e env) add(t *testing.T, email string, role core.Role) users.User {
 // signIn signs in as the authentik account ADX made for email.
 func (e env) signIn(t *testing.T, email string) (users.User, error) {
 	t.Helper()
-	acct := e.dir.ByEmail(email)
+	acct := e.authentik.ByEmail(email)
 	require.NotNil(t, acct)
 	return e.u.SignIn(t.Context(), web, users.Identity{Subject: acct.UUID, Email: email, InAllowedGroup: true})
 }
@@ -81,7 +81,7 @@ func TestAddCreatesTheAuthentikAccount(t *testing.T) {
 	assert.Equal(t, "sara@reportage.ae", sara.Email)
 	assert.Equal(t, users.StatusInvited, sara.Status)
 
-	acct := e.dir.ByEmail("sara@reportage.ae")
+	acct := e.authentik.ByEmail("sara@reportage.ae")
 	require.NotNil(t, acct)
 	assert.True(t, acct.InGroup)
 	assert.Equal(t, 1, acct.Invites)
@@ -100,12 +100,12 @@ func TestAddCreatesTheAuthentikAccount(t *testing.T) {
 // they were added taking their place, through the admin page.
 func TestAddRefusesAccountsADXDidntCreate(t *testing.T) {
 	e := setup(t)
-	e.dir.Existing("sara@reportage.ae", true)
+	e.authentik.Existing("sara@reportage.ae", true)
 
 	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleMarketer})
 	requireKind(t, err, core.KindConflict)
-	assert.False(t, e.dir.ByEmail("sara@reportage.ae").InGroup)
-	assert.Zero(t, e.dir.Created, "no second account is made either")
+	assert.False(t, e.authentik.ByEmail("sara@reportage.ae").InGroup)
+	assert.Zero(t, e.authentik.Created, "no second account is made either")
 }
 
 // Catches: a disabled person put back in adx-users because their authentik
@@ -115,7 +115,7 @@ func TestAddRefusesAnAccountThatBelongsToSomeoneInADX(t *testing.T) {
 	omar := e.add(t, "omar@reportage.ae", core.RoleMarketer)
 	_, err := e.u.Disable(t.Context(), system, omar.ID)
 	require.NoError(t, err)
-	acct := e.dir.ByEmail("omar@reportage.ae")
+	acct := e.authentik.ByEmail("omar@reportage.ae")
 	acct.Email = "newhire@reportage.ae"
 
 	_, err = e.u.Add(t.Context(), system, users.AddInput{Email: "newhire@reportage.ae", Role: core.RoleViewer})
@@ -128,11 +128,11 @@ func TestAddRefusesAnAccountThatBelongsToSomeoneInADX(t *testing.T) {
 // switching back on an account an authentik admin turned off.
 func TestBootstrapRefusesADeactivatedAccount(t *testing.T) {
 	e := setup(t)
-	e.dir.Existing("leaver@reportage.ae", false)
+	e.authentik.Existing("leaver@reportage.ae", false)
 
 	_, _, err := e.u.Bootstrap(t.Context(), system, "leaver@reportage.ae")
 	requireKind(t, err, core.KindConflict)
-	acct := e.dir.ByEmail("leaver@reportage.ae")
+	acct := e.authentik.ByEmail("leaver@reportage.ae")
 	assert.False(t, acct.Active)
 	assert.False(t, acct.InGroup)
 }
@@ -141,8 +141,8 @@ func TestBootstrapRefusesADeactivatedAccount(t *testing.T) {
 // email.
 func TestAddRefusesAnAmbiguousEmail(t *testing.T) {
 	e := setup(t)
-	e.dir.Existing("sara@reportage.ae", true)
-	e.dir.Existing("sara@reportage.ae", true)
+	e.authentik.Existing("sara@reportage.ae", true)
+	e.authentik.Existing("sara@reportage.ae", true)
 
 	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer})
 	requireKind(t, err, core.KindConflict)
@@ -155,7 +155,7 @@ func TestAddRefusesAnAmbiguousEmail(t *testing.T) {
 // accounts when the admin retries.
 func TestAddRetriesSafely(t *testing.T) {
 	e := setup(t)
-	e.dir.Fail["AddToGroup"] = true
+	e.authentik.Fail["AddToGroup"] = true
 
 	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer})
 	requireKind(t, err, core.KindUnavailable)
@@ -163,9 +163,9 @@ func TestAddRetriesSafely(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, list, "nothing is saved in ADX when authentik fails")
 
-	e.dir.Fail["AddToGroup"] = false
+	e.authentik.Fail["AddToGroup"] = false
 	e.add(t, "sara@reportage.ae", core.RoleViewer)
-	assert.Equal(t, 1, e.dir.Created, "the retry links the account ADX made the first time")
+	assert.Equal(t, 1, e.authentik.Created, "the retry links the account ADX made the first time")
 }
 
 // Catches: losing someone because the email failed, an active person who
@@ -173,25 +173,25 @@ func TestAddRetriesSafely(t *testing.T) {
 // a link.
 func TestPasswordLinkCanBeSentAgain(t *testing.T) {
 	e := setup(t)
-	e.dir.Fail["SendSetPasswordEmail"] = true
+	e.authentik.Fail["SendSetPasswordEmail"] = true
 
 	sara, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer})
 	requireKind(t, err, core.KindUnavailable)
 	assert.Equal(t, users.StatusInvited, sara.Status, "they're added even though the email failed")
 
-	e.dir.Fail["SendSetPasswordEmail"] = false
+	e.authentik.Fail["SendSetPasswordEmail"] = false
 	require.NoError(t, e.u.SendPasswordLink(t.Context(), system, sara.ID))
-	assert.Equal(t, 1, e.dir.ByEmail("sara@reportage.ae").Invites)
+	assert.Equal(t, 1, e.authentik.ByEmail("sara@reportage.ae").Invites)
 
 	_, err = e.signIn(t, "sara@reportage.ae")
 	require.NoError(t, err)
 	require.NoError(t, e.u.SendPasswordLink(t.Context(), system, sara.ID), "an active person can get one too")
-	assert.Equal(t, 2, e.dir.ByEmail("sara@reportage.ae").Invites)
+	assert.Equal(t, 2, e.authentik.ByEmail("sara@reportage.ae").Invites)
 
 	_, err = e.u.Disable(t.Context(), system, sara.ID)
 	require.NoError(t, err)
 	requireKind(t, e.u.SendPasswordLink(t.Context(), system, sara.ID), core.KindConflict)
-	assert.Equal(t, 2, e.dir.ByEmail("sara@reportage.ae").Invites)
+	assert.Equal(t, 2, e.authentik.ByEmail("sara@reportage.ae").Invites)
 }
 
 func TestAddRejects(t *testing.T) {
@@ -216,14 +216,14 @@ func TestAddRejects(t *testing.T) {
 		{"same email in another case", admin, users.AddInput{Email: "SARA@reportage.ae", Role: core.RoleViewer}, core.KindConflict},
 		{"disabled person", admin, users.AddInput{Email: "omar@reportage.ae", Role: core.RoleViewer}, core.KindConflict},
 	}
-	created := e.dir.Created
+	created := e.authentik.Created
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := e.u.Add(t.Context(), tt.actor, tt.in)
 			requireKind(t, err, tt.kind)
 		})
 	}
-	assert.Equal(t, created, e.dir.Created, "a rejected add never reaches authentik")
+	assert.Equal(t, created, e.authentik.Created, "a rejected add never reaches authentik")
 }
 
 // Catches: a stranger, someone with an added person's email but another
@@ -242,8 +242,8 @@ func TestSignInRefuses(t *testing.T) {
 		id   users.Identity
 	}{
 		{"unknown account with an added email", users.Identity{Subject: "someone-else", Email: sara.Email, InAllowedGroup: true}},
-		{"not in the group", users.Identity{Subject: e.dir.ByEmail(sara.Email).UUID, Email: sara.Email}},
-		{"disabled", users.Identity{Subject: e.dir.ByEmail(omar.Email).UUID, Email: omar.Email, InAllowedGroup: true}},
+		{"not in the group", users.Identity{Subject: e.authentik.ByEmail(sara.Email).UUID, Email: sara.Email}},
+		{"disabled", users.Identity{Subject: e.authentik.ByEmail(omar.Email).UUID, Email: omar.Email, InAllowedGroup: true}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -273,7 +273,7 @@ func TestSignInActivatesAndKeepsTheAddedEmail(t *testing.T) {
 	e := setup(t)
 	e.add(t, "cmo@reportage.ae", core.RoleAdmin)
 	e.add(t, "sara@reportage.ae", core.RoleMarketer)
-	uuid := e.dir.ByEmail("sara@reportage.ae").UUID
+	uuid := e.authentik.ByEmail("sara@reportage.ae").UUID
 
 	first, err := e.u.SignIn(t.Context(), web, users.Identity{Subject: uuid, Email: "ceo@reportage.ae", Name: "Sara K", InAllowedGroup: true})
 	require.NoError(t, err)
@@ -299,25 +299,25 @@ func TestDisableAndEnable(t *testing.T) {
 	sara := e.add(t, "sara@reportage.ae", core.RoleMarketer)
 	_, err := e.signIn(t, "sara@reportage.ae")
 	require.NoError(t, err)
-	acct := e.dir.ByEmail("sara@reportage.ae")
+	acct := e.authentik.ByEmail("sara@reportage.ae")
 
-	e.dir.Fail["RemoveFromGroup"] = true
+	e.authentik.Fail["RemoveFromGroup"] = true
 	_, err = e.u.Disable(t.Context(), admin, sara.ID)
 	requireKind(t, err, core.KindUnavailable)
 	_, err = e.signIn(t, "sara@reportage.ae")
 	assert.ErrorIs(t, err, users.ErrNoAccess, "ADX blocks her even though authentik failed")
 	assert.True(t, acct.InGroup)
 
-	e.dir.Fail["RemoveFromGroup"] = false
+	e.authentik.Fail["RemoveFromGroup"] = false
 	_, err = e.u.Disable(t.Context(), admin, sara.ID)
 	require.NoError(t, err)
 	assert.False(t, acct.InGroup, "the retry finishes the authentik part")
 	assert.True(t, acct.Active, "her authentik account itself is never switched off")
 
-	e.dir.Fail["AddToGroup"] = true
+	e.authentik.Fail["AddToGroup"] = true
 	_, err = e.u.Enable(t.Context(), admin, sara.ID)
 	requireKind(t, err, core.KindUnavailable)
-	e.dir.Fail["AddToGroup"] = false
+	e.authentik.Fail["AddToGroup"] = false
 	enabled, err := e.u.Enable(t.Context(), admin, sara.ID)
 	require.NoError(t, err)
 	assert.True(t, acct.InGroup)
@@ -344,7 +344,7 @@ func TestLastAdminCannotBeRemoved(t *testing.T) {
 	requireKind(t, err, core.KindConflict)
 	_, err = e.u.Disable(t.Context(), self, cmo.ID)
 	requireKind(t, err, core.KindConflict)
-	assert.True(t, e.dir.ByEmail("cmo@reportage.ae").InGroup, "a refused disable doesn't reach authentik")
+	assert.True(t, e.authentik.ByEmail("cmo@reportage.ae").InGroup, "a refused disable doesn't reach authentik")
 
 	e.add(t, "tamim@wokeworks.ai", core.RoleAdmin)
 	demoted, err := e.u.SetRole(t.Context(), self, cmo.ID, core.RoleMarketer)
@@ -427,7 +427,7 @@ func TestOnlyAdminsListPeople(t *testing.T) {
 // taking over again on every restart.
 func TestBootstrap(t *testing.T) {
 	e := setup(t)
-	uuid := e.dir.Existing("twaha@wokeworks.ai", true)
+	uuid := e.authentik.Existing("twaha@wokeworks.ai", true)
 
 	admin, changed, err := e.u.Bootstrap(t.Context(), system, "Twaha@WokeWorks.ai")
 	require.NoError(t, err)
@@ -442,7 +442,7 @@ func TestBootstrap(t *testing.T) {
 	require.Len(t, list, 1)
 	assert.Equal(t, "twaha@wokeworks.ai", list[0].Email)
 	assert.Equal(t, core.RoleAdmin, list[0].Role)
-	assert.Zero(t, e.dir.Created, "the existing account is linked")
+	assert.Zero(t, e.authentik.Created, "the existing account is linked")
 }
 
 // Catches: bootstrap failing when the email was already added with a lower

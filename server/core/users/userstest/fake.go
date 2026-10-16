@@ -11,7 +11,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/users"
 )
 
-// ErrDown is what a failing Directory call returns.
+// ErrDown is what a failing Authentik call returns.
 var ErrDown = errors.New("authentik is down")
 
 type Account struct {
@@ -22,22 +22,22 @@ type Account struct {
 	Invites int
 }
 
-// Directory is a fake authentik. Set Fail to make one method fail, by name,
+// Authentik is a fake authentik. Set Fail to make one method fail, by name,
 // such as "SendSetPasswordEmail".
-type Directory struct {
+type Authentik struct {
 	mu       sync.Mutex
 	Accounts []*Account
 	Fail     map[string]bool
 	Created  int
 }
 
-func NewDirectory() *Directory {
-	return &Directory{Fail: map[string]bool{}}
+func NewAuthentik() *Authentik {
+	return &Authentik{Fail: map[string]bool{}}
 }
 
 // Existing adds an account that was there before ADX, so ADX didn't create
 // it, and returns its UUID.
-func (d *Directory) Existing(email string, active bool) string {
+func (d *Authentik) Existing(email string, active bool) string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	pk := int64(len(d.Accounts) + 1)
@@ -47,7 +47,7 @@ func (d *Directory) Existing(email string, active bool) string {
 }
 
 // ByEmail returns the first account with this email, or nil.
-func (d *Directory) ByEmail(email string) *Account {
+func (d *Authentik) ByEmail(email string) *Account {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	for _, a := range d.Accounts {
@@ -58,14 +58,14 @@ func (d *Directory) ByEmail(email string) *Account {
 	return nil
 }
 
-func (d *Directory) failing(method string) error {
+func (d *Authentik) failing(method string) error {
 	if d.Fail[method] {
 		return ErrDown
 	}
 	return nil
 }
 
-func (d *Directory) byPK(pk int64) (*Account, error) {
+func (d *Authentik) byPK(pk int64) (*Account, error) {
 	for _, a := range d.Accounts {
 		if a.PK == pk {
 			return a, nil
@@ -74,7 +74,7 @@ func (d *Directory) byPK(pk int64) (*Account, error) {
 	return nil, fmt.Errorf("no account %d", pk)
 }
 
-func (d *Directory) FindByEmail(_ context.Context, email string) ([]users.Account, error) {
+func (d *Authentik) FindByEmail(_ context.Context, email string) ([]users.Account, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if err := d.failing("FindByEmail"); err != nil {
@@ -89,7 +89,7 @@ func (d *Directory) FindByEmail(_ context.Context, email string) ([]users.Accoun
 	return out, nil
 }
 
-func (d *Directory) Create(_ context.Context, email string) (users.Account, error) {
+func (d *Authentik) Create(_ context.Context, email string) (users.Account, error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if err := d.failing("Create"); err != nil {
@@ -102,7 +102,7 @@ func (d *Directory) Create(_ context.Context, email string) (users.Account, erro
 	return a.Account, nil
 }
 
-func (d *Directory) AddToGroup(_ context.Context, pk int64) error {
+func (d *Authentik) AddToGroup(_ context.Context, pk int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if err := d.failing("AddToGroup"); err != nil {
@@ -116,7 +116,7 @@ func (d *Directory) AddToGroup(_ context.Context, pk int64) error {
 	return nil
 }
 
-func (d *Directory) RemoveFromGroup(_ context.Context, pk int64) error {
+func (d *Authentik) RemoveFromGroup(_ context.Context, pk int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if err := d.failing("RemoveFromGroup"); err != nil {
@@ -130,7 +130,7 @@ func (d *Directory) RemoveFromGroup(_ context.Context, pk int64) error {
 	return nil
 }
 
-func (d *Directory) SendSetPasswordEmail(_ context.Context, pk int64) error {
+func (d *Authentik) SendSetPasswordEmail(_ context.Context, pk int64) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if err := d.failing("SendSetPasswordEmail"); err != nil {

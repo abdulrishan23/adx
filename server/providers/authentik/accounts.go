@@ -1,5 +1,6 @@
-// Package authentik talks to WokeWorks' authentik through its API, to create
-// and switch people's accounts on and off for ADX.
+// Package authentik talks to WokeWorks' authentik through its API. It finds
+// and creates people's accounts, puts them in the ADX group or takes them out,
+// and has authentik email them a set-password link.
 package authentik
 
 import (
@@ -27,7 +28,7 @@ const inviteLinkLifetime = "days=3"
 // needs the account's email to match and the account to have no ADX row.
 const adxPath = "users/adx"
 
-type DirectoryConfig struct {
+type AccountsConfig struct {
 	// BaseURL is authentik's address, such as https://authentik.wokeworks.ai.
 	BaseURL string
 	// Token is an API token for a service account that may view and add
@@ -41,14 +42,14 @@ type DirectoryConfig struct {
 	EmailStageID string
 }
 
-// Directory implements users.Directory.
-type Directory struct {
-	cfg  DirectoryConfig
+// Accounts implements users.Accounts.
+type Accounts struct {
+	cfg  AccountsConfig
 	http *http.Client
 }
 
-func NewDirectory(cfg DirectoryConfig) *Directory {
-	return &Directory{cfg: cfg, http: &http.Client{Timeout: 20 * time.Second}}
+func NewAccounts(cfg AccountsConfig) *Accounts {
+	return &Accounts{cfg: cfg, http: &http.Client{Timeout: 20 * time.Second}}
 }
 
 type account struct {
@@ -75,12 +76,12 @@ func (a account) toUsers() users.Account {
 // authentik's own email filter is exact, so a stored "Sara@Reportage.ae"
 // would be missed and a second account made. Search matches loosely and the
 // exact check happens here.
-func (d *Directory) FindByEmail(ctx context.Context, email string) ([]users.Account, error) {
+func (c *Accounts) FindByEmail(ctx context.Context, email string) ([]users.Account, error) {
 	var page struct {
 		Results []account `json:"results"`
 	}
 	q := url.Values{"search": {email}, "page_size": {"100"}, "include_groups": {"false"}, "include_roles": {"false"}}
-	if err := d.do(ctx, http.MethodGet, "/core/users/?"+q.Encode(), nil, &page); err != nil {
+	if err := c.do(ctx, http.MethodGet, "/core/users/?"+q.Encode(), nil, &page); err != nil {
 		return nil, err
 	}
 	out := []users.Account{}
@@ -92,10 +93,10 @@ func (d *Directory) FindByEmail(ctx context.Context, email string) ([]users.Acco
 	return out, nil
 }
 
-func (d *Directory) Create(ctx context.Context, email string) (users.Account, error) {
+func (c *Accounts) Create(ctx context.Context, email string) (users.Account, error) {
 	var a account
 	body := map[string]any{"username": email, "email": email, "name": email, "is_active": true, "path": adxPath}
-	if err := d.do(ctx, http.MethodPost, "/core/users/", body, &a); err != nil {
+	if err := c.do(ctx, http.MethodPost, "/core/users/", body, &a); err != nil {
 		return users.Account{}, err
 	}
 	return a.toUsers(), nil
@@ -103,24 +104,24 @@ func (d *Directory) Create(ctx context.Context, email string) (users.Account, er
 
 // AddToGroup puts the account in the ADX group. Adding someone already in
 // it succeeds.
-func (d *Directory) AddToGroup(ctx context.Context, pk int64) error {
-	return d.do(ctx, http.MethodPost, "/core/groups/"+url.PathEscape(d.cfg.GroupID)+"/add_user/",
+func (c *Accounts) AddToGroup(ctx context.Context, pk int64) error {
+	return c.do(ctx, http.MethodPost, "/core/groups/"+url.PathEscape(c.cfg.GroupID)+"/add_user/",
 		map[string]any{"pk": pk}, nil)
 }
 
 // RemoveFromGroup takes the account out of the ADX group. Removing someone
 // who isn't in it succeeds.
-func (d *Directory) RemoveFromGroup(ctx context.Context, pk int64) error {
-	return d.do(ctx, http.MethodPost, "/core/groups/"+url.PathEscape(d.cfg.GroupID)+"/remove_user/",
+func (c *Accounts) RemoveFromGroup(ctx context.Context, pk int64) error {
+	return c.do(ctx, http.MethodPost, "/core/groups/"+url.PathEscape(c.cfg.GroupID)+"/remove_user/",
 		map[string]any{"pk": pk}, nil)
 }
 
-func (d *Directory) SendSetPasswordEmail(ctx context.Context, pk int64) error {
-	return d.do(ctx, http.MethodPost, "/core/users/"+strconv.FormatInt(pk, 10)+"/recovery_email/",
-		map[string]any{"email_stage": d.cfg.EmailStageID, "token_duration": inviteLinkLifetime}, nil)
+func (c *Accounts) SendSetPasswordEmail(ctx context.Context, pk int64) error {
+	return c.do(ctx, http.MethodPost, "/core/users/"+strconv.FormatInt(pk, 10)+"/recovery_email/",
+		map[string]any{"email_stage": c.cfg.EmailStageID, "token_duration": inviteLinkLifetime}, nil)
 }
 
-func (d *Directory) do(ctx context.Context, method, path string, body, out any) error {
+func (c *Accounts) do(ctx context.Context, method, path string, body, out any) error {
 	var r io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -129,17 +130,17 @@ func (d *Directory) do(ctx context.Context, method, path string, body, out any) 
 		}
 		r = bytes.NewReader(b)
 	}
-	req, err := http.NewRequestWithContext(ctx, method, d.cfg.BaseURL+"/api/v3"+path, r)
+	req, err := http.NewRequestWithContext(ctx, method, c.cfg.BaseURL+"/api/v3"+path, r)
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+d.cfg.Token)
+	req.Header.Set("Authorization", "Bearer "+c.cfg.Token)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "adx")
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
-	res, err := d.http.Do(req)
+	res, err := c.http.Do(req)
 	if err != nil {
 		return fmt.Errorf("authentik %s %s: %w", method, path, err)
 	}

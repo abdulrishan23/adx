@@ -64,9 +64,9 @@ type Account struct {
 	CreatedByADX bool
 }
 
-// Directory is what ADX needs from authentik. Every call is safe to repeat,
+// Accounts is what ADX needs from authentik, where people's accounts live. Every call is safe to repeat,
 // so a failed add or disable can simply be retried.
-type Directory interface {
+type Accounts interface {
 	FindByEmail(ctx context.Context, email string) ([]Account, error)
 	Create(ctx context.Context, email string) (Account, error)
 	AddToGroup(ctx context.Context, pk int64) error
@@ -94,12 +94,12 @@ var ErrNoAccess = &core.Error{
 var errLastAdmin = core.Conflict("ADX needs at least one admin who isn't disabled")
 
 type Users struct {
-	db  *store.DB
-	dir Directory
+	db       *store.DB
+	accounts Accounts
 }
 
-func New(db *store.DB, dir Directory) *Users {
-	return &Users{db: db, dir: dir}
+func New(db *store.DB, accounts Accounts) *Users {
+	return &Users{db: db, accounts: accounts}
 }
 
 func (u *Users) List(ctx context.Context, actor core.Actor) ([]User, error) {
@@ -200,7 +200,7 @@ func (u *Users) add(ctx context.Context, actor core.Actor, in AddInput, linkUUID
 // would get their access. An account someone switched off in authentik is
 // left off.
 func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (Account, error) {
-	found, err := u.dir.FindByEmail(ctx, email)
+	found, err := u.accounts.FindByEmail(ctx, email)
 	if err != nil {
 		return Account{}, unavailable(err)
 	}
@@ -210,7 +210,7 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 		if linkUUID != "" {
 			return Account{}, core.Conflict("no authentik account has the email %s any more, so try again", email)
 		}
-		if acct, err = u.dir.Create(ctx, email); err != nil {
+		if acct, err = u.accounts.Create(ctx, email); err != nil {
 			return Account{}, unavailable(err)
 		}
 	case 1:
@@ -238,7 +238,7 @@ func (u *Users) authentikAccount(ctx context.Context, email, linkUUID string) (A
 	if !errors.Is(err, sql.ErrNoRows) {
 		return Account{}, err
 	}
-	if err := u.dir.AddToGroup(ctx, acct.PK); err != nil {
+	if err := u.accounts.AddToGroup(ctx, acct.PK); err != nil {
 		return Account{}, unavailable(err)
 	}
 	return acct, nil
@@ -258,14 +258,14 @@ func (u *Users) SendPasswordLink(ctx context.Context, actor core.Actor, id int64
 	if Status(row.Status) == StatusDisabled {
 		return core.Conflict("%s is disabled, so enable them first", row.Email)
 	}
-	if err := u.dir.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
+	if err := u.accounts.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
 		return core.Unavailable(err, "the set-password email to %s failed, so try again", row.Email)
 	}
 	return u.logPasswordLink(ctx, actor, row)
 }
 
 func (u *Users) sendInvite(ctx context.Context, actor core.Actor, row store.User) error {
-	if err := u.dir.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
+	if err := u.accounts.SendSetPasswordEmail(ctx, row.AuthentikPk); err != nil {
 		return core.Unavailable(err, "%s is added, but the set-password email failed, so send it again", row.Email)
 	}
 	return u.logPasswordLink(ctx, actor, row)
@@ -322,7 +322,7 @@ func (u *Users) Disable(ctx context.Context, actor core.Actor, id int64) (User, 
 	if err != nil {
 		return User{}, err
 	}
-	if err := u.dir.RemoveFromGroup(ctx, row.AuthentikPk); err != nil {
+	if err := u.accounts.RemoveFromGroup(ctx, row.AuthentikPk); err != nil {
 		return fromRow(row), core.Unavailable(err,
 			"%s is disabled in ADX but still in the ADX group in authentik, so try again", row.Email)
 	}
@@ -339,7 +339,7 @@ func (u *Users) Enable(ctx context.Context, actor core.Actor, id int64) (User, e
 	if err != nil {
 		return User{}, err
 	}
-	if err := u.dir.AddToGroup(ctx, row.AuthentikPk); err != nil {
+	if err := u.accounts.AddToGroup(ctx, row.AuthentikPk); err != nil {
 		return User{}, unavailable(err)
 	}
 	row, err = u.change(ctx, id, func(q *store.Queries, row store.User) error {
@@ -416,7 +416,7 @@ func (u *Users) Bootstrap(ctx context.Context, actor core.Actor, email string) (
 	row, err := u.db.Reader().GetUserByEmail(ctx, email)
 	if errors.Is(err, sql.ErrNoRows) {
 		var linkUUID string
-		if found, err := u.dir.FindByEmail(ctx, email); err != nil {
+		if found, err := u.accounts.FindByEmail(ctx, email); err != nil {
 			return User{}, false, unavailable(err)
 		} else if len(found) == 1 {
 			linkUUID = found[0].UUID
