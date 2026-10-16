@@ -459,3 +459,143 @@ func TestBootstrapPromotesAnExistingPerson(t *testing.T) {
 	require.Len(t, list, 1)
 	assert.Equal(t, core.RoleAdmin, list[0].Role)
 }
+
+// Catches: a missing role check letting a marketer change people, or a
+// refused call still reaching authentik.
+func TestOnlyAdminsChangePeople(t *testing.T) {
+	e := setup(t)
+	e.add(t, "cmo@reportage.ae", core.RoleAdmin)
+	sara := e.add(t, "sara@reportage.ae", core.RoleMarketer)
+	marketer := actorFor(sara)
+	before := len(e.actions(t))
+
+	calls := map[string]func() error{
+		"Add": func() error {
+			_, err := e.u.Add(t.Context(), marketer, users.AddInput{Email: "x@reportage.ae", Role: core.RoleViewer})
+			return err
+		},
+		"SetRole": func() error {
+			_, err := e.u.SetRole(t.Context(), marketer, sara.ID, core.RoleAdmin)
+			return err
+		},
+		"Disable": func() error {
+			_, err := e.u.Disable(t.Context(), marketer, sara.ID)
+			return err
+		},
+		"Enable": func() error {
+			_, err := e.u.Enable(t.Context(), marketer, sara.ID)
+			return err
+		},
+		"SendPasswordLink": func() error {
+			return e.u.SendPasswordLink(t.Context(), marketer, sara.ID)
+		},
+		"Bootstrap": func() error {
+			_, _, err := e.u.Bootstrap(t.Context(), marketer, "x@reportage.ae")
+			return err
+		},
+	}
+	for name, call := range calls {
+		t.Run(name, func(t *testing.T) {
+			assert.ErrorIs(t, call(), core.ErrForbidden)
+		})
+	}
+
+	assert.Len(t, e.actions(t), before, "nothing is logged")
+	acct := e.authentik.ByEmail("sara@reportage.ae")
+	assert.True(t, acct.InGroup)
+	assert.Equal(t, 1, acct.Invites)
+	assert.Equal(t, 2, e.authentik.Created)
+}
+
+// Catches: a person saved in ADX without an authentik account to sign in
+// with.
+func TestAddSavesNothingWhenAuthentikCantCreateTheAccount(t *testing.T) {
+	e := setup(t)
+	e.authentik.Fail["Create"] = true
+
+	_, err := e.u.Add(t.Context(), system, users.AddInput{Email: "sara@reportage.ae", Role: core.RoleViewer})
+	requireKind(t, err, core.KindUnavailable)
+	list, err := e.u.List(t.Context(), system)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+}
+
+// Catches: a failed resend reported as sent, or logged as sent.
+func TestPasswordLinkFailureSaysToTryAgain(t *testing.T) {
+	e := setup(t)
+	sara := e.add(t, "sara@reportage.ae", core.RoleViewer)
+	before := len(e.actions(t))
+	e.authentik.Fail["SendSetPasswordEmail"] = true
+
+	err := e.u.SendPasswordLink(t.Context(), system, sara.ID)
+	requireKind(t, err, core.KindUnavailable)
+	assert.ErrorContains(t, err, "try again")
+	assert.Len(t, e.actions(t), before)
+}
+
+// Catches: an action on someone who doesn't exist reaching authentik, or
+// failing with a 500 instead of "not found".
+func TestUnknownPersonIsNotFound(t *testing.T) {
+	e := setup(t)
+
+	requireKind(t, e.u.SendPasswordLink(t.Context(), system, 999), core.KindNotFound)
+	_, err := e.u.Enable(t.Context(), system, 999)
+	requireKind(t, err, core.KindNotFound)
+	_, err = e.u.Disable(t.Context(), system, 999)
+	requireKind(t, err, core.KindNotFound)
+}
+
+// Catches: enabling someone who isn't disabled changing their status or
+// logging an enable that didn't happen. It still puts them back in the ADX
+// group, which repairs a disable whose authentik part failed.
+func TestEnableSomeoneWhoIsntDisabled(t *testing.T) {
+	e := setup(t)
+	sara := e.add(t, "sara@reportage.ae", core.RoleMarketer)
+	_, err := e.signIn(t, "sara@reportage.ae")
+	require.NoError(t, err)
+	acct := e.authentik.ByEmail("sara@reportage.ae")
+	acct.InGroup = false
+	before := len(e.actions(t))
+
+	got, err := e.u.Enable(t.Context(), system, sara.ID)
+	require.NoError(t, err)
+	assert.Equal(t, users.StatusActive, got.Status)
+	assert.True(t, acct.InGroup)
+	assert.Len(t, e.actions(t), before)
+}
+
+// Catches: a fresh install with only a disabled admin staying locked, and a
+// bootstrap during an authentik outage half-adding the admin.
+func TestBootstrapEnablesADisabledPersonAndWaitsForAuthentik(t *testing.T) {
+	e := setup(t)
+	e.authentik.Fail["FindByEmail"] = true
+	_, changed, err := e.u.Bootstrap(t.Context(), system, "cmo@reportage.ae")
+	requireKind(t, err, core.KindUnavailable)
+	assert.False(t, changed)
+	list, err := e.u.List(t.Context(), system)
+	require.NoError(t, err)
+	assert.Empty(t, list)
+	e.authentik.Fail["FindByEmail"] = false
+
+	cmo := e.add(t, "cmo@reportage.ae", core.RoleMarketer)
+	_, err = e.u.Disable(t.Context(), system, cmo.ID)
+	require.NoError(t, err)
+
+	admin, changed, err := e.u.Bootstrap(t.Context(), system, "cmo@reportage.ae")
+	require.NoError(t, err)
+	assert.True(t, changed)
+	assert.Equal(t, core.RoleAdmin, admin.Role)
+	assert.Equal(t, users.StatusInvited, admin.Status)
+	assert.True(t, e.authentik.ByEmail("cmo@reportage.ae").InGroup)
+}
+
+// Catches: a sign-in with no authentik subject matching someone.
+func TestSignInNeedsASubject(t *testing.T) {
+	e := setup(t)
+	e.add(t, "sara@reportage.ae", core.RoleViewer)
+	before := len(e.actions(t))
+
+	_, err := e.u.SignIn(t.Context(), web, users.Identity{Email: "sara@reportage.ae", InAllowedGroup: true})
+	require.Error(t, err)
+	assert.Len(t, e.actions(t), before)
+}
