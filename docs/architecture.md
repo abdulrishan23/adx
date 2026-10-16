@@ -91,6 +91,13 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 - **Cost.** An admin must replace tokens manually. OAuth support exists in code, but a live installation is unverified.
 - **Revisit if.** Customers need to connect their accounts themselves.
 
+#### D-26. Connections are credentials plus accounts
+2026-10-16. ADX stores a connection as a credential, which grants access, and the accounts ADX reads through it. The definitions are in `reference.md`. Each account is stored once, whichever credential reaches it, with its currency and time zone. Each person who signs in with Google is one credential, and GA4 and Search Console scopes are added to that same grant later. A Google credential can also be a service account. Connections belong to the workspace, and only admins change them.
+
+- **Why.** A GoHighLevel private token reaches one location, but one Google or Meta sign-in reaches many accounts. Revoking a Google grant drops every scope that person gave our project, so separate credentials per product would only look independent. Marketing OS kept a row per account per connection, so the same account could carry two currencies and lookups picked whichever row came first. Google and Meta report days in the account's own time zone, so the account has to record it.
+- **Cost.** An account uses one credential at a time. If the person behind that credential loses access, an admin reconnects the account through another one.
+- **Revisit if.** Two people need to reach the same account at once.
+
 #### D-10. Personal data
 2026-10-09. Phone and email are hashed before any upload. Opted-out leads never go into audiences. Nationality is never guessed from names, and the phone country code is used only to tell where someone lives. ADX doesn't exclude any country's leads. That's a targeting decision for the CMO.
 

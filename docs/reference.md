@@ -23,7 +23,10 @@ If a feature uses one of these words, it means what's written here.
 
 ### Connections
 
-- **GHL connection.** ADX's saved authorization to one GoHighLevel sub-account, the CRM workspace that the API identifies with a location ID. Several connections can coexist. A connection verifies access. Lead imports and ongoing health checks are separate features.
+- **Connection.** A credential plus the accounts ADX reads through it (D-26).
+- **Credential.** What grants ADX access to a provider: a GoHighLevel private token, an OAuth sign-in or a service account. One Google or Meta sign-in reaches many accounts. A GoHighLevel private token reaches one location.
+- **Account.** Something ADX reads through a credential: a GoHighLevel location, a Google Ads account, a GA4 property, a Search Console site, or a Meta ad account or Page. ADX stores each one once, even when several credentials reach it, with its currency and time zone.
+- **GHL connection.** A GoHighLevel sub-account connected with its own private token (D-23). GoHighLevel's API calls a sub-account a location. The token is the credential and the location is the account. Several can coexist. Connecting verifies access. Lead imports and ongoing health checks are separate features.
 
 ### Leads and sources
 
