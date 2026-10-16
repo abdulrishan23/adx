@@ -10,31 +10,59 @@ RETURNING state_hash;
 -- name: DeleteExpiredConnectionOAuthAttempts :exec
 DELETE FROM connection_oauth_attempts WHERE expires_at <= ?;
 
--- name: UpsertConnection :one
-INSERT INTO connections
-    (provider, location_id, company_id, name, encrypted_tokens, scope, token_expires_at, connected_at, verified_at, auth_method)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (provider, location_id) DO UPDATE SET
-    company_id = excluded.company_id,
-    name = excluded.name,
-    encrypted_tokens = excluded.encrypted_tokens,
-    scope = excluded.scope,
+-- name: UpsertCredential :one
+INSERT INTO credentials
+    (provider, kind, subject, encrypted_secret, key_version, scopes, token_expires_at, connected_by, connected_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (provider, subject) DO UPDATE SET
+    kind = excluded.kind,
+    encrypted_secret = excluded.encrypted_secret,
+    key_version = excluded.key_version,
+    scopes = excluded.scopes,
     token_expires_at = excluded.token_expires_at,
-    auth_method = excluded.auth_method,
+    connected_by = excluded.connected_by,
+    connected_at = excluded.connected_at
+RETURNING *;
+
+-- name: UpsertAccount :one
+INSERT INTO accounts
+    (type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (type, external_id) DO UPDATE SET
+    credential_id = excluded.credential_id,
+    parent_id = excluded.parent_id,
+    name = excluded.name,
+    currency = excluded.currency,
+    time_zone = excluded.time_zone,
+    details = excluded.details,
     verified_at = excluded.verified_at
 RETURNING *;
 
--- name: GetConnection :one
-SELECT * FROM connections WHERE provider = ? AND location_id = ?;
+-- name: GetAccount :one
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type = ? AND accounts.external_id = ?;
 
--- name: ListConnections :many
-SELECT * FROM connections WHERE provider = ? ORDER BY location_id;
+-- name: ListAccounts :many
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type = ?
+ORDER BY accounts.external_id;
 
--- name: UpdateConnectionCredentials :execrows
-UPDATE connections
-SET encrypted_tokens = ?, scope = ?, token_expires_at = ?
-WHERE provider = ? AND location_id = ? AND encrypted_tokens = ?;
+-- Updates only if nobody replaced the secret since it was read.
+-- name: UpdateCredentialSecret :execrows
+UPDATE credentials
+SET encrypted_secret = sqlc.arg(new_secret), key_version = sqlc.arg(key_version),
+    scopes = sqlc.arg(scopes), token_expires_at = sqlc.arg(token_expires_at)
+WHERE id = sqlc.arg(id) AND encrypted_secret = sqlc.arg(old_secret);
 
--- name: UpdateConnectionVerification :execrows
-UPDATE connections SET name = ?, verified_at = ?
-WHERE provider = ? AND location_id = ? AND encrypted_tokens = ?;
+-- Updates only if the account still uses the secret the check was made with.
+-- name: UpdateAccountVerification :execrows
+UPDATE accounts
+SET name = ?, time_zone = ?, details = ?, verified_at = ?
+WHERE accounts.id = ? AND EXISTS (
+    SELECT 1 FROM credentials
+    WHERE credentials.id = accounts.credential_id AND credentials.encrypted_secret = ?
+);

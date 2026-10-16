@@ -168,13 +168,16 @@ func TestLocationUsesBearerAndVersionHeaders(t *testing.T) {
 		assert.Equal(t, "/locations/loc-1", r.URL.Path)
 		assert.Equal(t, "Bearer access-token", r.Header.Get("Authorization"))
 		assert.Equal(t, "2021-07-28", r.Header.Get("Version"))
-		_, _ = io.WriteString(w, `{"location":{"id":"loc-1","name":"Test sandbox","phone":"unused"}}`)
+		_, _ = io.WriteString(w, `{"location":{"id":"loc-1","name":"Test sandbox","phone":"unused",`+
+			`"timezone":"Asia/Dubai","country":"AE"}}`)
 	}))
 	defer server.Close()
 	location, err := newClient(t, server).Location(t.Context(), "access-token", "loc-1")
 	require.NoError(t, err)
 	assert.Equal(t, "loc-1", location.ID)
 	assert.Equal(t, "Test sandbox", location.Name)
+	assert.Equal(t, "Asia/Dubai", location.TimeZone)
+	assert.Equal(t, "AE", location.Country)
 }
 
 func TestReadAccessChecksEveryResourceAndStopsAtADeniedRead(t *testing.T) {

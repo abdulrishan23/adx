@@ -62,16 +62,31 @@ func (db *DB) Close() error {
 
 // Migrate applies any migrations that haven't run yet.
 func (db *DB) Migrate(ctx context.Context) error {
-	dir, err := fs.Sub(migrations, "migrations")
-	if err != nil {
-		return err
-	}
-	p, err := goose.NewProvider(goose.DialectSQLite3, db.Write, dir)
+	p, err := db.migrator()
 	if err != nil {
 		return err
 	}
 	_, err = p.Up(ctx)
 	return err
+}
+
+// MigrateTo applies migrations up to and including version. Tests use it to
+// check that a later migration keeps existing rows working.
+func (db *DB) MigrateTo(ctx context.Context, version int64) error {
+	p, err := db.migrator()
+	if err != nil {
+		return err
+	}
+	_, err = p.UpTo(ctx, version)
+	return err
+}
+
+func (db *DB) migrator() (*goose.Provider, error) {
+	dir, err := fs.Sub(migrations, "migrations")
+	if err != nil {
+		return nil, err
+	}
+	return goose.NewProvider(goose.DialectSQLite3, db.Write, dir)
 }
 
 func (db *DB) Reader() *Queries { return New(db.Read) }

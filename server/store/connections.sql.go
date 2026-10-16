@@ -71,57 +71,96 @@ func (q *Queries) DeleteExpiredConnectionOAuthAttempts(ctx context.Context, expi
 	return err
 }
 
-const getConnection = `-- name: GetConnection :one
-SELECT provider, location_id, company_id, name, encrypted_tokens, scope, token_expires_at, connected_at, verified_at, auth_method FROM connections WHERE provider = ? AND location_id = ?
+const getAccount = `-- name: GetAccount :one
+SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type = ? AND accounts.external_id = ?
 `
 
-type GetConnectionParams struct {
-	Provider   string
-	LocationID string
+type GetAccountParams struct {
+	Type       string
+	ExternalID string
 }
 
-func (q *Queries) GetConnection(ctx context.Context, arg GetConnectionParams) (Connection, error) {
-	row := q.db.QueryRowContext(ctx, getConnection, arg.Provider, arg.LocationID)
-	var i Connection
+type GetAccountRow struct {
+	Account    Account
+	Credential Credential
+}
+
+func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAccountRow, error) {
+	row := q.db.QueryRowContext(ctx, getAccount, arg.Type, arg.ExternalID)
+	var i GetAccountRow
 	err := row.Scan(
-		&i.Provider,
-		&i.LocationID,
-		&i.CompanyID,
-		&i.Name,
-		&i.EncryptedTokens,
-		&i.Scope,
-		&i.TokenExpiresAt,
-		&i.ConnectedAt,
-		&i.VerifiedAt,
-		&i.AuthMethod,
+		&i.Account.ID,
+		&i.Account.Type,
+		&i.Account.ExternalID,
+		&i.Account.CredentialID,
+		&i.Account.ParentID,
+		&i.Account.Name,
+		&i.Account.Currency,
+		&i.Account.TimeZone,
+		&i.Account.Details,
+		&i.Account.ConnectedAt,
+		&i.Account.VerifiedAt,
+		&i.Credential.ID,
+		&i.Credential.Provider,
+		&i.Credential.Kind,
+		&i.Credential.Subject,
+		&i.Credential.EncryptedSecret,
+		&i.Credential.KeyVersion,
+		&i.Credential.Scopes,
+		&i.Credential.TokenExpiresAt,
+		&i.Credential.ConnectedBy,
+		&i.Credential.ConnectedAt,
 	)
 	return i, err
 }
 
-const listConnections = `-- name: ListConnections :many
-SELECT provider, location_id, company_id, name, encrypted_tokens, scope, token_expires_at, connected_at, verified_at, auth_method FROM connections WHERE provider = ? ORDER BY location_id
+const listAccounts = `-- name: ListAccounts :many
+SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type = ?
+ORDER BY accounts.external_id
 `
 
-func (q *Queries) ListConnections(ctx context.Context, provider string) ([]Connection, error) {
-	rows, err := q.db.QueryContext(ctx, listConnections, provider)
+type ListAccountsRow struct {
+	Account    Account
+	Credential Credential
+}
+
+func (q *Queries) ListAccounts(ctx context.Context, type_ string) ([]ListAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAccounts, type_)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Connection{}
+	items := []ListAccountsRow{}
 	for rows.Next() {
-		var i Connection
+		var i ListAccountsRow
 		if err := rows.Scan(
-			&i.Provider,
-			&i.LocationID,
-			&i.CompanyID,
-			&i.Name,
-			&i.EncryptedTokens,
-			&i.Scope,
-			&i.TokenExpiresAt,
-			&i.ConnectedAt,
-			&i.VerifiedAt,
-			&i.AuthMethod,
+			&i.Account.ID,
+			&i.Account.Type,
+			&i.Account.ExternalID,
+			&i.Account.CredentialID,
+			&i.Account.ParentID,
+			&i.Account.Name,
+			&i.Account.Currency,
+			&i.Account.TimeZone,
+			&i.Account.Details,
+			&i.Account.ConnectedAt,
+			&i.Account.VerifiedAt,
+			&i.Credential.ID,
+			&i.Credential.Provider,
+			&i.Credential.Kind,
+			&i.Credential.Subject,
+			&i.Credential.EncryptedSecret,
+			&i.Credential.KeyVersion,
+			&i.Credential.Scopes,
+			&i.Credential.TokenExpiresAt,
+			&i.Credential.ConnectedBy,
+			&i.Credential.ConnectedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -136,56 +175,33 @@ func (q *Queries) ListConnections(ctx context.Context, provider string) ([]Conne
 	return items, nil
 }
 
-const updateConnectionCredentials = `-- name: UpdateConnectionCredentials :execrows
-UPDATE connections
-SET encrypted_tokens = ?, scope = ?, token_expires_at = ?
-WHERE provider = ? AND location_id = ? AND encrypted_tokens = ?
+const updateAccountVerification = `-- name: UpdateAccountVerification :execrows
+UPDATE accounts
+SET name = ?, time_zone = ?, details = ?, verified_at = ?
+WHERE accounts.id = ? AND EXISTS (
+    SELECT 1 FROM credentials
+    WHERE credentials.id = accounts.credential_id AND credentials.encrypted_secret = ?
+)
 `
 
-type UpdateConnectionCredentialsParams struct {
-	EncryptedTokens   []byte
-	Scope             string
-	TokenExpiresAt    sql.NullTime
-	Provider          string
-	LocationID        string
-	EncryptedTokens_2 []byte
-}
-
-func (q *Queries) UpdateConnectionCredentials(ctx context.Context, arg UpdateConnectionCredentialsParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateConnectionCredentials,
-		arg.EncryptedTokens,
-		arg.Scope,
-		arg.TokenExpiresAt,
-		arg.Provider,
-		arg.LocationID,
-		arg.EncryptedTokens_2,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
-}
-
-const updateConnectionVerification = `-- name: UpdateConnectionVerification :execrows
-UPDATE connections SET name = ?, verified_at = ?
-WHERE provider = ? AND location_id = ? AND encrypted_tokens = ?
-`
-
-type UpdateConnectionVerificationParams struct {
-	Name            string
+type UpdateAccountVerificationParams struct {
+	Name            sql.NullString
+	TimeZone        sql.NullString
+	Details         string
 	VerifiedAt      time.Time
-	Provider        string
-	LocationID      string
-	EncryptedTokens []byte
+	ID              int64
+	EncryptedSecret []byte
 }
 
-func (q *Queries) UpdateConnectionVerification(ctx context.Context, arg UpdateConnectionVerificationParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, updateConnectionVerification,
+// Updates only if the account still uses the secret the check was made with.
+func (q *Queries) UpdateAccountVerification(ctx context.Context, arg UpdateAccountVerificationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateAccountVerification,
 		arg.Name,
+		arg.TimeZone,
+		arg.Details,
 		arg.VerifiedAt,
-		arg.Provider,
-		arg.LocationID,
-		arg.EncryptedTokens,
+		arg.ID,
+		arg.EncryptedSecret,
 	)
 	if err != nil {
 		return 0, err
@@ -193,59 +209,147 @@ func (q *Queries) UpdateConnectionVerification(ctx context.Context, arg UpdateCo
 	return result.RowsAffected()
 }
 
-const upsertConnection = `-- name: UpsertConnection :one
-INSERT INTO connections
-    (provider, location_id, company_id, name, encrypted_tokens, scope, token_expires_at, connected_at, verified_at, auth_method)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (provider, location_id) DO UPDATE SET
-    company_id = excluded.company_id,
-    name = excluded.name,
-    encrypted_tokens = excluded.encrypted_tokens,
-    scope = excluded.scope,
-    token_expires_at = excluded.token_expires_at,
-    auth_method = excluded.auth_method,
-    verified_at = excluded.verified_at
-RETURNING provider, location_id, company_id, name, encrypted_tokens, scope, token_expires_at, connected_at, verified_at, auth_method
+const updateCredentialSecret = `-- name: UpdateCredentialSecret :execrows
+UPDATE credentials
+SET encrypted_secret = ?1, key_version = ?2,
+    scopes = ?3, token_expires_at = ?4
+WHERE id = ?5 AND encrypted_secret = ?6
 `
 
-type UpsertConnectionParams struct {
-	Provider        string
-	LocationID      string
-	CompanyID       string
-	Name            string
-	EncryptedTokens []byte
-	Scope           string
-	TokenExpiresAt  sql.NullTime
-	ConnectedAt     time.Time
-	VerifiedAt      time.Time
-	AuthMethod      string
+type UpdateCredentialSecretParams struct {
+	NewSecret      []byte
+	KeyVersion     int64
+	Scopes         string
+	TokenExpiresAt sql.NullTime
+	ID             int64
+	OldSecret      []byte
 }
 
-func (q *Queries) UpsertConnection(ctx context.Context, arg UpsertConnectionParams) (Connection, error) {
-	row := q.db.QueryRowContext(ctx, upsertConnection,
-		arg.Provider,
-		arg.LocationID,
-		arg.CompanyID,
-		arg.Name,
-		arg.EncryptedTokens,
-		arg.Scope,
+// Updates only if nobody replaced the secret since it was read.
+func (q *Queries) UpdateCredentialSecret(ctx context.Context, arg UpdateCredentialSecretParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateCredentialSecret,
+		arg.NewSecret,
+		arg.KeyVersion,
+		arg.Scopes,
 		arg.TokenExpiresAt,
+		arg.ID,
+		arg.OldSecret,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const upsertAccount = `-- name: UpsertAccount :one
+INSERT INTO accounts
+    (type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (type, external_id) DO UPDATE SET
+    credential_id = excluded.credential_id,
+    parent_id = excluded.parent_id,
+    name = excluded.name,
+    currency = excluded.currency,
+    time_zone = excluded.time_zone,
+    details = excluded.details,
+    verified_at = excluded.verified_at
+RETURNING id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at
+`
+
+type UpsertAccountParams struct {
+	Type         string
+	ExternalID   string
+	CredentialID int64
+	ParentID     sql.NullString
+	Name         sql.NullString
+	Currency     sql.NullString
+	TimeZone     sql.NullString
+	Details      string
+	ConnectedAt  time.Time
+	VerifiedAt   time.Time
+}
+
+func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) (Account, error) {
+	row := q.db.QueryRowContext(ctx, upsertAccount,
+		arg.Type,
+		arg.ExternalID,
+		arg.CredentialID,
+		arg.ParentID,
+		arg.Name,
+		arg.Currency,
+		arg.TimeZone,
+		arg.Details,
 		arg.ConnectedAt,
 		arg.VerifiedAt,
-		arg.AuthMethod,
 	)
-	var i Connection
+	var i Account
 	err := row.Scan(
-		&i.Provider,
-		&i.LocationID,
-		&i.CompanyID,
+		&i.ID,
+		&i.Type,
+		&i.ExternalID,
+		&i.CredentialID,
+		&i.ParentID,
 		&i.Name,
-		&i.EncryptedTokens,
-		&i.Scope,
-		&i.TokenExpiresAt,
+		&i.Currency,
+		&i.TimeZone,
+		&i.Details,
 		&i.ConnectedAt,
 		&i.VerifiedAt,
-		&i.AuthMethod,
+	)
+	return i, err
+}
+
+const upsertCredential = `-- name: UpsertCredential :one
+INSERT INTO credentials
+    (provider, kind, subject, encrypted_secret, key_version, scopes, token_expires_at, connected_by, connected_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (provider, subject) DO UPDATE SET
+    kind = excluded.kind,
+    encrypted_secret = excluded.encrypted_secret,
+    key_version = excluded.key_version,
+    scopes = excluded.scopes,
+    token_expires_at = excluded.token_expires_at,
+    connected_by = excluded.connected_by,
+    connected_at = excluded.connected_at
+RETURNING id, provider, kind, subject, encrypted_secret, key_version, scopes, token_expires_at, connected_by, connected_at
+`
+
+type UpsertCredentialParams struct {
+	Provider        string
+	Kind            string
+	Subject         string
+	EncryptedSecret []byte
+	KeyVersion      int64
+	Scopes          string
+	TokenExpiresAt  sql.NullTime
+	ConnectedBy     sql.NullInt64
+	ConnectedAt     time.Time
+}
+
+func (q *Queries) UpsertCredential(ctx context.Context, arg UpsertCredentialParams) (Credential, error) {
+	row := q.db.QueryRowContext(ctx, upsertCredential,
+		arg.Provider,
+		arg.Kind,
+		arg.Subject,
+		arg.EncryptedSecret,
+		arg.KeyVersion,
+		arg.Scopes,
+		arg.TokenExpiresAt,
+		arg.ConnectedBy,
+		arg.ConnectedAt,
+	)
+	var i Credential
+	err := row.Scan(
+		&i.ID,
+		&i.Provider,
+		&i.Kind,
+		&i.Subject,
+		&i.EncryptedSecret,
+		&i.KeyVersion,
+		&i.Scopes,
+		&i.TokenExpiresAt,
+		&i.ConnectedBy,
+		&i.ConnectedAt,
 	)
 	return i, err
 }

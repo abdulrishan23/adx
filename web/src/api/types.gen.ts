@@ -9,7 +9,7 @@ export interface AddInput {
     role: Role;
 }
 
-// From connections/connections.go
+// From connections/gohighlevel.go
 export interface Connection {
     provider: string;
     locationId: string;
@@ -52,13 +52,13 @@ export interface ProjectsResponse {
     projects: Project[];
 }
 
-// From connections/connections.go
+// From connections/gohighlevel.go
 export const Provider = "gohighlevel";
 
 // From core/core.go
 export type Role = "admin" | "marketer" | "viewer";
 
-// From connections/connections.go
+// From connections/gohighlevel.go
 export interface StartResult {
     authorizationUrl: string;
     expiresAt: string;

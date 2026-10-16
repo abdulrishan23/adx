@@ -208,12 +208,17 @@ func (c *Client) Location(ctx context.Context, accessToken, locationID string) (
 			ID        string `json:"id"`
 			Name      string `json:"name"`
 			CompanyID string `json:"companyId"`
+			Timezone  string `json:"timezone"`
+			Country   string `json:"country"`
 		} `json:"location"`
 	}
 	if err := c.request(req, &out); err != nil {
 		return connections.Location{}, err
 	}
-	return connections.Location{ID: out.Location.ID, Name: out.Location.Name, CompanyID: out.Location.CompanyID}, nil
+	return connections.Location{
+		ID: out.Location.ID, Name: out.Location.Name, CompanyID: out.Location.CompanyID,
+		TimeZone: out.Location.Timezone, Country: out.Location.Country,
+	}, nil
 }
 
 // ReadAccess checks the remaining read permissions without importing their data.

@@ -3,9 +3,13 @@ package connections_test
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -29,7 +33,7 @@ var (
 type fakeGHL struct {
 	tokens, refreshed                                   connections.Tokens
 	exchangeErr, refreshErr, locationErr, readAccessErr error
-	locationID                                          string
+	locationID, timeZone, country                       string
 	exchanges, refreshes, reads                         int
 	lastAccess, lastRefresh                             string
 }
@@ -52,7 +56,7 @@ func (f *fakeGHL) Location(_ context.Context, token, id string) (connections.Loc
 	if f.locationID != "" {
 		id = f.locationID
 	}
-	return connections.Location{ID: id, Name: "Sandbox " + id}, f.locationErr
+	return connections.Location{ID: id, Name: "Sandbox " + id, TimeZone: f.timeZone, Country: f.country}, f.locationErr
 }
 
 func (f *fakeGHL) ReadAccess(_ context.Context, token, _ string) error {
@@ -77,7 +81,12 @@ func newFixture(t *testing.T) *fixture {
 	}
 	f.provider.tokens = validTokens("location-1", "original")
 	f.provider.refreshed = validTokens("location-1", "rotated")
-	var err error
+	user, err := f.db.Writer().CreateUser(t.Context(), store.CreateUserParams{
+		Email: "admin@example.com", Role: string(core.RoleAdmin), Status: "active",
+		AuthentikPk: 1, AuthentikUuid: "admin-uuid", CreatedAt: f.now,
+	})
+	require.NoError(t, err)
+	require.Equal(t, admin.UserID, user.ID)
 	f.service, err = connections.New(f.db, f.provider, connections.Config{EncryptionKey: f.key, Now: func() time.Time { return f.now }})
 	require.NoError(t, err)
 	return f
@@ -106,11 +115,18 @@ func (f *fixture) connect(t *testing.T) connections.Connection {
 	return result
 }
 
-func (f *fixture) stored(t *testing.T, id string) store.Connection {
+func (f *fixture) stored(t *testing.T, id string) store.GetAccountRow {
 	t.Helper()
-	row, err := f.db.Reader().GetConnection(t.Context(), store.GetConnectionParams{Provider: connections.Provider, LocationID: id})
+	row, err := f.db.Reader().GetAccount(t.Context(), store.GetAccountParams{Type: connections.Provider, ExternalID: id})
 	require.NoError(t, err)
 	return row
+}
+
+func (f *fixture) credentialCount(t *testing.T) int {
+	t.Helper()
+	var n int
+	require.NoError(t, f.db.Read.QueryRowContext(t.Context(), "SELECT COUNT(*) FROM credentials").Scan(&n))
+	return n
 }
 
 func TestConnectKeepsSecretsEncryptedAndSurvivesRestart(t *testing.T) {
@@ -120,8 +136,9 @@ func TestConnectKeepsSecretsEncryptedAndSurvivesRestart(t *testing.T) {
 	assert.Equal(t, "Sandbox location-1", result.Name)
 	assert.Equal(t, f.now, result.VerifiedAt)
 	row := f.stored(t, result.LocationID)
-	assert.NotContains(t, string(row.EncryptedTokens), f.provider.tokens.AccessToken)
-	assert.NotContains(t, string(row.EncryptedTokens), f.provider.tokens.RefreshToken)
+	assert.NotContains(t, string(row.Credential.EncryptedSecret), f.provider.tokens.AccessToken)
+	assert.NotContains(t, string(row.Credential.EncryptedSecret), f.provider.tokens.RefreshToken)
+	assert.Equal(t, sql.NullInt64{Int64: admin.UserID, Valid: true}, row.Credential.ConnectedBy)
 	body, err := json.Marshal(result)
 	require.NoError(t, err)
 	assert.NotContains(t, string(body), "access-")
@@ -142,9 +159,10 @@ func TestReconnectUpdatesOnlyThatLocation(t *testing.T) {
 	second := f.connect(t)
 	assert.Equal(t, first.ConnectedAt, second.ConnectedAt)
 	assert.Equal(t, f.now, second.VerifiedAt)
-	assert.NotEqual(t, before.EncryptedTokens, f.stored(t, "location-1").EncryptedTokens)
+	assert.NotEqual(t, before.Credential.EncryptedSecret, f.stored(t, "location-1").Credential.EncryptedSecret)
 	f.provider.tokens = validTokens("location-2", "second-location")
 	f.connect(t)
+	assert.Equal(t, 2, f.credentialCount(t))
 	list, err := f.service.List(t.Context(), viewer)
 	require.NoError(t, err)
 	require.Len(t, list, 2)
@@ -249,7 +267,7 @@ func TestFailedReconnectPreservesExistingConnectionAndConsumesState(t *testing.T
 	f.provider.locationErr = errors.New("temporary read failure")
 	_, err := f.service.Finish(t.Context(), admin, in)
 	require.Error(t, err)
-	assert.Equal(t, before.EncryptedTokens, f.stored(t, "location-1").EncryptedTokens)
+	assert.Equal(t, before.Credential.EncryptedSecret, f.stored(t, "location-1").Credential.EncryptedSecret)
 	f.provider.locationErr = nil
 	_, err = f.service.Finish(t.Context(), admin, in)
 	require.Error(t, err)
@@ -265,7 +283,7 @@ func TestRefreshPersistsRotationEvenWhenTheFollowingReadFails(t *testing.T) {
 	require.Error(t, err)
 	assert.Equal(t, 1, f.provider.refreshes)
 	assert.Equal(t, "refresh-original", f.provider.lastRefresh)
-	assert.True(t, f.stored(t, "location-1").TokenExpiresAt.Time.After(f.now))
+	assert.True(t, f.stored(t, "location-1").Credential.TokenExpiresAt.Time.After(f.now))
 	f.provider.locationErr = nil
 	_, err = f.service.Check(t.Context(), admin, "location-1")
 	require.NoError(t, err)
@@ -298,7 +316,7 @@ func TestRefreshCannotChangeLocation(t *testing.T) {
 	f.provider.refreshed = validTokens("location-2", "wrong-location")
 	_, err := f.service.Check(t.Context(), admin, "location-1")
 	require.Error(t, err)
-	assert.Equal(t, before.EncryptedTokens, f.stored(t, "location-1").EncryptedTokens)
+	assert.Equal(t, before.Credential.EncryptedSecret, f.stored(t, "location-1").Credential.EncryptedSecret)
 	assert.Equal(t, 1, f.provider.reads)
 }
 
@@ -318,7 +336,7 @@ func TestCredentialsCannotBeDecryptedWithAnotherKeyOrLocation(t *testing.T) {
 		first := f.stored(t, "location-1")
 		f.provider.tokens = validTokens("location-2", "second")
 		f.connect(t)
-		_, err := f.db.Write.ExecContext(t.Context(), "UPDATE connections SET encrypted_tokens = ? WHERE location_id = ?", first.EncryptedTokens, "location-2")
+		_, err := f.db.Write.ExecContext(t.Context(), "UPDATE credentials SET encrypted_secret = ? WHERE subject = ?", first.Credential.EncryptedSecret, "location-2")
 		require.NoError(t, err)
 		_, err = f.service.Check(t.Context(), admin, "location-2")
 		require.Error(t, err)
@@ -348,8 +366,8 @@ func TestPrivateTokenIsEncryptedAndNeverUsesOAuthRefresh(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "private_token", result.AuthMethod)
 	assert.Nil(t, result.TokenExpiresAt)
-	assert.False(t, f.stored(t, "location-1").TokenExpiresAt.Valid)
-	assert.NotContains(t, string(f.stored(t, "location-1").EncryptedTokens), "private-secret")
+	assert.False(t, f.stored(t, "location-1").Credential.TokenExpiresAt.Valid)
+	assert.NotContains(t, string(f.stored(t, "location-1").Credential.EncryptedSecret), "private-secret")
 	body, err := json.Marshal(result)
 	require.NoError(t, err)
 	assert.NotContains(t, string(body), "private-secret")
@@ -370,15 +388,15 @@ func TestPrivateTokenReplacementRequiresAllReadPermissionsAndKeepsOtherLocations
 	f.provider.readAccessErr = errors.New("custom fields access denied")
 	_, err := f.service.ConnectPrivate(t.Context(), admin, "location-1", "rejected-private-secret")
 	require.Error(t, err)
-	assert.Equal(t, first.EncryptedTokens, f.stored(t, "location-1").EncryptedTokens)
+	assert.Equal(t, first.Credential.EncryptedSecret, f.stored(t, "location-1").Credential.EncryptedSecret)
 	f.provider.readAccessErr = nil
 	_, err = f.service.ConnectPrivate(t.Context(), admin, "location-2", "other-private-secret")
 	require.NoError(t, err)
-	assert.Equal(t, first.EncryptedTokens, f.stored(t, "location-1").EncryptedTokens)
+	assert.Equal(t, first.Credential.EncryptedSecret, f.stored(t, "location-1").Credential.EncryptedSecret)
 	_, err = f.service.ConnectPrivate(t.Context(), admin, "location-1", "replacement-private-secret")
 	require.NoError(t, err)
-	assert.Equal(t, "private_token", f.stored(t, "location-1").AuthMethod)
-	assert.False(t, f.stored(t, "location-1").TokenExpiresAt.Valid)
+	assert.Equal(t, "private_token", f.stored(t, "location-1").Credential.Kind)
+	assert.False(t, f.stored(t, "location-1").Credential.TokenExpiresAt.Valid)
 	list, err := f.service.List(t.Context(), viewer)
 	require.NoError(t, err)
 	assert.Len(t, list, 2)
@@ -395,4 +413,56 @@ func TestPrivateConnectionRejectsUnauthorizedActorAndUnexpectedWorkspace(t *test
 	list, err := f.service.List(t.Context(), admin)
 	require.NoError(t, err)
 	assert.Empty(t, list)
+}
+
+func TestCheckRefreshesLocationTimeZoneAndCountry(t *testing.T) {
+	f := newFixture(t)
+	f.provider.timeZone, f.provider.country = "Asia/Dubai", "AE"
+	f.connect(t)
+	row := f.stored(t, "location-1")
+	assert.Equal(t, "Asia/Dubai", row.Account.TimeZone.String)
+	assert.JSONEq(t, `{"country":"AE"}`, row.Account.Details)
+	f.provider.timeZone, f.provider.country = "Asia/Kolkata", "IN"
+	_, err := f.service.Check(t.Context(), admin, "location-1")
+	require.NoError(t, err)
+	row = f.stored(t, "location-1")
+	assert.Equal(t, "Asia/Kolkata", row.Account.TimeZone.String)
+	assert.JSONEq(t, `{"country":"IN"}`, row.Account.Details)
+}
+
+// The GHL-only table sealed tokens with "gohighlevel:<location>". A location
+// saved that way must keep working after the move to credentials and accounts.
+func TestLocationSavedBeforeCredentialsAndAccountsStillWorks(t *testing.T) {
+	ctx := t.Context()
+	db, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+	require.NoError(t, db.MigrateTo(ctx, 3))
+	key := bytes.Repeat([]byte{7}, 32)
+	block, err := aes.NewCipher(key)
+	require.NoError(t, err)
+	aead, err := cipher.NewGCMWithRandomNonce(block)
+	require.NoError(t, err)
+	sealed := aead.Seal(nil, nil, []byte(`{"AccessToken":"private-secret","RefreshToken":""}`), []byte("gohighlevel:location-1"))
+	connectedAt := time.Date(2026, 10, 14, 0, 0, 0, 0, time.UTC)
+	_, err = db.Write.ExecContext(ctx, `INSERT INTO connections
+		(provider, location_id, company_id, name, encrypted_tokens, scope, connected_at, verified_at, auth_method)
+		VALUES ('gohighlevel', 'location-1', 'company-1', 'Wokeworks', ?, ?, ?, ?, 'private_token')`,
+		sealed, strings.Join(connections.RequiredScopes, " "), connectedAt, connectedAt)
+	require.NoError(t, err)
+	require.NoError(t, db.Migrate(ctx))
+
+	provider := &fakeGHL{}
+	service, err := connections.New(db, provider, connections.Config{EncryptionKey: key})
+	require.NoError(t, err)
+	list, err := service.List(ctx, viewer)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, connections.Connection{
+		Provider: connections.Provider, LocationID: "location-1", CompanyID: "company-1", Name: "Wokeworks",
+		Scopes: connections.RequiredScopes, AuthMethod: "private_token", ConnectedAt: connectedAt, VerifiedAt: connectedAt,
+	}, list[0])
+	_, err = service.Check(ctx, admin, "location-1")
+	require.NoError(t, err)
+	assert.Equal(t, "private-secret", provider.lastAccess)
 }

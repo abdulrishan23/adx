@@ -9,6 +9,20 @@ import (
 	"time"
 )
 
+type Account struct {
+	ID           int64
+	Type         string
+	ExternalID   string
+	CredentialID int64
+	ParentID     sql.NullString
+	Name         sql.NullString
+	Currency     sql.NullString
+	TimeZone     sql.NullString
+	Details      string
+	ConnectedAt  time.Time
+	VerifiedAt   time.Time
+}
+
 type AuditLog struct {
 	ID           int64
 	At           time.Time
@@ -19,25 +33,25 @@ type AuditLog struct {
 	Detail       string
 }
 
-type Connection struct {
-	Provider        string
-	LocationID      string
-	CompanyID       string
-	Name            string
-	EncryptedTokens []byte
-	Scope           string
-	TokenExpiresAt  sql.NullTime
-	ConnectedAt     time.Time
-	VerifiedAt      time.Time
-	AuthMethod      string
-}
-
 type ConnectionOauthAttempt struct {
 	StateHash   string
 	Provider    string
 	UserID      int64
 	BindingHash string
 	ExpiresAt   time.Time
+}
+
+type Credential struct {
+	ID              int64
+	Provider        string
+	Kind            string
+	Subject         string
+	EncryptedSecret []byte
+	KeyVersion      int64
+	Scopes          string
+	TokenExpiresAt  sql.NullTime
+	ConnectedBy     sql.NullInt64
+	ConnectedAt     time.Time
 }
 
 type Project struct {
