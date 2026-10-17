@@ -449,6 +449,11 @@ export interface ComparativeReport {
     generatedAt: string;
 }
 
+// From api/execution.go
+export interface CompensateInput {
+    reason: string;
+}
+
 // From research/schedules.go
 export interface CompetitorComparison {
     brandId: number;
@@ -470,7 +475,7 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From evidence/evidence.go
+// From runs/runs.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -1315,6 +1320,21 @@ export interface MeasurementRequirement {
     note: string;
 }
 
+// From execution/recovery.go
+export interface Milestones {
+    planId: number;
+    planVersion: number;
+    planAcceptedAt: string | null;
+    firstDispatchedAt: string | null;
+    firstSubmittedAt: string | null;
+    firstConfirmedAt: string | null;
+    firstDeliveryDay: string | null;
+    deliveryObservedAt: string | null;
+    readyToDeliveryHours: number | null;
+    withinOneHour: boolean;
+    note: string;
+}
+
 // From reporting/metrics.go
 export interface Money {
     minor: number | null;
@@ -1969,6 +1989,13 @@ export interface RenderParams {
 // From creative/production.go
 export const RenderRunKind = "creative.render";
 
+// From api/execution.go
+export interface RepairInput {
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    proposed: string;
+    note: string;
+}
+
 // From assistant/assistant.go
 export interface Reply {
     turns: Turn[];
@@ -2156,6 +2183,16 @@ export interface ResultFreshness {
 // From api/brands.go
 export interface RetireFactInput {
     reason: string;
+}
+
+// From execution/recovery.go
+export interface Reversibility {
+    intentId: number;
+    state: string;
+    reversible: boolean;
+    how: string;
+    spentMinor: number | null;
+    currency: string;
 }
 
 // From creative/creative.go

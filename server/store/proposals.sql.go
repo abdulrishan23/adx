@@ -312,6 +312,40 @@ func (q *Queries) CreateProposal(ctx context.Context, arg CreateProposalParams) 
 	return i, err
 }
 
+const firstDeliveryDay = `-- name: FirstDeliveryDay :one
+SELECT m.day, m.impressions, m.clicks, m.cost_minor, m.observed_at
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.account_id = ? AND c.external_id = ? AND m.impressions > 0
+ORDER BY m.day LIMIT 1
+`
+
+type FirstDeliveryDayParams struct {
+	AccountID  int64
+	ExternalID string
+}
+
+type FirstDeliveryDayRow struct {
+	Day         string
+	Impressions int64
+	Clicks      int64
+	CostMinor   int64
+	ObservedAt  time.Time
+}
+
+func (q *Queries) FirstDeliveryDay(ctx context.Context, arg FirstDeliveryDayParams) (FirstDeliveryDayRow, error) {
+	row := q.db.QueryRowContext(ctx, firstDeliveryDay, arg.AccountID, arg.ExternalID)
+	var i FirstDeliveryDayRow
+	err := row.Scan(
+		&i.Day,
+		&i.Impressions,
+		&i.Clicks,
+		&i.CostMinor,
+		&i.ObservedAt,
+	)
+	return i, err
+}
+
 const getBudgetEnvelope = `-- name: GetBudgetEnvelope :one
 SELECT id, workspace_id, plan_id, plan_version, channel, account_id, currency, amount_minor, opened_by, opened_at FROM budget_envelopes WHERE id = ? AND workspace_id = ?
 `
@@ -881,6 +915,50 @@ type ListIntentsForPlanVersionParams struct {
 
 func (q *Queries) ListIntentsForPlanVersion(ctx context.Context, arg ListIntentsForPlanVersionParams) ([]ExecutionIntent, error) {
 	rows, err := q.db.QueryContext(ctx, listIntentsForPlanVersion, arg.WorkspaceID, arg.PlanID, arg.PlanVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExecutionIntent{}
+	for rows.Next() {
+		var i ExecutionIntent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProposalID,
+			&i.AccountID,
+			&i.IdempotencyKey,
+			&i.ReservationID,
+			&i.State,
+			&i.Attempts,
+			&i.ProviderRefs,
+			&i.LastErrorSafe,
+			&i.ReconcileAfter,
+			&i.AuthorizedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DispatchedAt,
+			&i.ConfirmedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIntentsStuckDispatching = `-- name: ListIntentsStuckDispatching :many
+SELECT id, workspace_id, proposal_id, account_id, idempotency_key, reservation_id, state, attempts, provider_refs, last_error_safe, reconcile_after, authorized_by, created_at, updated_at, dispatched_at, confirmed_at FROM execution_intents WHERE state = 'dispatching' AND updated_at <= ? ORDER BY id LIMIT 100
+`
+
+func (q *Queries) ListIntentsStuckDispatching(ctx context.Context, updatedAt time.Time) ([]ExecutionIntent, error) {
+	rows, err := q.db.QueryContext(ctx, listIntentsStuckDispatching, updatedAt)
 	if err != nil {
 		return nil, err
 	}

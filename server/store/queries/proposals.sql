@@ -113,3 +113,13 @@ SELECT * FROM execution_intents WHERE id = ?;
 
 -- name: ListIntentsByStateAll :many
 SELECT * FROM execution_intents WHERE state = ? ORDER BY updated_at, id LIMIT ?;
+
+-- name: ListIntentsStuckDispatching :many
+SELECT * FROM execution_intents WHERE state = 'dispatching' AND updated_at <= ? ORDER BY id LIMIT 100;
+
+-- name: FirstDeliveryDay :one
+SELECT m.day, m.impressions, m.clicks, m.cost_minor, m.observed_at
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.account_id = ? AND c.external_id = ? AND m.impressions > 0
+ORDER BY m.day LIMIT 1;

@@ -299,6 +299,13 @@ func run() error {
 				return nil
 			}},
 			{Kind: "execution.tick", Every: time.Minute, Run: func(ctx context.Context) error {
+				// Anything left mid-send by a stopped process becomes uncertain
+				// and is looked up before any retry.
+				if n, err := executionService.RecoverInterrupted(ctx, 5*time.Minute); err != nil {
+					log.WarnContext(ctx, "execution recovery failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "recovered interrupted executions", "count", n)
+				}
 				worked, errs := executionService.Tick(ctx)
 				for _, e := range errs {
 					log.WarnContext(ctx, "execution tick failed", "error", e)

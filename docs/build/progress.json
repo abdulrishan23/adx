@@ -1254,13 +1254,40 @@
       "depends_on": [
         "B3.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/queries/proposals.sql",
+        "server/core/execution/recovery.go",
+        "server/api/execution.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/execution.ts",
+        "web/src/routes/launch.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/execution/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "an intent interrupted mid-send is recovered as uncertain and settled by marker lookup, never re-sent blindly",
+        "the kill switch holds undispatched intents including recovered ones",
+        "compensation and reversibility never describe spent money as recovered; consumed stays consumed",
+        "delivery and the one-hour mark come only from impressions in the platform's figures"
+      ],
+      "remaining": [
+        "approved test-account journey against a live account",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "test account enabled for writes, ADX_LIVE_WRITES=1, written approval",
+          "unblocks": "the live launch validation journey"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-41."
     },
     {
       "id": "B4.1",

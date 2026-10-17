@@ -283,6 +283,10 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/executions/{id}/timeline", h.executionTimeline)
 			r.Post("/api/executions/{id}/retry", h.retryExecution)
 			r.Post("/api/executions/{id}/reconcile", h.reconcileExecution)
+			r.Post("/api/executions/{id}/compensate", h.compensateExecution)
+			r.Post("/api/executions/{id}/repair", h.repairExecution)
+			r.Get("/api/executions/{id}/reversibility", h.executionReversibility)
+			r.Get("/api/executions/milestones", h.launchMilestones)
 		}
 	})
 

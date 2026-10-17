@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useAccounts } from "@/api/accounts";
-import { useExecutionAction, useExecutionCapabilities, useLaunchStatus } from "@/api/execution";
+import {
+  useCompensate,
+  useExecutionAction,
+  useExecutionCapabilities,
+  useLaunchStatus,
+  useMilestones,
+  useRepair,
+  useReversibility,
+} from "@/api/execution";
 import {
   useLaunchReadiness,
   useMeasurementCatalog,
@@ -408,6 +416,7 @@ function Deployment({
         </h3>
       </div>
       <p className="text-muted-foreground">{l.note}</p>
+      <MilestonesView planId={planId} version={version} />
       {l.platforms.length === 0 && (
         <p className="text-muted-foreground">
           No executions for this plan version. Proposals that spend from its envelopes appear here
@@ -464,6 +473,7 @@ function Deployment({
                     {intent.lastError}
                   </p>
                 )}
+                <Recovery intent={intent} isAdmin={isAdmin} canEdit={canEdit} />
                 <ol className="mt-1 space-y-0.5 text-muted-foreground">
                   {events.map((e) => (
                     <li key={e.id}>
@@ -503,5 +513,117 @@ function WriteCapabilities() {
         </div>
       ))}
     </details>
+  );
+}
+
+// Milestones from the plan's acceptance to delivery as the platform's own
+// figures show it. The one-hour mark is met only when impressions exist.
+function MilestonesView({ planId, version }: { planId: number; version: number }) {
+  const ms = useMilestones(planId, version);
+  if (!ms.data) return null;
+  const m = ms.data;
+  const t = (v: string | null | undefined) => (v ? new Date(v).toLocaleString() : "—");
+  return (
+    <div className="rounded-md border p-2">
+      <p className="font-medium">
+        Milestones ·{" "}
+        {m.withinOneHour
+          ? "delivery observed within an hour of acceptance"
+          : "one-hour mark not met"}
+      </p>
+      <p className="text-muted-foreground">
+        plan accepted {t(m.planAcceptedAt)} · first sent {t(m.firstDispatchedAt)} · first accepted
+        by platform {t(m.firstSubmittedAt)} · first confirmed {t(m.firstConfirmedAt)} · first
+        delivery day {m.firstDeliveryDay ?? "none observed"}
+        {typeof m.readyToDeliveryHours === "number"
+          ? ` · ${m.readyToDeliveryHours.toFixed(1)} h from acceptance to observed delivery`
+          : ""}
+      </p>
+      <p className="text-muted-foreground">{m.note}</p>
+    </div>
+  );
+}
+
+// Recovery actions for one intent: what reversing can and cannot do,
+// compensation for what reached the platform, repair for what it refused.
+function Recovery({
+  intent,
+  isAdmin,
+  canEdit,
+}: {
+  intent: { id: number; state: string };
+  isAdmin: boolean;
+  canEdit: boolean;
+}) {
+  const rev = useReversibility(intent.id);
+  const compensate = useCompensate();
+  const repair = useRepair();
+  const [reason, setReason] = useState("");
+  const [proposed, setProposed] = useState("{}");
+  if (!rev.data) return null;
+  const r = rev.data;
+  const reached = ["submitted", "externally_confirmed", "confirmed"].includes(intent.state);
+  return (
+    <div className="mt-1 space-y-1 rounded-md border border-dashed p-2">
+      <p className="text-muted-foreground">
+        {r.reversible ? "Reversible: " : "Not reversible: "}
+        {r.how}
+        {typeof r.spentMinor === "number" &&
+          ` Spent so far: ${r.currency} ${(r.spentMinor / 100).toLocaleString()} (not recovered by any action here).`}
+      </p>
+      {isAdmin && reached && r.reversible && (
+        <div className="flex flex-wrap items-center gap-1">
+          <Input
+            className="h-7 max-w-xs"
+            placeholder="Why compensate"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={!reason || compensate.isPending}
+            onClick={() => compensate.mutate({ id: intent.id, reason })}
+          >
+            Compensate (stop further spend)
+          </Button>
+          {compensate.error && <span className="text-destructive">{compensate.error.message}</span>}
+        </div>
+      )}
+      {canEdit && intent.state === "failed" && (
+        <div className="flex flex-wrap items-center gap-1">
+          <Input
+            className="h-7 flex-1"
+            placeholder="Corrected proposed document, as JSON"
+            value={proposed}
+            onChange={(e) => setProposed(e.target.value)}
+          />
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={repair.isPending}
+            onClick={() => {
+              try {
+                repair.mutate({
+                  id: intent.id,
+                  proposed: JSON.parse(proposed),
+                  note: "repaired from the launch page",
+                });
+              } catch {
+                /* invalid JSON: leave the field for the person to fix */
+              }
+            }}
+          >
+            Repair as a new proposal
+          </Button>
+          {repair.error && <span className="text-destructive">{repair.error.message}</span>}
+          {repair.data && (
+            <span className="text-muted-foreground">
+              Proposal {repair.data.id} created ({repair.data.state}).
+            </span>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

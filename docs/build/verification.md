@@ -358,3 +358,18 @@ make check && make test
 - Web: the launch page shows the deployment per platform with each intent's state, refs, errors and timeline, retry (admin) and reconcile-now, plus what each platform can and cannot be written. Typecheck and biome clean. Not browser-tested.
 
 Live: no write was made to any account. `ADX_LIVE_WRITES` is unset here and no account is enabled for writes in any policy; the request shapes are unverified against the live APIs.
+
+## B3.6 Pause, compensation and launch validation
+
+Local:
+
+```
+cd server && go test ./core/execution/   # ok
+make check && make test
+```
+
+- `core/execution`: an intent left in `dispatching` after the writer created the object is not recovered while fresh, is made `uncertain` after the grace period with the reason, and the next tick finds the object by marker and records `submitted` with one Apply and one object; a kill switch on the account holds a new intent `reserved` with nothing sent, and its reversibility says nothing reached the platform. Reversibility of a submitted create reports the 5,000 consumed and says nothing spent is recovered; a marketer can't compensate and a reason is required; compensation creates a pause proposal on the created campaign with "money already spent is not recovered" in its reason, puts it in the outbox, marks the original `compensated` with "nothing already spent is recovered", leaves the envelope's consumed figure unchanged, and dispatches as an update; a reserved intent can't be compensated and is told to cancel. A refused Meta intent is repaired as a new approved proposal whose reason names the refusal, the failed intent stays failed and its timeline notes the repair. Milestones on a fresh plan show acceptance and no delivery; after confirmation they show first confirmed and still not delivered with the one-hour mark not met; a metrics day with zero impressions is not delivery; a later day with impressions sets the first delivery day and the hours from acceptance, and the one-hour mark stays unmet because the clock had passed it.
+- `api`: compensate, repair, reversibility and milestones routes wired; recovery runs before every tick.
+- Web: milestones line, per-intent reversibility text with spend, compensate (admin) and repair (marketer) controls on the launch page. Typecheck and biome clean. Not browser-tested.
+
+Live: the approved test-account journey was not run. It needs a test account enabled for writes in Policies, `ADX_LIVE_WRITES=1` and written approval; none exists here.
