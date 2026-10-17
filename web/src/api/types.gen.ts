@@ -375,6 +375,11 @@ export const CheckStaleIngestion = "stale_ingestion";
 // From alerts/alerts.go
 export const CheckZeroLeads = "zero_leads";
 
+// From api/measurement.go
+export interface ChecksResponse {
+    checks: MeasurementCheck[];
+}
+
 // From brands/claims.go
 export interface ClaimCheck {
     text: string;
@@ -445,7 +450,7 @@ export interface CompetitorStatus {
 }
 
 // From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
 export interface Conflict {
@@ -1018,6 +1023,16 @@ export type Kind = 4 | 2 | 1 | 3 | 5;
 // From assets/assets.go
 export type Language = "ar" | "en";
 
+// From measurement/measurement.go
+export interface LaunchItem {
+    area: string;
+    code: string;
+    state: string;
+    message: string;
+    refKind: string;
+    refId: number;
+}
+
 // From creative/production.go
 export interface LaunchReadiness {
     creativeId: number;
@@ -1118,6 +1133,74 @@ export interface MarketEventsResponse {
 
 // From runs/runs.go
 export const MaxAutoAttempts = 3;
+
+// From measurement/measurement.go
+export interface MeasurementCatalog {
+    events: MeasurementEventKind[];
+    attributionFields: string[];
+    utmScheme: string;
+    dedupeRule: string;
+}
+
+// From measurement/measurement.go
+export interface MeasurementCheck {
+    id: number;
+    planId: number;
+    planVersion: number;
+    kind: string;
+    pageId: number | null;
+    accountId: number | null;
+    state: string;
+    detail: string;
+    submissionId: number | null;
+    eventId: number | null;
+    evidenceId: number | null;
+    checkedBy: number | null;
+    checkedAt: string;
+}
+
+// From measurement/measurement.go
+export interface MeasurementCheckInput {
+    planId: number;
+    planVersion: number;
+    kind: string;
+    pageId: number;
+    accountId: number;
+    name: string;
+}
+
+// From measurement/measurement.go
+export interface MeasurementEvent {
+    id: number;
+    kind: string;
+    source: string;
+    sourceRef: string;
+    pageId: number | null;
+    projectId: number | null;
+    planId: number | null;
+    test: boolean;
+    dedupeKey: string;
+    duplicateOfId: number | null;
+    counts: boolean;
+    attribution: Record<string, string> | null;
+    occurredAt: string;
+    recordedAt: string;
+}
+
+// From measurement/measurement.go
+export interface MeasurementEventKind {
+    key: string;
+    label: string;
+    supported: boolean;
+    how: string;
+    platforms: Record<string, string> | null;
+}
+
+// From api/measurement.go
+export interface MeasurementEventsResponse {
+    events: MeasurementEvent[];
+    enquiries: number;
+}
 
 // From plans/plans.go
 export interface MeasurementRequirement {
@@ -1398,6 +1481,17 @@ export interface PlanInput {
     title: string;
     document: PlanDocument;
     note: string;
+}
+
+// From measurement/measurement.go
+export interface PlanLaunchReadiness {
+    planId: number;
+    planVersion: number;
+    ready: boolean;
+    live: boolean;
+    items: LaunchItem[];
+    links: TrackedLink[];
+    executionAuthorization: string | null;
 }
 
 // From plans/plans.go
@@ -1888,7 +1982,7 @@ export interface ReviewInput {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From assistant/model.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From runs/runs.go
 export interface Run {
@@ -2085,6 +2179,25 @@ export interface ToolResult {
     error?: string;
 }
 
+// From measurement/measurement.go
+export interface TrackedLink {
+    creativeId: number;
+    pageId: number;
+    channel: string;
+    url: string;
+}
+
+// From api/measurement.go
+export interface TrackedURLInput {
+    base: string;
+    utm: UTM;
+}
+
+// From api/measurement.go
+export interface TrackedURLResponse {
+    url: string;
+}
+
 // From voice/voice.go
 export interface Transcript {
     segments: Segment[];
@@ -2115,6 +2228,15 @@ export interface Turn {
 // From api/assistant.go
 export interface TurnsResponse {
     turns: Turn[];
+}
+
+// From measurement/measurement.go
+export interface UTM {
+    source: string;
+    medium: string;
+    campaign: string;
+    content: string;
+    term: string;
 }
 
 // From assistant/model.go

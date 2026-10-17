@@ -1094,6 +1094,17 @@ func (p *Pages) Readiness(ctx context.Context, actor core.Actor, pageID int64) (
 	return r, nil
 }
 
+// PublicURL is where a page is served.
+func (p *Pages) PublicURL(slug string) string { return p.base + "/p/" + slug }
+
+// ProjectID64 is the page's project id or 0.
+func (pg Page) ProjectID64() int64 {
+	if pg.ProjectID == nil {
+		return 0
+	}
+	return *pg.ProjectID
+}
+
 // Helpers.
 
 type limiter struct {

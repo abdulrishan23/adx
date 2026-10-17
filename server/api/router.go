@@ -18,6 +18,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
+	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
@@ -43,15 +44,16 @@ type Deps struct {
 	Runs     *runs.Runs
 	Leads    *leads.Leads
 	// Reporting serves /api/analytics. Nil leaves the routes out.
-	Reporting *reporting.Reporting
-	Reports   *reports.Reports
-	Alerts    *alerts.Alerts
-	Assistant *assistant.Assistant
-	Creative  *creative.Service
-	Brands    *brands.Brands
-	Research  *research.Research
-	Plans     *plans.Plans
-	Pages     *pages.Pages
+	Reporting   *reporting.Reporting
+	Reports     *reports.Reports
+	Alerts      *alerts.Alerts
+	Assistant   *assistant.Assistant
+	Creative    *creative.Service
+	Brands      *brands.Brands
+	Research    *research.Research
+	Plans       *plans.Plans
+	Pages       *pages.Pages
+	Measurement *measurement.Measurement
 }
 
 type handlers struct {
@@ -73,12 +75,13 @@ type handlers struct {
 	research    *research.Research
 	plans       *plans.Plans
 	pages       *pages.Pages
+	measurement *measurement.Measurement
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -246,6 +249,14 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/pages/{id}/rollback", h.rollbackPage)
 			r.Get("/api/pages/{id}/readiness", h.pageReadiness)
 			r.Get("/api/pages/{id}/submissions", h.pageSubmissions)
+		}
+		if h.measurement != nil {
+			r.Get("/api/measurement/catalog", h.measurementCatalog)
+			r.Post("/api/measurement/checks", h.runMeasurementCheck)
+			r.Get("/api/measurement/checks", h.listMeasurementChecks)
+			r.Get("/api/measurement/readiness", h.launchReadiness)
+			r.Get("/api/measurement/events", h.measurementEvents)
+			r.Post("/api/measurement/tracked-url", h.trackedURL)
 		}
 	})
 

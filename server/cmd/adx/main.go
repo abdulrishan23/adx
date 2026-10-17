@@ -32,6 +32,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
+	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
@@ -260,6 +261,7 @@ func run() error {
 	formSalt := make([]byte, 16)
 	_, _ = rand.Read(formSalt)
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
+	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
@@ -273,6 +275,16 @@ func run() error {
 					log.WarnContext(ctx, "daily ads refresh could not start", "error", e)
 				}
 				log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
+				return nil
+			}},
+			{Kind: "measurement.record_pending", Every: 10 * time.Minute, Run: func(ctx context.Context) error {
+				// Every workspace's received submissions become events.
+				n, err := measurementService.RecordPending(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "recording form events failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "recorded form events", "events", n)
+				}
 				return nil
 			}},
 			{Kind: "research.run_due", Every: 6 * time.Hour, Run: func(ctx context.Context) error {
@@ -338,6 +350,7 @@ func run() error {
 			Research:    researchService,
 			Plans:       planService,
 			Pages:       pageService,
+			Measurement: measurementService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

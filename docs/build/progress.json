@@ -1115,13 +1115,42 @@
         "B3.2",
         "B1.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00021_measurement.sql",
+        "server/store/queries/measurement.sql",
+        "server/core/measurement/",
+        "server/core/pages/pages.go",
+        "server/api/measurement.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/measurement.ts",
+        "web/src/routes/launch.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/measurement/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "one test submission records one non-counting test event; the enquiry count never moves",
+        "page views, WhatsApp and call clicks and Meta pixel verification are explicit as unsupported",
+        "readiness carries live:false and names platform review as not started; a creative in review blocks",
+        "verification posts only test submissions and creates only test events"
+      ],
+      "remaining": [
+        "readiness cannot reach ready without a connected ad account",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "a connected Google Ads or Meta account",
+          "unblocks": "the account gate in readiness and live conversion-action checks"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-38."
     },
     {
       "id": "B3.4",

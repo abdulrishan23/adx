@@ -414,6 +414,41 @@ type LeadAttribution struct {
 	PayloadHash        string
 }
 
+type MeasurementCheck struct {
+	ID           int64
+	WorkspaceID  int64
+	PlanID       int64
+	PlanVersion  int64
+	Kind         string
+	PageID       sql.NullInt64
+	AccountID    sql.NullInt64
+	State        string
+	Detail       string
+	SubmissionID sql.NullInt64
+	EventID      sql.NullInt64
+	EvidenceID   sql.NullInt64
+	CheckedBy    sql.NullInt64
+	CheckedAt    time.Time
+}
+
+type MeasurementEvent struct {
+	ID            int64
+	WorkspaceID   int64
+	Kind          string
+	Source        string
+	SourceRef     string
+	PageID        sql.NullInt64
+	ProjectID     sql.NullInt64
+	PlanID        sql.NullInt64
+	Test          int64
+	DedupeKey     string
+	DuplicateOfID sql.NullInt64
+	Counts        int64
+	Attribution   string
+	OccurredAt    time.Time
+	RecordedAt    time.Time
+}
+
 type Membership struct {
 	ID          int64
 	WorkspaceID int64

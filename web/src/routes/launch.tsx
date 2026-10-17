@@ -1,0 +1,371 @@
+import { useState } from "react";
+import { useAccounts } from "@/api/accounts";
+import {
+  useLaunchReadiness,
+  useMeasurementCatalog,
+  useMeasurementChecks,
+  useRunCheck,
+} from "@/api/measurement";
+import { usePages } from "@/api/pages";
+import { usePlan, usePlans } from "@/api/plans";
+import { useResearchEvidence } from "@/api/research";
+import { useSession } from "@/api/session";
+import type { LaunchItem } from "@/api/types.gen";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+
+const areaLabel: Record<string, string> = {
+  plan: "Plan",
+  assets: "Creatives",
+  pages: "Landing pages",
+  accounts: "Ad accounts",
+  measurement: "Measurement",
+  external_review: "Platform review",
+};
+
+const tone: Record<string, string> = {
+  ok: "",
+  blocked: "text-destructive",
+  warning: "text-foreground",
+  unsupported: "text-muted-foreground",
+};
+
+// Launch readiness joins the accepted plan, its approved creatives, its live
+// tested pages, the connected accounts and the measurement checks into one
+// verdict. Ready is not live: nothing is live until an authorized execution
+// (B3.5) confirms delivery, and that is said on the page.
+export function LaunchPage() {
+  const plans = usePlans();
+  const session = useSession();
+  const [planId, setPlanId] = useState<number | null>(null);
+  const [version, setVersion] = useState<number | null>(null);
+  const plan = usePlan(planId);
+  const canEdit = session.data?.role === "marketer" || session.data?.role === "admin";
+  const versions = plan.data?.versions ?? [];
+  const shownVersion = version ?? versions[versions.length - 1]?.version ?? null;
+
+  return (
+    <section className="space-y-6 text-sm">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Launch readiness</h1>
+        <div className="flex flex-wrap gap-2">
+          <select
+            className="rounded-md border bg-background px-2 py-1"
+            value={planId ?? ""}
+            onChange={(e) => {
+              setPlanId(e.target.value ? Number(e.target.value) : null);
+              setVersion(null);
+            }}
+          >
+            <option value="">Plan…</option>
+            {plans.data?.plans.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title}
+              </option>
+            ))}
+          </select>
+          {planId !== null && (
+            <select
+              className="rounded-md border bg-background px-2 py-1"
+              value={shownVersion ?? ""}
+              onChange={(e) => setVersion(Number(e.target.value))}
+            >
+              {versions.map((v) => (
+                <option key={v.id} value={v.version}>
+                  v{v.version} · {v.state}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      </div>
+      {planId === null ? (
+        <p className="text-muted-foreground">Pick a plan.</p>
+      ) : (
+        shownVersion !== null && (
+          <Readiness planId={planId} version={shownVersion} canEdit={canEdit} />
+        )
+      )}
+      <CatalogView />
+    </section>
+  );
+}
+
+function Readiness({
+  planId,
+  version,
+  canEdit,
+}: {
+  planId: number;
+  version: number;
+  canEdit: boolean;
+}) {
+  const readiness = useLaunchReadiness(planId, version);
+  const checks = useMeasurementChecks(planId, version);
+  const [evidenceId, setEvidenceId] = useState<number | null>(null);
+  if (readiness.isPending) return <p className="text-muted-foreground">Loading…</p>;
+  if (readiness.error) return <p className="text-destructive">{readiness.error.message}</p>;
+  const r = readiness.data;
+  const byArea = new Map<string, LaunchItem[]>();
+  for (const it of r.items) byArea.set(it.area, [...(byArea.get(it.area) ?? []), it]);
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border p-3">
+        <p className="font-medium">
+          {r.ready ? "Ready to put forward for launch" : "Not ready"} ·{" "}
+          {r.live ? "live" : "not live"}
+        </p>
+        <p className="text-muted-foreground">
+          Ready means every gate ADX can check is clear. Nothing is live until an authorized
+          execution confirms delivery; acceptance and readiness authorize no spend
+          {r.executionAuthorization === null && " (no execution authorization exists)"}.
+        </p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {["plan", "assets", "pages", "accounts", "measurement", "external_review"].map((area) => (
+          <section key={area} className="rounded-lg border p-3">
+            <h3 className="font-medium">{areaLabel[area]}</h3>
+            <ul className="mt-1 space-y-1">
+              {(byArea.get(area) ?? []).map((it) => (
+                <li
+                  key={`${it.code}:${it.refKind}:${it.refId}:${it.message}`}
+                  className={tone[it.state]}
+                >
+                  {it.state === "blocked"
+                    ? "Blocks: "
+                    : it.state === "unsupported"
+                      ? "Unsupported: "
+                      : it.state === "warning"
+                        ? "Note: "
+                        : ""}
+                  {it.message}
+                </li>
+              ))}
+              {(byArea.get(area) ?? []).length === 0 && (
+                <li className="text-muted-foreground">Nothing to check.</li>
+              )}
+            </ul>
+          </section>
+        ))}
+      </div>
+      {canEdit && <RunChecks planId={planId} version={version} />}
+      <section className="space-y-1">
+        <h3 className="font-medium">Checks on this version</h3>
+        {checks.data?.checks.length === 0 && <p className="text-muted-foreground">None run yet.</p>}
+        <ul className="space-y-1">
+          {checks.data?.checks.map((c) => (
+            <li
+              key={c.id}
+              className={
+                c.state === "passed"
+                  ? ""
+                  : c.state === "failed"
+                    ? "text-destructive"
+                    : "text-muted-foreground"
+              }
+            >
+              {new Date(c.checkedAt).toLocaleString()} · {c.kind} · {c.state} · {c.detail}
+              {c.evidenceId && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <button
+                    type="button"
+                    className="underline"
+                    onClick={() => setEvidenceId(c.evidenceId as number)}
+                  >
+                    evidence
+                  </button>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+      {r.links.length > 0 && (
+        <section className="space-y-1">
+          <h3 className="font-medium">
+            Tracked links{" "}
+            <span className="font-normal text-muted-foreground">(built with the fixed scheme)</span>
+          </h3>
+          <ul className="space-y-1">
+            {r.links.map((l) => (
+              <li key={`${l.creativeId}-${l.pageId}-${l.channel}`} className="break-all">
+                creative {l.creativeId} · {l.channel} · <code className="text-xs">{l.url}</code>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {evidenceId !== null && <Evidence id={evidenceId} onClose={() => setEvidenceId(null)} />}
+    </div>
+  );
+}
+
+function RunChecks({ planId, version }: { planId: number; version: number }) {
+  const pages = usePages();
+  const accounts = useAccounts();
+  const run = useRunCheck();
+  const [pageId, setPageId] = useState(0);
+  const [accountId, setAccountId] = useState(0);
+  const [name, setName] = useState("");
+  return (
+    <section className="space-y-2 rounded-lg border p-3">
+      <h3 className="font-medium">Run a check</h3>
+      <p className="text-muted-foreground">
+        A form check posts a real test submission through the live page; it is marked as a test and
+        never counts as an enquiry. A conversion-action check reads what the last Google Ads refresh
+        saw. Pixel events cannot be verified by ADX and are recorded as unsupported.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="rounded-md border bg-background px-2 py-1"
+          value={pageId}
+          onChange={(e) => setPageId(Number(e.target.value))}
+        >
+          <option value={0}>Page…</option>
+          {pages.data?.pages.map((p) => (
+            <option key={p.id} value={p.id}>
+              /p/{p.slug}
+            </option>
+          ))}
+        </select>
+        <Button
+          size="xs"
+          disabled={!pageId || run.isPending}
+          onClick={() =>
+            run.mutate({
+              planId,
+              planVersion: version,
+              kind: "form_submit",
+              pageId,
+              accountId: 0,
+              name: "",
+            })
+          }
+        >
+          Check form
+        </Button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          className="rounded-md border bg-background px-2 py-1"
+          value={accountId}
+          onChange={(e) => setAccountId(Number(e.target.value))}
+        >
+          <option value={0}>Account…</option>
+          {accounts.data?.accounts.map((a) => (
+            <option key={a.id} value={a.id}>
+              {a.provider} {a.name ?? a.externalId}
+            </option>
+          ))}
+        </select>
+        <Input
+          className="h-7 max-w-56"
+          placeholder="Conversion action name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Button
+          size="xs"
+          disabled={!accountId || !name || run.isPending}
+          onClick={() =>
+            run.mutate({
+              planId,
+              planVersion: version,
+              kind: "conversion_action",
+              pageId: 0,
+              accountId,
+              name,
+            })
+          }
+        >
+          Check conversion action
+        </Button>
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={!accountId || run.isPending}
+          onClick={() =>
+            run.mutate({
+              planId,
+              planVersion: version,
+              kind: "account_permission",
+              pageId: 0,
+              accountId,
+              name: "",
+            })
+          }
+        >
+          Check account
+        </Button>
+        <Button
+          size="xs"
+          variant="outline"
+          disabled={run.isPending}
+          onClick={() =>
+            run.mutate({
+              planId,
+              planVersion: version,
+              kind: "pixel_event",
+              pageId: 0,
+              accountId: 0,
+              name: name || "Lead",
+            })
+          }
+        >
+          Record pixel as unsupported
+        </Button>
+      </div>
+      {run.error && <p className="text-destructive">{run.error.message}</p>}
+      {run.data && (
+        <p className={run.data.state === "passed" ? "" : "text-destructive"}>
+          {run.data.kind}: {run.data.state} · {run.data.detail}
+        </p>
+      )}
+    </section>
+  );
+}
+
+function CatalogView() {
+  const cat = useMeasurementCatalog();
+  if (!cat.data) return null;
+  return (
+    <details className="rounded-lg border p-3">
+      <summary className="cursor-pointer font-medium">What ADX can and cannot measure</summary>
+      <ul className="mt-2 space-y-1">
+        {cat.data.events.map((e) => (
+          <li key={e.key} className={e.supported ? "" : "text-muted-foreground"}>
+            <span className="font-medium">{e.label}</span>:{" "}
+            {e.supported ? "supported" : "unsupported"} · {e.how}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-muted-foreground">
+        Attribution fields kept: {cat.data.attributionFields.join(", ")}.
+      </p>
+      <p className="text-muted-foreground">Links: {cat.data.utmScheme}.</p>
+      <p className="text-muted-foreground">Deduplication: {cat.data.dedupeRule}</p>
+    </details>
+  );
+}
+
+function Evidence({ id, onClose }: { id: number; onClose: () => void }) {
+  const ev = useResearchEvidence(id);
+  return (
+    <section className="space-y-1 rounded-lg border p-3">
+      <div className="flex items-baseline justify-between">
+        <h3 className="font-medium">Evidence {id}</h3>
+        <Button size="xs" variant="outline" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+      {ev.error && <p className="text-destructive">{ev.error.message}</p>}
+      {ev.data && (
+        <pre className="max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-muted p-2 text-xs">
+          {JSON.stringify(ev.data.payload, null, 2)}
+        </pre>
+      )}
+    </section>
+  );
+}

@@ -311,3 +311,18 @@ make check && make test
 - Web: `/pages` with the page list, new page, version tabs with the live marker, the readiness panel with "send test submission to live version", the document editor (sections, offer binding, form fields, consent, success text), the sandboxed preview frame, publish and rollback with the deployment history and checksums, and the submissions list with test and rejection markers. Typecheck and biome clean. Not browser-tested.
 
 Live: nothing external. A real host adapter is blocked on knowing the hosts and having access (gate in the UI).
+
+## B3.3 Measurement and launch-readiness verification
+
+Local:
+
+```
+cd server && go test ./core/measurement/ ./api/   # ok
+make check && make test
+```
+
+- `core/measurement`: one submission becomes one event and recording again adds nothing; the same person on the same page the same day, typed with and without the country code, is a duplicate that does not count and points at the first event with the same key; another person counts; the same person the next day counts again; a controlled form check posts a test submission and passes with one non-counting test event, the enquiry count unchanged, evidence recorded; a second check adds another test event and still counts nothing; a viewer can't run checks. Conversion-action checks fail when the account has no actions read, when the action is REMOVED, and pass when ENABLED and included; a pixel check is `unsupported` with the reason; an unknown kind is refused; an account check without connections fails rather than passes; the catalog marks page views, WhatsApp and call clicks unsupported with reasons; a tracked URL keeps existing parameters and adds the scheme. Readiness on a fresh plan blocks on plan acceptance, short assets, no ready page, a missing account, a missing conversion check, and notes review not started, with `live` false and no authorization; after acceptance, a creative in review blocks as content not approved; after approval, a published untested page blocks; after the form check and a conversion check pass, plan, creative, page, checks and UTM scheme read ok, one tracked link is built with plan, channel, creative and source, and the missing account still blocks, so readiness is not reached on a machine with no connected account.
+- `api`: routes for the catalog, checks, readiness, events (recording pending submissions first for marketers) and tracked URLs are wired; covered by compile and core tests.
+- Web: `/launch` with plan and version pickers, the verdict line ("not live" always), six areas with ok/blocked/unsupported/note items, run-a-check controls (form, conversion action, account, pixel as unsupported), the checks list with evidence drill-down, tracked links and the catalog of what ADX can and cannot measure. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external. Readiness cannot reach ready here: no ad account is connected.
