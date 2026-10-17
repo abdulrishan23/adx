@@ -139,6 +139,42 @@ func (h *handlers) importPlanVersion(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, v)
 }
 
+func (h *handlers) generatePlan(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "id", "plan")
+	if !ok {
+		return
+	}
+	var in plans.GenerateInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	g, err := h.plans.Generate(r.Context(), actorFrom(r), id, in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, g)
+}
+
+func (h *handlers) diffPlan(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "id", "plan")
+	if !ok {
+		return
+	}
+	from, err1 := strconv.ParseInt(r.URL.Query().Get("from"), 10, 64)
+	to, err2 := strconv.ParseInt(r.URL.Query().Get("to"), 10, 64)
+	if err1 != nil || err2 != nil {
+		writeError(w, http.StatusBadRequest, "from and to must be version numbers")
+		return
+	}
+	d, err := h.plans.Diff(r.Context(), actorFrom(r), id, from, to)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
+}
+
 func (h *handlers) validatePlan(w http.ResponseWriter, r *http.Request) {
 	var in ValidatePlanInput
 	if !readJSON(w, r, &in) {

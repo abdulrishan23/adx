@@ -250,3 +250,19 @@ make check && make test
 - Web: `/plans` with the plan list, new-plan form, version tabs, validation panel with the allocated-vs-budget bar, the plan fields, the allocation editor with the channel catalog (manual channels marked), list editors for assets, pages, measurement, hypotheses, evidence and assumptions, live validation while editing, save as next version, accept content (admin, ready only), JSON and CSV export, JSON import and the exact-template gate notice. Typecheck and biome clean. Not browser-tested.
 
 Live: nothing external. The exact Excel template remains blocked on the file.
+
+## B2.4 Plan generation, validation and revision impact
+
+Local:
+
+```
+cd server && go test ./core/plans/ ./providers/anthropic/ ./api/   # ok
+make check && make test
+```
+
+- `core/plans` with the scripted model: a proposal that moves the budget to 500,000, cites a fact that doesn't exist, types a cost per lead with no source and cites the dropped fact for a price lands as version 2, `generated`, `ready`, unaccepted, with the budget and period pinned, three of four evidence refs kept, the CPL blanked and an `unavailable` assumption added, the price citation downgraded to unavailable, and notes `budget_pinned`, `evidence_dropped`, `cpl_unavailable`, `citation_removed`; the request the model saw forced `propose_plan`, had no `budgetMinor` in the schema, carried the frame, the keyword finding and the instructions, and no undeployable channel; version 1 is untouched; one evidence row records the call. A TikTok allocation and an unknown channel are rejected with nothing saved; prose instead of a document is rejected; the fourth call in a day is refused before the model (cap 3 in the test); an outage is `unavailable` with the safe text; a brief about another brand is refused before any model call; no model configured is a stated conflict. Diff between an accepted version 1 and version 2: the objective change, google_search changed, meta_lead_form removed, google_pmax added, the evidence-refs section, and an invalidation naming version 1; the same version diffed with itself is empty; the offer cited by the accepted version is listed as affected while the latest version no longer cites it.
+- `providers/anthropic`: a forced tool choice reaches the API as `tool_choice {type: tool, name, disable_parallel_tool_use: true}` and the tool_use comes back.
+- `api`: viewer can't create or accept; the list carries the template gate and channel catalog; acceptance returns `executionAuthorization: null`; generate without a model is 409 naming the configuration; `xlsx` export is 409; CSV export carries a content disposition; a bad diff query is 400; validate returns codes.
+- Web: generate panel (briefs of the brand, instructions, the model's corrections listed), version compare with field, allocation and section changes and the superseded warning, an "accepted version is older than the latest" notice, and plans citing an offer on the offer detail. Typecheck and biome clean. Not browser-tested.
+
+Live: the model was not called; no API key exists here. The adapter's tool-choice shape is tested against a fake Messages API only.

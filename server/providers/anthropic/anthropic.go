@@ -77,6 +77,9 @@ func (m *Model) Complete(ctx context.Context, req assistant.Request) (assistant.
 	if m.effort != "" {
 		params.OutputConfig = sdk.OutputConfigParam{Effort: sdk.OutputConfigEffort(m.effort)}
 	}
+	if req.ToolChoice != "" {
+		params.ToolChoice = sdk.ToolChoiceUnionParam{OfTool: &sdk.ToolChoiceToolParam{Name: req.ToolChoice, DisableParallelToolUse: sdk.Bool(true)}}
+	}
 	for _, t := range req.Tools {
 		props, _ := t.InputSchema["properties"]
 		required, _ := t.InputSchema["required"].([]string)

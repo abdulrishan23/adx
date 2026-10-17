@@ -7,7 +7,31 @@ package store
 
 import (
 	"context"
+	"time"
 )
+
+const countEvidenceSince = `-- name: CountEvidenceSince :one
+SELECT count(*) FROM evidence WHERE workspace_id = ? AND source = ? AND kind = ? AND observed_at >= ?
+`
+
+type CountEvidenceSinceParams struct {
+	WorkspaceID int64
+	Source      string
+	Kind        string
+	ObservedAt  time.Time
+}
+
+func (q *Queries) CountEvidenceSince(ctx context.Context, arg CountEvidenceSinceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, countEvidenceSince,
+		arg.WorkspaceID,
+		arg.Source,
+		arg.Kind,
+		arg.ObservedAt,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
 
 const getEvidenceByID = `-- name: GetEvidenceByID :one
 SELECT id, workspace_id, run_id, account_id, source, kind, source_ref, scope, class, observed_at, event_at, payload_version, payload, payload_hash, completeness, retain_until, superseded_by FROM evidence WHERE id = ? AND workspace_id = ?

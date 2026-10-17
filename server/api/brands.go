@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/plans"
 )
 
 type BrandsResponse struct {
@@ -29,6 +30,9 @@ type OfferHistoryResponse struct {
 	Offer    brands.Offer              `json:"offer"`
 	Versions []brands.OfferVersion     `json:"versions"`
 	Affected []brands.AffectedCreative `json:"affected"`
+	// AffectedPlans are plan versions citing the offer; empty when plans
+	// aren't wired.
+	AffectedPlans []plans.AffectedPlan `json:"affectedPlans"`
 }
 
 type ProjectOffersResponse struct {
@@ -148,7 +152,15 @@ func (h *handlers) getOffer(w http.ResponseWriter, r *http.Request) {
 		h.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, OfferHistoryResponse{Offer: o, Versions: versions, Affected: affected})
+	affectedPlans := []plans.AffectedPlan{}
+	if h.plans != nil {
+		affectedPlans, err = h.plans.PlansUsingOffer(r.Context(), actor, id)
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, OfferHistoryResponse{Offer: o, Versions: versions, Affected: affected, AffectedPlans: affectedPlans})
 }
 
 func (h *handlers) reviseOffer(w http.ResponseWriter, r *http.Request) {

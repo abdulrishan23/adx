@@ -211,6 +211,8 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/plans/validate", h.validatePlan)
 			r.Get("/api/plans/{id}", h.getPlan)
 			r.Post("/api/plans/{id}/versions", h.savePlanVersion)
+			r.Post("/api/plans/{id}/generate", h.generatePlan)
+			r.Get("/api/plans/{id}/diff", h.diffPlan)
 			r.Post("/api/plans/{id}/import", h.importPlanVersion)
 			r.Post("/api/plans/{id}/versions/{version}/accept", h.acceptPlanVersion)
 			r.Get("/api/plans/{id}/versions/{version}/export", h.exportPlanVersion)

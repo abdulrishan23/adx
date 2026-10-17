@@ -115,3 +115,30 @@ func TestErrorMapping(t *testing.T) {
 	_, err = anthropic.New(anthropic.Config{APIKey: "k", Effort: "ultra"})
 	require.Error(t, err)
 }
+
+// Catches: a forced tool choice not reaching the API, or reaching it as
+// "auto", so a structured-output request could come back as prose.
+func TestForcedToolChoice(t *testing.T) {
+	var body map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		require.NoError(t, json.Unmarshal(raw, &body))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"id":"msg_2","type":"message","role":"assistant","model":"claude-opus-5-5","content":[{"type":"tool_use","id":"toolu_9","name":"propose_plan","input":{"objective":"x"}}],"stop_reason":"tool_use","stop_sequence":null,"usage":{"input_tokens":10,"output_tokens":5}}`))
+	}))
+	defer srv.Close()
+	m, err := anthropic.New(anthropic.Config{APIKey: "sk-test", BaseURL: srv.URL, HTTPClient: srv.Client()})
+	require.NoError(t, err)
+	resp, err := m.Complete(t.Context(), assistant.Request{
+		Messages:   []assistant.Message{{Role: assistant.RoleUser, Content: []assistant.Block{{Type: "text", Text: "go"}}}},
+		Tools:      []assistant.ToolSpec{{Name: "propose_plan", Description: "d", InputSchema: map[string]any{"type": "object", "properties": map[string]any{}}}},
+		ToolChoice: "propose_plan",
+	})
+	require.NoError(t, err)
+	choice, _ := body["tool_choice"].(map[string]any)
+	assert.Equal(t, "tool", choice["type"])
+	assert.Equal(t, "propose_plan", choice["name"])
+	assert.Equal(t, true, choice["disable_parallel_tool_use"])
+	require.Len(t, resp.Content, 1)
+	assert.Equal(t, "propose_plan", resp.Content[0].ToolName)
+}

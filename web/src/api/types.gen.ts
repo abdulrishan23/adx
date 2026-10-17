@@ -48,6 +48,14 @@ export interface AffectedCreative {
     reviewState: string;
 }
 
+// From plans/diff.go
+export interface AffectedPlan {
+    planId: number;
+    planTitle: string;
+    version: number;
+    state: PlanState;
+}
+
 // From alerts/alerts.go
 export interface Alert {
     id: number;
@@ -115,6 +123,15 @@ export interface Allocation {
     projectId: number | null;
     expectedCplMinor: number | null;
     note: string;
+}
+
+// From plans/diff.go
+export interface AllocationChange {
+    channel: string;
+    objective: string;
+    beforeMinor: number | null;
+    afterMinor: number | null;
+    change: string;
 }
 
 // From creative/creative.go
@@ -359,7 +376,7 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From evidence/evidence.go
+// From runs/runs.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -491,6 +508,13 @@ export type Day = string;
 
 // From core/core.go
 export const DefaultWorkspace = 1;
+
+// From plans/diff.go
+export interface DiffChange {
+    path: string;
+    before: string;
+    after: string;
+}
 
 // From assets/assets.go
 export interface Document {
@@ -700,10 +724,30 @@ export interface FunnelState {
     unmapped: string[];
 }
 
+// From plans/generate.go
+export interface GenerateInput {
+    briefIds: number[];
+    instructions: string;
+}
+
 // From api/reports.go
 export interface GenerateReportResponse {
     report: Report;
     created: boolean;
+}
+
+// From plans/generate.go
+export interface Generation {
+    version: PlanVersion;
+    notes: GenerationNote[];
+    model: string;
+    usage: Usage;
+}
+
+// From plans/generate.go
+export interface GenerationNote {
+    code: string;
+    message: string;
 }
 
 // From connections/accounts.go
@@ -741,6 +785,12 @@ export interface ImportProgress {
     pages: number;
     contacts: number;
     total: number | null;
+}
+
+// From plans/diff.go
+export interface Invalidation {
+    acceptedVersion: number;
+    reason: string;
 }
 
 // From research/research.go
@@ -924,6 +974,7 @@ export interface OfferHistoryResponse {
     offer: Offer;
     versions: OfferVersion[];
     affected: AffectedCreative[];
+    affectedPlans: AffectedPlan[];
 }
 
 // From brands/brands.go
@@ -991,6 +1042,17 @@ export interface PlanAcceptance {
 export interface PlanDetail {
     plan: Plan;
     versions: PlanVersion[];
+}
+
+// From plans/diff.go
+export interface PlanDiff {
+    planId: number;
+    from: number;
+    to: number;
+    fields: DiffChange[];
+    allocations: AllocationChange[];
+    sections: DiffChange[];
+    invalidates: Invalidation | null;
 }
 
 // From plans/plans.go
@@ -1441,8 +1503,8 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From core/core.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+// From assistant/model.go
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From runs/runs.go
 export interface Run {
@@ -1619,6 +1681,12 @@ export interface Turn {
 // From api/assistant.go
 export interface TurnsResponse {
     turns: Turn[];
+}
+
+// From assistant/model.go
+export interface Usage {
+    InputTokens: number;
+    OutputTokens: number;
 }
 
 // From users/users.go

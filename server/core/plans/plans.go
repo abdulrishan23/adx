@@ -25,7 +25,9 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/assets"
+	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/store"
 )
 
@@ -271,21 +273,40 @@ type Config struct {
 	Clock core.Clock
 	// Exact is the exact-template adapter, nil while no template exists.
 	Exact TemplateAdapter
+	// Model drafts plan documents (Generate). Nil means generation is not
+	// configured and says so.
+	Model assistant.Model
+	// Evidence records each generation and enforces the daily cap.
+	Evidence *evidence.Store
+	// MaxGenerationsPerDay caps model calls per workspace. Default 40.
+	MaxGenerationsPerDay int
+	// GenerationMaxTokens caps the model's output per call. Default 8000.
+	GenerationMaxTokens int
 }
 
 type Plans struct {
-	db       *store.DB
-	clock    core.Clock
-	brands   *brands.Brands
-	adapters map[string]TemplateAdapter
-	exact    TemplateAdapter
+	db           *store.DB
+	clock        core.Clock
+	brands       *brands.Brands
+	adapters     map[string]TemplateAdapter
+	exact        TemplateAdapter
+	model        assistant.Model
+	evidence     *evidence.Store
+	maxGenPerDay int
+	genMaxTokens int
 }
 
 func New(db *store.DB, br *brands.Brands, cfg Config) *Plans {
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	p := &Plans{db: db, clock: cfg.Clock, brands: br, adapters: map[string]TemplateAdapter{}, exact: cfg.Exact}
+	if cfg.MaxGenerationsPerDay <= 0 {
+		cfg.MaxGenerationsPerDay = defaultMaxGenPerDay
+	}
+	if cfg.GenerationMaxTokens <= 0 {
+		cfg.GenerationMaxTokens = defaultGenMaxTokens
+	}
+	p := &Plans{db: db, clock: cfg.Clock, brands: br, adapters: map[string]TemplateAdapter{}, exact: cfg.Exact, model: cfg.Model, evidence: cfg.Evidence, maxGenPerDay: cfg.MaxGenerationsPerDay, genMaxTokens: cfg.GenerationMaxTokens}
 	for _, a := range []TemplateAdapter{JSONAdapter{}, CSVAdapter{}} {
 		p.adapters[a.Name()] = a
 	}

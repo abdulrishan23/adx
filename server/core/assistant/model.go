@@ -55,6 +55,9 @@ type Request struct {
 	Messages  []Message
 	Tools     []ToolSpec
 	MaxTokens int
+	// ToolChoice names a tool the model must call, for structured output.
+	// Empty leaves the choice to the model.
+	ToolChoice string
 }
 
 type Usage struct {

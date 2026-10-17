@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJSON, postJSON } from "./client";
 import type {
+  GenerateInput,
+  Generation,
   PlanDetail,
+  PlanDiff,
   PlanDocument,
   PlanInput,
   PlansResponse,
@@ -69,5 +72,21 @@ export function useImportPlan(id: number | null) {
       return (await res.json()) as PlanVersion;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["plans"] }),
+  });
+}
+
+export function useGeneratePlan(id: number | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: GenerateInput) => postJSON<Generation>(`/api/plans/${id}/generate`, input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["plans"] }),
+  });
+}
+
+export function usePlanDiff(id: number | null, from: number | null, to: number | null) {
+  return useQuery({
+    queryKey: ["plans", id, "diff", from, to],
+    queryFn: () => getJSON<PlanDiff>(`/api/plans/${id}/diff?from=${from}&to=${to}`),
+    enabled: id !== null && from !== null && to !== null && from !== to,
   });
 }

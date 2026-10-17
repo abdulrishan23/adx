@@ -250,7 +250,7 @@ func run() error {
 		}
 	}
 	// No exact Excel adapter: the template has not been supplied (decisions.md).
-	planService := plans.New(db, brandService, plans.Config{})
+	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})

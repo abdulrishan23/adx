@@ -940,13 +940,46 @@
         "B2.3",
         "B1.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/core/plans/generate.go",
+        "server/core/plans/diff.go",
+        "server/core/plans/plans.go",
+        "server/core/assistant/model.go",
+        "server/providers/anthropic/anthropic.go",
+        "server/store/queries/evidence.sql",
+        "server/api/plans.go",
+        "server/api/brands.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/plans.ts",
+        "web/src/routes/plans.tsx",
+        "web/src/routes/brands.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/plans/ ./providers/anthropic/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a model-supplied unsupported or unknown channel rejects the proposal with nothing saved",
+        "a revision is a new version; the accepted version is immutable and the diff names it as superseded in content",
+        "acceptance carries no execution authorization and is never produced by generation",
+        "an expected CPL without a cited source is blanked and recorded as an unavailable assumption"
+      ],
+      "remaining": [
+        "live model call needs ADX_MODEL_API_KEY",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "model API key and data-use approval",
+          "unblocks": "live plan drafting"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-34."
     },
     {
       "id": "B2.5",
