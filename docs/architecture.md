@@ -302,3 +302,16 @@ Both are pinned GitHub issues, each a checklist with one line per item.
 
 - **[Open questions (#34)](https://github.com/WokeWorks/adx/issues/34).** The biggest are the `marketing-platform` spec Twaha's tech draft refers to, and how website visits get tied to leads.
 - **[Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35).** Revenue reporting is blocked until Akarati sends deal values into GoHighLevel.
+
+#### D-27. The build destination widens ADX beyond marketing-only, behind policy gates
+2026-10-17. The seven-phase build specification (`docs/build/ADX_AUTONOMOUS_BUILD.md`) sets a later destination than D-01 to D-03: marketing plus a native AI CRM, creative production, qualification calling, campaign execution and coordinated agents. ADX is built towards that destination. Each capability that reaches outside (calling a lead, messaging, changing an ad account) stays disabled until Reportage supplies the policy that governs it and an admin configures it. This changes the following without deleting them:
+
+- D-02 (only the marketing team uses ADX) stays true for sign-in today; native CRM ownership in phase 5 (B5.1) is built so sales users could be added, but no sales role exists until Reportage asks.
+- D-03 (ADX sends no outreach) is replaced for the build: qualification calling (B4.4, B4.5), nurturing drafts and messaging adapters (B4.3) are implemented locally with fake providers. Live calling and messaging stay off until Reportage supplies the calling, recording and contact policy and names an authorized telecom route. Reportage's earlier position, "not open to automated calls", is recorded in `research/sources/reportage-context.md` and has not been reversed in writing. That written reversal is a blocker for live use, not for the build.
+- D-04 (one client) stays the operating mode; workspace scoping starts in phase 0 (B0.3) so phase 6 (B6.1) can add clients without re-keying data.
+- "Creative generation" in Set aside is revisited: creative production (brand kits, four-format EN/AR layouts, canvas editing, review, export) is in scope from B0.6/B1.6/B3.1, using the creative-studio source's document model. AI image generation is still not built; template layout is never labelled as AI generation.
+- "Voice calling" in Set aside is revisited as above.
+
+- **Why.** The owner's build handoff asks for it, and asks that the change be recorded rather than the history deleted.
+- **Cost.** Scope is much larger than D-01's. Every gate adds configuration the owner must supply before the feature does anything outside ADX. The build ledger in `docs/build/` lists those inputs.
+- **Revisit if.** Reportage declines the policies that would enable calling or messaging; those capabilities then stay local-only or are removed.

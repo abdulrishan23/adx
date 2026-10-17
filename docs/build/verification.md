@@ -90,3 +90,18 @@ make check && make test
 - Web: `/runs` page and `RunStatus` component (state, incomplete-read marker, observed-through freshness, safe error, attempt). Typecheck and biome clean.
 
 Live: n/a (no provider work exists yet to run).
+
+## B0.6 Reusable creative and voice integration boundaries
+
+Local:
+
+```
+cd server && go test -race ./core/assets/ ./providers/filestore/ ./core/voice/   # ok
+```
+
+- `core/assets`: review transitions (no draft → approved shortcut, approved terminal), an acceptance covers exactly one ref and never grants delivery, the four formats' dimensions.
+- `providers/filestore`: identical bytes → same key, different bytes → different key, the stored file is not rewritten, a tampered file is refused on open with a checksum error, traversal keys refused, empty and untyped puts refused, missing directory refused.
+- `core/voice` with fakes and the race detector: greeting frames reach the caller in order, caller audio reaches the engine, an interruption clears the far side once, the end sends `end-of-call` and waits for the echo, transcript returned; caller hangup ends cleanly; codec mismatch is an error, not noise; engine start failure fails the call; maximum duration ends a never-ending engine; an unsigned status callback is refused.
+- Inventories: `docs/build/reuse-creative.md`, `docs/build/reuse-voice.md`.
+
+Live: none. No telecom route or speech credential is configured, by design.

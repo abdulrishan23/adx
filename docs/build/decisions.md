@@ -91,3 +91,15 @@ Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. D
 
 ### BD-15. River inserts the run's job in the run's transaction
 2026-10-17. `jobs.Queue` implements `runs.Enqueuer` with River's `InsertTx` and a unique constraint on `run_id`, so a committed run always has exactly one live job and a rolled-back run has none. The job worker finds the run's executor by kind; unknown kinds fail the run visibly. Executors live outside `jobs` (phase 1 registers imports and refreshes in `cmd/adx`).
+
+### BD-16. Creative behaviour is ported, not retained as a service
+2026-10-17. The creative-studio app (`docs/build/reuse-creative.md`) is not run as a service beside ADX. Its layout document (`DesignDoc` v1), format table, copy blocks, house-rule checks and EN/AR handling are ported as `core/assets` types and, later, a React editor on the same document. Storage is `core/assets.Store`, implemented by `providers/filestore` (content-addressed by SHA-256 under `ADX_ASSETS_DIR`, written once, verified on read). Identity is ADX's session. Review is `assets.ReviewState` (draft → rendered → in_review → approved/revise); approved is terminal and a changed document is a new version with no approval. `ContentAcceptance.GrantsDelivery()` is always false: delivery authorization lives in the execution domain (B3.4).
+
+- **Why.** The source has no immutability, no versions, anonymous approvals and Supabase identity, all of which the spec requires ADX to own. Its document model and rules are worth keeping.
+- **Cost.** The canvas editor has to be rebuilt in ADX's React app (B1.6). The Python generator's contrast-aware placement is not ported.
+
+### BD-17. Voice is three interfaces and a bridge, with fakes only
+2026-10-17. `core/voice` declares `Telephony` (place/hang up/parse signed callbacks), `Transport` (one call's media frames, clear, mark) and `Speech` (conversation sessions). `voice.Bridge` ports the reference source's orchestration: codec check, queue engine audio in order, clear the far side on interruption, send an end mark and wait for its echo before closing, start timeout and maximum duration. No education rule, prompt or outcome enum is ported. `voicetest` fakes run the whole bridge with no credentials. Twilio and ElevenLabs adapters are not written in phase 0; the UAE telecom route is unchosen and unauthorized (blocker for B4.4). Ambience mixing and µ-law framing are deferred to B4.5.
+
+### BD-18. D-27 recorded in docs/architecture.md
+2026-10-17. The widening of scope the spec asks for is recorded as D-27 with the earlier decisions it changes marked, per the spec's instruction not to delete decision history. Live use of calling and messaging needs Reportage's written policy; the build does not.

@@ -323,13 +323,60 @@
         "B0.1",
         "B0.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "docs/build/reuse-creative.md",
+        "docs/build/reuse-voice.md",
+        "docs/architecture.md (D-27)",
+        "server/core/assets/",
+        "server/providers/filestore/",
+        "server/core/voice/",
+        "server/core/voice/voicetest/"
+      ],
+      "commands": [
+        "go test -race ./core/assets/ ./providers/filestore/ ./core/voice/"
+      ],
+      "acceptance": [
+        {
+          "check": "Board publishing is distinguished from ad delivery",
+          "result": "pass",
+          "evidence": "assets TestReviewIsContentAcceptanceNotDelivery: in_review is the board, approved is terminal content acceptance, GrantsDelivery false"
+        },
+        {
+          "check": "Local fake voice starts/interrupts/ends without accessing credentials",
+          "result": "pass",
+          "evidence": "voice TestBridgeStartsInterruptsAndEnds with voicetest fakes, no config"
+        },
+        {
+          "check": "Missing external source blocks only dependent integration, not unrelated tasks",
+          "result": "pass",
+          "evidence": "CODE_SNAPSHOT.md absent at the spec path; equivalent app inventoried; missing units listed as blocked in reuse-creative.md; nothing else waited"
+        }
+      ],
+      "remaining": [
+        "Twilio and ElevenLabs adapters (B4.4, B4.5)",
+        "Canvas editor port and asset tables (B1.6, B3.1)",
+        "Ambience mixing and mu-law framing (B4.5)"
+      ],
+      "blockers": [
+        {
+          "capability": "live calling",
+          "unblocks": "owner chooses and authorizes a UAE telecom route and supplies the calling/recording/contact policy; Reportage's written reversal of 'no automated calls'"
+        },
+        {
+          "capability": "AI image generation",
+          "unblocks": "owner chooses a provider; otherwise template layout only, labelled as such"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "approval following a re-render or implying delivery",
+        "asset bytes rewritten or served after tampering",
+        "barge-in letting queued speech play",
+        "goodbye cut off before the mark echoes",
+        "codec mismatch bridged as noise",
+        "unsigned provider callback accepted"
+      ]
     },
     {
       "id": "B1.1",
