@@ -23,6 +23,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/api"
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -30,10 +31,12 @@ import (
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/reporting"
+	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
 	"github.com/WokeWorks/adx/server/providers/authentik"
+	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/store"
 
 	// Containers often ship without time zone data, and reports need Asia/Dubai.
@@ -80,6 +83,14 @@ type config struct {
 	// AdsRefreshTrailingDays is how far back the daily refresh re-reads,
 	// because both platforms revise recent days (28 for Meta's windows).
 	AdsRefreshTrailingDays int `env:"ADX_ADS_REFRESH_TRAILING_DAYS" envDefault:"30"`
+
+	// Report delivery (B1.4). Optional: without a host, reports are
+	// generated and shown but never sent.
+	SMTPHost     string `env:"ADX_SMTP_HOST"`
+	SMTPPort     int    `env:"ADX_SMTP_PORT" envDefault:"587"`
+	SMTPUsername string `env:"ADX_SMTP_USERNAME"`
+	SMTPPassword string `env:"ADX_SMTP_PASSWORD"`
+	SMTPFrom     string `env:"ADX_SMTP_FROM"`
 }
 
 func main() {
@@ -192,17 +203,41 @@ func run() error {
 		adTokens = connections
 	}
 	reportingService := reporting.New(db, readers, adTokens, evidenceStore, reporting.Config{})
+	mailer, err := configuredMailer(cfg)
+	if err != nil {
+		return err
+	}
+	reportsService := reports.New(db, reportingService, mailer, reports.Config{})
+	alertsService := alerts.New(db, reportingService, alerts.Config{})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
 		Executors: runExecutors(leadsService, reportingService),
-		Periodic: []jobs.Periodic{{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
-			started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
-			for _, e := range errs {
-				log.WarnContext(ctx, "daily ads refresh could not start", "error", e)
-			}
-			log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
-			return nil
-		}}},
+		Periodic: []jobs.Periodic{
+			{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
+				started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
+				for _, e := range errs {
+					log.WarnContext(ctx, "daily ads refresh could not start", "error", e)
+				}
+				log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
+				return nil
+			}},
+			{Kind: "reports.run_due", Every: 6 * time.Hour, Run: func(ctx context.Context) error {
+				generated, errs := reportsService.RunDue(ctx)
+				for _, e := range errs {
+					log.WarnContext(ctx, "scheduled report failed", "error", e)
+				}
+				log.InfoContext(ctx, "scheduled reports", "generated", generated, "failed", len(errs))
+				return nil
+			}},
+			{Kind: "alerts.evaluate", Every: 6 * time.Hour, Run: func(ctx context.Context) error {
+				ev, err := alertsService.EvaluateAll(ctx)
+				if err != nil {
+					return err
+				}
+				log.InfoContext(ctx, "alert checks", "day", ev.Day, "evaluated", ev.Evaluated, "fired", ev.Fired, "repeated", ev.Repeated, "skipped", len(ev.Skipped))
+				return nil
+			}},
+		},
 	})
 	if err != nil {
 		return err
@@ -233,6 +268,8 @@ func run() error {
 			Runs:        runsService,
 			Leads:       leadsService,
 			Reporting:   reportingService,
+			Reports:     reportsService,
+			Alerts:      alertsService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -254,6 +291,19 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Client.Stop(shutdownCtx))
+}
+
+// configuredMailer builds the SMTP transport, or returns nil when no host is
+// set, which leaves report delivery unconfigured.
+func configuredMailer(cfg config) (reports.Mailer, error) {
+	if cfg.SMTPHost == "" {
+		slog.Info("SMTP is not configured; reports are generated but not delivered")
+		return nil, nil
+	}
+	if cfg.SMTPFrom == "" {
+		return nil, errors.New("ADX_SMTP_FROM is required when ADX_SMTP_HOST is set")
+	}
+	return smtpmail.New(smtpmail.Config{Host: cfg.SMTPHost, Port: cfg.SMTPPort, Username: cfg.SMTPUsername, Password: cfg.SMTPPassword, From: cfg.SMTPFrom})
 }
 
 // runExecutors maps run kinds to the code that works them.

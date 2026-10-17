@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
 import { ConnectionsPage } from "@/routes/connections";
 import { FunnelPage } from "@/routes/funnel";
@@ -16,6 +17,7 @@ import { LeadsPage } from "@/routes/leads";
 import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
+import { ReportsPage } from "@/routes/reports";
 import { RunsPage } from "@/routes/runs";
 
 // Routes are declared in code instead of generated from files, so the whole
@@ -46,6 +48,20 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Analytics
+          </Link>
+          <Link
+            to="/reports"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Reports
+          </Link>
+          <Link
+            to="/alerts"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Alerts
           </Link>
           <Link
             to="/leads"
@@ -134,6 +150,18 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
+const reportsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/reports",
+  component: ReportsPage,
+});
+
+const alertsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/alerts",
+  component: AlertsPage,
+});
+
 const leadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/leads",
@@ -165,6 +193,8 @@ const routeTree = rootRoute.addChildren([
   connectionsRoute,
   policiesRoute,
   analyticsRoute,
+  reportsRoute,
+  alertsRoute,
   leadsRoute,
   funnelRoute,
   runsRoute,

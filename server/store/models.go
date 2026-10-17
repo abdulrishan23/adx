@@ -68,6 +68,34 @@ type AdCampaign struct {
 	RemovedAt    sql.NullTime
 }
 
+type Alert struct {
+	ID             int64
+	WorkspaceID    int64
+	CheckName      string
+	SubjectKey     string
+	SubjectLabel   string
+	Severity       string
+	State          string
+	Message        string
+	Evidence       string
+	ConfigVersion  int64
+	Occurrences    int64
+	FirstSeenAt    time.Time
+	LastSeenAt     time.Time
+	AcknowledgedBy sql.NullInt64
+	AcknowledgedAt sql.NullTime
+	ResolvedAt     sql.NullTime
+}
+
+type AlertConfig struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type AuditLog struct {
 	ID           int64
 	At           time.Time
@@ -243,6 +271,39 @@ type Project struct {
 	ID        int64
 	Name      string
 	CreatedAt time.Time
+}
+
+type Report struct {
+	ID             int64
+	WorkspaceID    int64
+	ScheduleID     sql.NullInt64
+	OccurrenceKey  string
+	Cadence        string
+	PeriodStart    string
+	PeriodEnd      string
+	Params         string
+	FormulaVersion string
+	Result         string
+	Status         string
+	ErrorSafe      sql.NullString
+	DeliveryStatus string
+	DeliveryDetail sql.NullString
+	DeliveredAt    sql.NullTime
+	GeneratedAt    time.Time
+	RequestedBy    sql.NullInt64
+}
+
+type ReportSchedule struct {
+	ID          int64
+	WorkspaceID int64
+	Name        string
+	Cadence     string
+	Enabled     int64
+	Params      string
+	Recipients  string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Run struct {

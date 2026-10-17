@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -18,6 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/reporting"
+	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/runs"
 )
 
@@ -36,6 +38,8 @@ type Deps struct {
 	Leads    *leads.Leads
 	// Reporting serves /api/analytics. Nil leaves the routes out.
 	Reporting *reporting.Reporting
+	Reports   *reports.Reports
+	Alerts    *alerts.Alerts
 }
 
 type handlers struct {
@@ -49,11 +53,13 @@ type handlers struct {
 	runs        *runs.Runs
 	leads       *leads.Leads
 	reporting   *reporting.Reporting
+	reports     *reports.Reports
+	alerts      *alerts.Alerts
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
-		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting}
+		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -108,6 +114,29 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/analytics/refresh", h.refreshAnalytics)
 			r.Get("/api/analytics/freshness", h.analyticsFreshness)
 			r.Post("/api/analytics/assign-projects", h.assignProjects)
+		}
+		if h.reports != nil {
+			r.Get("/api/reports", h.listReports)
+			r.Post("/api/reports", h.generateAdHoc)
+			r.Get("/api/reports/schedules", h.listSchedules)
+			r.Post("/api/reports/schedules", h.createSchedule)
+			r.Put("/api/reports/schedules/{id}", h.updateSchedule)
+			r.Post("/api/reports/schedules/{id}/generate", h.generateScheduled)
+			r.Get("/api/reports/{id}", h.getReport)
+		}
+		if h.alerts != nil {
+			r.Get("/api/alerts", h.listAlerts)
+			r.Post("/api/alerts/{id}/acknowledge", h.alertAction(func(a *alerts.Alerts) func(*http.Request, int64) (alerts.Alert, error) {
+				return func(r *http.Request, id int64) (alerts.Alert, error) {
+					return a.Acknowledge(r.Context(), actorFrom(r), id)
+				}
+			}))
+			r.Post("/api/alerts/{id}/resolve", h.alertAction(func(a *alerts.Alerts) func(*http.Request, int64) (alerts.Alert, error) {
+				return func(r *http.Request, id int64) (alerts.Alert, error) { return a.Resolve(r.Context(), actorFrom(r), id) }
+			}))
+			r.Get("/api/alerts/config", h.getAlertConfig)
+			r.Put("/api/alerts/config", h.putAlertConfig)
+			r.Post("/api/alerts/evaluate", h.evaluateAlerts)
 		}
 	})
 

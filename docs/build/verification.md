@@ -155,3 +155,19 @@ make check && make test
 - Web: `/analytics` with period, grouping, platform and comparison controls; freshness, coverage, dependencies-missing and warnings shown; "Not available", "No leads" and "no base" are distinct states. Typecheck and biome clean. Not browser-tested.
 
 Live: not applicable until B1.1's live gate opens; the engine runs on whatever rows the adapters import.
+
+## B1.4 Reports, schedules and anomaly observations
+
+Local:
+
+```
+cd server && go test ./core/reports/ ./core/alerts/ ./providers/smtpmail/   # ok
+make check && make test
+```
+
+- `core/reports`: a daily schedule generates yesterday's report once and emails it once; running again the same day reuses it and sends nothing; `RunDue` twice in a day generates 0; the next day generates one more; the list is light and `Get` returns the snapshot; no recipients → `unconfigured` ("no recipients configured"); no transport → `unconfigured` ("no mail transport configured"); a failing transport → `failed` without the server address; weekly, monthly and quarterly periods computed in Dubai; ad hoc reports are shown, not sent, and dedupe on period and params; role and input validation.
+- `core/alerts`: no configuration → nothing runs; only a spike threshold → one alert for the campaign 300% above its average, steady campaigns untouched, other checks skipped with notes; re-running the same day adds nothing; the next day's spike adds one occurrence to the same alert; zero leads fires only on complete days and is skipped with a note on an incomplete one; stale ingestion fires for figures 40 hours old and zero leads never fires on stale data; acknowledge and resolve follow roles and states; invalid thresholds refused.
+- `providers/smtpmail`: message headers, CRLF body, header-injection and bad-recipient refusal, config validation. Sending over a live SMTP server is unverified.
+- Web: `/reports` (schedules with delivery state, generate now, generated list with delivery status and an expandable snapshot, add schedule for admins) and `/alerts` (open/acknowledged/resolved filter, acknowledge/resolve, run checks for yesterday, threshold editor saving a new version, unconfigured banner). Typecheck and biome clean. Not browser-tested.
+
+Live: none. Recipients and thresholds are the owner's inputs; SMTP settings and a shared sender (D-24) don't exist yet.

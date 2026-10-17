@@ -25,10 +25,74 @@ export interface AccountsResponse {
 // From audit/audit.go
 export type Action = "sign_in" | "sign_in.refused" | "user.added" | "user.disabled" | "user.enabled" | "user.password_link_sent" | "user.role_changed";
 
+// From api/reports.go
+export interface AdHocReportInput {
+    from: Day;
+    to: Day;
+    params: ReportParams;
+}
+
 // From users/users.go
 export interface AddInput {
     email: string;
     role: Role;
+}
+
+// From alerts/alerts.go
+export interface Alert {
+    id: number;
+    check: string;
+    subjectKey: string;
+    subjectLabel: string;
+    severity: string;
+    state: string;
+    message: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    evidence: string;
+    configVersion: number;
+    occurrences: number;
+    firstSeenAt: string;
+    lastSeenAt: string;
+    acknowledgedBy: number | null;
+    acknowledgedAt: string | null;
+    resolvedAt: string | null;
+}
+
+// From alerts/alerts.go
+export interface AlertConfig {
+    version: number;
+    document: AlertDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From alerts/alerts.go
+export interface AlertConfigState {
+    configured: boolean;
+    current: AlertConfig | null;
+    unconfigured: string[];
+}
+
+// From alerts/alerts.go
+export interface AlertDocument {
+    costSpike: CostSpikeConfig;
+    zeroLeads: ZeroLeadsConfig;
+    staleIngestion: StaleIngestionConfig;
+    note: string;
+}
+
+// From alerts/alerts.go
+export interface AlertEvaluation {
+    day: Day;
+    fired: number;
+    repeated: number;
+    skipped: string[];
+    evaluated: boolean;
+}
+
+// From api/reports.go
+export interface AlertsResponse {
+    alerts: Alert[];
 }
 
 // From api/analytics.go
@@ -36,6 +100,9 @@ export interface AssignProjectsResponse {
     assigned: number;
     unresolved: string[];
 }
+
+// From reports/reports.go
+export type Cadence = "daily" | "monthly" | "quarterly" | "weekly";
 
 // From voice/voice.go
 export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progress" | "no_answer" | "queued" | "ringing";
@@ -62,11 +129,20 @@ export interface Change {
     undefined: boolean;
 }
 
+// From alerts/alerts.go
+export const CheckCostSpike = "cost_spike";
+
 // From ops/ops.go
 export interface CheckResult {
     name: string;
     ok: boolean;
 }
+
+// From alerts/alerts.go
+export const CheckStaleIngestion = "stale_ingestion";
+
+// From alerts/alerts.go
+export const CheckZeroLeads = "zero_leads";
 
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
@@ -98,6 +174,14 @@ export interface ContentAcceptance {
     ref: Ref;
     acceptedBy: number;
     acceptedAt: string;
+}
+
+// From alerts/alerts.go
+export interface CostSpikeConfig {
+    thresholdPct: number | null;
+    minSpendMinor: number | null;
+    baselineDays: number;
+    minBaselineDays: number;
 }
 
 // From leads/leads.go
@@ -139,6 +223,11 @@ export interface Document {
 // From api/respond.go
 export interface ErrorResponse {
     error: string;
+}
+
+// From api/reports.go
+export interface EvaluateAlertsInput {
+    day: Day;
 }
 
 // From evidence/evidence.go
@@ -213,6 +302,12 @@ export interface FunnelState {
     stages: Stage[];
     observedStatuses: ObservedValue[];
     unmapped: string[];
+}
+
+// From api/reports.go
+export interface GenerateReportResponse {
+    report: Report;
+    created: boolean;
 }
 
 // From connections/accounts.go
@@ -412,6 +507,11 @@ export const ProviderGoogleAds = "google_ads";
 // From connections/ads.go
 export const ProviderMeta = "meta";
 
+// From api/reports.go
+export interface PutAlertConfigInput {
+    document: AlertDocument;
+}
+
 // From api/leads.go
 export interface PutFunnelInput {
     document: FunnelDocument;
@@ -507,6 +607,25 @@ export interface RefreshProgress {
     unknownCampaignRows: number;
 }
 
+// From reports/reports.go
+export interface Report {
+    id: number;
+    scheduleId: number | null;
+    occurrenceKey: string;
+    cadence: Cadence;
+    periodStart: Day;
+    periodEnd: Day;
+    params: ReportParams;
+    formulaVersion: string;
+    result: ReportingResult | null;
+    status: string;
+    error: string | null;
+    deliveryStatus: string;
+    deliveryDetail: string | null;
+    deliveredAt: string | null;
+    generatedAt: string;
+}
+
 // From reporting/metrics.go
 export interface ReportComparison {
     start: Day;
@@ -539,6 +658,15 @@ export interface ReportMetrics {
     roas: Ratio;
 }
 
+// From reports/reports.go
+export interface ReportParams {
+    accountId: number;
+    platform: string;
+    projectId: number;
+    groupBy: string;
+    compare: string;
+}
+
 // From reporting/metrics.go
 export interface ReportPeriod {
     start: Day;
@@ -557,6 +685,28 @@ export interface ReportRow {
     metrics: ReportMetrics;
     previous: ReportMetrics | null;
     changes: Record<string, Change> | null;
+}
+
+// From reports/reports.go
+export interface ReportSchedule {
+    id: number;
+    name: string;
+    cadence: Cadence;
+    enabled: boolean;
+    params: ReportParams;
+    recipients: string[];
+    deliveryConfigured: boolean;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From reports/reports.go
+export interface ReportScheduleInput {
+    name: string;
+    cadence: Cadence;
+    enabled: boolean;
+    params: ReportParams;
+    recipients: string[];
 }
 
 // From reporting/metrics.go
@@ -584,6 +734,11 @@ export interface ReportingResult {
     warnings: ReportWarning[];
     formulaVersion: string;
     groupBy: string;
+}
+
+// From api/reports.go
+export interface ReportsResponse {
+    reports: Report[];
 }
 
 // From reporting/metrics.go
@@ -628,6 +783,11 @@ export interface RunsResponse {
     runs: Run[];
 }
 
+// From api/reports.go
+export interface SchedulesResponse {
+    schedules: ReportSchedule[];
+}
+
 // From voice/voice.go
 export interface Segment {
     speaker: string;
@@ -660,6 +820,11 @@ export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
 
 // From leads/funnel.go
 export type Stage = "attempted" | "dead" | "disqualified" | "engaged" | "excluded" | "meeting" | "offer" | "open" | "won";
+
+// From alerts/alerts.go
+export interface StaleIngestionConfig {
+    maxAgeHours: number | null;
+}
 
 // From connections/gohighlevel.go
 export interface StartResult {
@@ -707,5 +872,10 @@ export type WriteAction = "ad.pause" | "adset.pause" | "audiences.upsert" | "bid
 export interface WriteActionInfo {
     action: WriteAction;
     description: string;
+}
+
+// From alerts/alerts.go
+export interface ZeroLeadsConfig {
+    minSpendMinor: number | null;
 }
 

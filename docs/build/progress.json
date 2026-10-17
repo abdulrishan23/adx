@@ -602,13 +602,70 @@
       "depends_on": [
         "B1.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00012_reports_and_alerts.sql",
+        "server/store/queries/reports.sql",
+        "server/core/reports/",
+        "server/core/alerts/",
+        "server/providers/smtpmail/",
+        "server/api/reports.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go (mailer, periodic jobs)",
+        "web/src/api/reports.ts",
+        "web/src/routes/reports.tsx",
+        "web/src/routes/alerts.tsx",
+        "web/src/router.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md"
+      ],
+      "commands": [
+        "go test ./core/reports/ ./core/alerts/ ./providers/smtpmail/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Repeated schedule delivery does not duplicate the occurrence",
+          "result": "pass",
+          "evidence": "reports TestScheduleOccurrenceIsBuiltAndDeliveredOnce"
+        },
+        {
+          "check": "Unconfigured recipients/thresholds do not silently activate",
+          "result": "pass",
+          "evidence": "reports TestUnconfiguredRecipientsOrTransportNeverDeliver; alerts TestChecksNeedThresholdsAndCompleteFigures"
+        },
+        {
+          "check": "Stale ingestion is not reported as actual zero leads; no ad writes occur",
+          "result": "pass",
+          "evidence": "alerts TestStaleIngestionAndLifecycle; alerts have no provider dependency and every message says no change was made"
+        }
+      ],
+      "remaining": [
+        "Wasted-spend, search-term, creative-fatigue, frequency and CTR checks (reference.md Alerts) need ad-set/ad level reads (B3.5) and are not configured here",
+        "Approval links by email (D-14) arrive with proposals (B3.4)",
+        "Live SMTP send"
+      ],
+      "blockers": [
+        {
+          "capability": "report delivery",
+          "unblocks": "owner names recipients per schedule; SMTP host and a shared sender address (D-24)"
+        },
+        {
+          "capability": "anomaly checks firing",
+          "unblocks": "owner sets thresholds: cost spike percent and minimum spend, zero-lead minimum spend, stale-ingestion maximum age"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "report built or sent twice for one period",
+        "report sent with no recipients or no transport",
+        "check firing before a threshold exists",
+        "spike flagged from a one-day baseline",
+        "incomplete day reported as zero leads",
+        "same anomaly opening a new alert every run",
+        "provider host in a delivery failure message"
+      ]
     },
     {
       "id": "B1.5",
