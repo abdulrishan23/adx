@@ -747,8 +747,8 @@ export interface CompleteTaskInput {
     canceled: boolean;
 }
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From runs/runs.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
 export interface Conflict {
@@ -1570,6 +1570,11 @@ export interface InboxResponse {
     items: InboxItem[];
 }
 
+// From api/learning.go
+export interface InsightsResponse {
+    insights: MemoryInsight[];
+}
+
 // From proposals/proposals.go
 export interface Intent {
     id: number;
@@ -1805,6 +1810,90 @@ export interface LeadsResponse {
     nextAfterId: number | null;
 }
 
+// From learning/learning.go
+export interface LearningDecisionInput {
+    decision: string;
+    note: string;
+    actionRef: string;
+    actionAt: string;
+}
+
+// From learning/learning.go
+export interface LearningOutcome {
+    id: number;
+    recordId: number | null;
+    subjectKind: string;
+    subjectRef: string;
+    metric: string;
+    value: number;
+    unit: string;
+    class: string;
+    observedAt: string;
+    evidenceId: number | null;
+    note: string;
+}
+
+// From learning/learning.go
+export interface LearningOutcomeInput {
+    subjectKind: string;
+    subjectRef: string;
+    metric: string;
+    value: number;
+    unit: string;
+    class: string;
+    observedAt: string;
+    evidenceId: number;
+    note: string;
+}
+
+// From learning/learning.go
+export interface LearningRecord {
+    id: number;
+    recommendationRef: string;
+    source: string;
+    subjectKind: string;
+    subjectRef: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    recommended: string;
+    decision: string;
+    decisionNote: string;
+    decidedBy: number | null;
+    decidedAt: string | null;
+    actionRef: string;
+    actionAt: string | null;
+    windowDays: number;
+    createdAt: string;
+    outcomes: LearningOutcome[];
+}
+
+// From learning/learning.go
+export interface LearningRecordInput {
+    recommendationRef: string;
+    source: string;
+    subjectKind: string;
+    subjectRef: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    recommended: string;
+    windowDays: number;
+}
+
+// From api/learning.go
+export interface LearningRecordsResponse {
+    records: LearningRecord[];
+}
+
+// From learning/learning.go
+export interface LearningReport {
+    records: number;
+    decisions: Record<string, number> | null;
+    interventions: number;
+    ignored: number;
+    outcomes: number;
+    unattachedOutcomes: number;
+    insights: Record<string, number> | null;
+    note: string;
+}
+
 // From crm/crm.go
 export interface Link {
     id: number;
@@ -1937,6 +2026,49 @@ export interface MeasurementRequirement {
     name: string;
     required: boolean;
     note: string;
+}
+
+// From learning/learning.go
+export interface MemoryFinding {
+    statement: string;
+    class: string;
+    causal: boolean;
+    lineage: number;
+    version: number;
+    scope: string;
+}
+
+// From api/learning.go
+export interface MemoryFindingsResponse {
+    findings: MemoryFinding[];
+}
+
+// From learning/learning.go
+export interface MemoryInsight {
+    id: number;
+    lineage: number;
+    version: number;
+    statement: string;
+    scope: string;
+    class: string;
+    causal: boolean;
+    attributed: boolean;
+    support: SupportItem[];
+    supportingRecords: number;
+    source: string;
+    controlEvidenceId: number | null;
+    createdBy: number | null;
+    createdAt: string;
+    promotedBy: number | null;
+    promotedAt: string | null;
+    retiredAt: string | null;
+}
+
+// From learning/learning.go
+export interface MemoryInsightInput {
+    statement: string;
+    scope: string;
+    support: SupportItem[];
 }
 
 // From api/crm.go
@@ -2619,6 +2751,17 @@ export interface ProjectsResponse {
     projects: Project[];
 }
 
+// From api/learning.go
+export interface PromoteInsightInput {
+    to: string;
+    controlEvidenceId: number;
+}
+
+// From learning/learning.go
+export interface PromotionRequirements {
+    minRecords: number;
+}
+
 // From proposals/proposals.go
 export interface Proposal {
     id: number;
@@ -3044,6 +3187,7 @@ export interface ReportDocument {
     events: MarketEvent[];
     hypotheses: Hypothesis[];
     prior: PriorContext | null;
+    findings: MemoryFinding[];
 }
 
 // From reporting/metrics.go
@@ -3223,8 +3367,14 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
+// From api/learning.go
+export interface ReviseInsightInput {
+    statement: string;
+    scope: string;
+}
+
 // From assistant/model.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From calls/calls.go
 export interface Route {
@@ -3643,6 +3793,13 @@ export interface SupervisorState {
     current: SupervisorConfig | null;
     suggested: SupervisorDocument;
     killSwitches: KillSwitch[];
+}
+
+// From learning/learning.go
+export interface SupportItem {
+    kind: string;
+    recordId: number;
+    note: string;
 }
 
 // From api/outreach.go

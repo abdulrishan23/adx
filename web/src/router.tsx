@@ -21,6 +21,7 @@ import { EvaluationPage } from "@/routes/evaluation";
 import { FunnelPage } from "@/routes/funnel";
 import { LaunchPage } from "@/routes/launch";
 import { LeadsPage } from "@/routes/leads";
+import { LearningPage } from "@/routes/learning";
 import { OutreachPage } from "@/routes/outreach";
 import { PagesPage } from "@/routes/pages";
 import { PeoplePage } from "@/routes/people";
@@ -158,6 +159,13 @@ function Layout() {
             Calls
           </Link>
           <Link
+            to="/learning"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Learning
+          </Link>
+          <Link
             to="/supervisor"
             className="text-muted-foreground"
             activeProps={{ className: "text-foreground" }}
@@ -278,6 +286,12 @@ const outreachRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/outreach",
   component: OutreachPage,
+});
+
+const learningRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/learning",
+  component: LearningPage,
 });
 
 const supervisorRoute = createRoute({
@@ -430,6 +444,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   outreachRoute,
+  learningRoute,
   supervisorRoute,
   workflowsRoute,
   agentsRoute,

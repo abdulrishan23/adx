@@ -28,6 +28,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/store"
 )
 
@@ -269,6 +270,11 @@ type TemplateAdapter interface {
 	Import(data []byte) (PlanDocument, error)
 }
 
+// Memory is what plan generation asks of organizational memory.
+type Memory interface {
+	Findings(ctx context.Context, actor core.Actor) ([]learning.MemoryFinding, error)
+}
+
 type Config struct {
 	Clock core.Clock
 	// Exact is the exact-template adapter, nil while no template exists.
@@ -278,6 +284,9 @@ type Config struct {
 	Model assistant.Model
 	// Evidence records each generation and enforces the daily cap.
 	Evidence *evidence.Store
+	// Memory supplies validated and supported findings (core/learning) for
+	// the generation context. Nil means none.
+	Memory Memory
 	// MaxGenerationsPerDay caps model calls per workspace. Default 40.
 	MaxGenerationsPerDay int
 	// GenerationMaxTokens caps the model's output per call. Default 8000.
@@ -294,6 +303,7 @@ type Plans struct {
 	evidence     *evidence.Store
 	maxGenPerDay int
 	genMaxTokens int
+	memory       Memory
 }
 
 func New(db *store.DB, br *brands.Brands, cfg Config) *Plans {
@@ -306,7 +316,7 @@ func New(db *store.DB, br *brands.Brands, cfg Config) *Plans {
 	if cfg.GenerationMaxTokens <= 0 {
 		cfg.GenerationMaxTokens = defaultGenMaxTokens
 	}
-	p := &Plans{db: db, clock: cfg.Clock, brands: br, adapters: map[string]TemplateAdapter{}, exact: cfg.Exact, model: cfg.Model, evidence: cfg.Evidence, maxGenPerDay: cfg.MaxGenerationsPerDay, genMaxTokens: cfg.GenerationMaxTokens}
+	p := &Plans{db: db, clock: cfg.Clock, brands: br, adapters: map[string]TemplateAdapter{}, exact: cfg.Exact, model: cfg.Model, evidence: cfg.Evidence, maxGenPerDay: cfg.MaxGenerationsPerDay, genMaxTokens: cfg.GenerationMaxTokens, memory: cfg.Memory}
 	for _, a := range []TemplateAdapter{JSONAdapter{}, CSVAdapter{}} {
 		p.adapters[a.Name()] = a
 	}

@@ -23,6 +23,7 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/store"
@@ -226,17 +227,25 @@ type BriefDetail struct {
 	Runs        int64              `json:"runs"`
 }
 
+// Memory is what research asks of organizational memory: the validated and
+// supported findings to carry into a report.
+type Memory interface {
+	Findings(ctx context.Context, actor core.Actor) ([]learning.MemoryFinding, error)
+}
+
 type Config struct {
 	Clock     core.Clock
 	Fetcher   Fetcher
 	Keywords  KeywordProvider
 	Tokens    reporting.Tokens
 	Analytics Analytics
+	Memory    Memory
 }
 
 type Research struct {
 	db        *store.DB
 	clock     core.Clock
+	memory    Memory
 	fetcher   Fetcher
 	keywords  KeywordProvider
 	tokens    reporting.Tokens
@@ -249,7 +258,7 @@ func New(db *store.DB, ev *evidence.Store, br *brands.Brands, cfg Config) *Resea
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	return &Research{db: db, clock: cfg.Clock, fetcher: cfg.Fetcher, keywords: cfg.Keywords, tokens: cfg.Tokens, analytics: cfg.Analytics, evidence: ev, brands: br}
+	return &Research{db: db, clock: cfg.Clock, memory: cfg.Memory, fetcher: cfg.Fetcher, keywords: cfg.Keywords, tokens: cfg.Tokens, analytics: cfg.Analytics, evidence: ev, brands: br}
 }
 
 // ResearchRunKind is the run kind the research worker handles.

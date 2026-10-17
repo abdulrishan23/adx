@@ -603,6 +603,25 @@ type FunnelMapping struct {
 	CreatedAt   time.Time
 }
 
+type Insight struct {
+	ID                int64
+	WorkspaceID       int64
+	Lineage           int64
+	Version           int64
+	Statement         string
+	Scope             string
+	Class             string
+	Causal            int64
+	Support           string
+	Source            string
+	ControlEvidenceID sql.NullInt64
+	CreatedBy         sql.NullInt64
+	CreatedAt         time.Time
+	PromotedBy        sql.NullInt64
+	PromotedAt        sql.NullTime
+	RetiredAt         sql.NullTime
+}
+
 type Interaction struct {
 	ID            int64
 	WorkspaceID   int64
@@ -690,6 +709,40 @@ type LeadAttribution struct {
 	MatchedPlatform    sql.NullString
 	MatchedCampaignRef sql.NullString
 	PayloadHash        string
+}
+
+type LearningOutcome struct {
+	ID          int64
+	WorkspaceID int64
+	RecordID    sql.NullInt64
+	SubjectKind string
+	SubjectRef  string
+	Metric      string
+	Value       float64
+	Unit        string
+	Class       string
+	ObservedAt  time.Time
+	EvidenceID  sql.NullInt64
+	Note        string
+	CreatedAt   time.Time
+}
+
+type LearningRecord struct {
+	ID                int64
+	WorkspaceID       int64
+	RecommendationRef string
+	Source            string
+	SubjectKind       string
+	SubjectRef        string
+	Recommended       string
+	Decision          string
+	DecisionNote      string
+	DecidedBy         sql.NullInt64
+	DecidedAt         sql.NullTime
+	ActionRef         string
+	ActionAt          sql.NullTime
+	WindowDays        int64
+	CreatedAt         time.Time
 }
 
 type MatchCandidate struct {

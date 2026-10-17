@@ -530,3 +530,19 @@ make check && make test
 - Web: `/supervisor` with the inbox and its actions, the kill switch, the autonomy and precedence editor, conflicts and recommendations. Typecheck and biome clean. Not browser-tested.
 
 Live: none needed.
+
+## B5.5 Learning records and organizational memory
+
+Local:
+
+```
+cd server && go test ./core/learning/   # ok
+make check && make test
+```
+
+- `core/learning`: a model-proposed insight backed by two "model agreement" items has zero supporting records and cannot be promoted ("model agreement does not count"); two adopted or modified records with observed outcomes make a human insight supported, which is attributed and not causal; the model's actor cannot promote; a support item naming a missing record is refused. Two interventions on one campaign ten days apart: an outcome on 5 Oct attaches to the first, one on 13 Oct to the second (the most recent covering window), one on 1 Nov to none, and one on a campaign whose advice was ignored to none; the report counts four outcomes and two unattached. Adopted, modified and ignored records count two interventions and one ignored; a record is opened once per reference; ignored refuses an action, adopted requires one, a viewer cannot decide, and a record is decided once. Attributed outcomes do not support promotion; observed ones do; validation without control evidence is refused "not causal lift", with ordinary observed evidence refused, with a `controlled_comparison` observation accepted and the insight becomes causal; findings feed forward with lineage 1 version 1; a revision is version 2, a hypothesis, not causal, and the retired version no longer feeds forward.
+- `core/plans` and `core/research`: generation context and comparative reports carry memory findings (validated and supported insights with lineage).
+- `api`: records (list/create/decide), outcomes, insights (list/propose/promote/revise), findings, report.
+- Web: `/learning` with the report line, records with decisions and outcomes, an outcome entry, insights with promotion (control evidence id for validation), revision and proposal. Typecheck and biome clean. Not browser-tested.
+
+Live: none needed.

@@ -36,6 +36,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/outreach"
@@ -292,7 +293,8 @@ func run() error {
 	}
 	brandService := brands.New(db, brands.Config{})
 	// No exact Excel adapter: the template has not been supplied (decisions.md).
-	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore})
+	learningService := learning.New(db, learning.Config{})
+	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore, Memory: learningService})
 	// No AI image generator is wired; outputs are template layouts and say so.
 	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService, Plans: planService})
 	// Keyword Planner rides on the Google Ads connection; without one the
@@ -368,7 +370,7 @@ func run() error {
 	workflowService := workflows.New(db, workflows.Config{Gate: policyService, Registry: registryService, Runner: workflowRunner, Dispatch: workflowDispatch, External: workflowDispatch, Owner: hostname(), DefaultBudget: cfg.WorkflowDefaultBudget})
 	supervisorService.AttachWorkflows(workflowService)
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
-	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
+	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService, Memory: learningService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
@@ -558,6 +560,7 @@ func run() error {
 			Registry:      registryService,
 			Workflows:     workflowService,
 			Supervisor:    supervisorService,
+			Learning:      learningService,
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

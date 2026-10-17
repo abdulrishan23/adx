@@ -22,6 +22,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/outreach"
@@ -78,6 +79,7 @@ type Deps struct {
 	Registry      *registry.Registry
 	Workflows     *workflows.Workflows
 	Supervisor    *supervisor.Supervisor
+	Learning      *learning.Learning
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -115,13 +117,14 @@ type handlers struct {
 	registry      *registry.Registry
 	workflows     *workflows.Workflows
 	supervisor    *supervisor.Supervisor
+	learning      *learning.Learning
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -445,6 +448,18 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/supervisor/conflicts", h.supervisorConflicts)
 			r.Get("/api/supervisor/recommendations", h.supervisorRecommendations)
 			r.Post("/api/supervisor/halt", h.supervisorHalt)
+		}
+		if h.learning != nil {
+			r.Get("/api/learning/records", h.listLearningRecords)
+			r.Post("/api/learning/records", h.createLearningRecord)
+			r.Post("/api/learning/records/{id}/decide", h.decideLearningRecord)
+			r.Post("/api/learning/outcomes", h.observeOutcome)
+			r.Get("/api/learning/insights", h.listInsights)
+			r.Post("/api/learning/insights", h.proposeInsight)
+			r.Post("/api/learning/insights/{id}/promote", h.promoteInsight)
+			r.Post("/api/learning/insights/{id}/revise", h.reviseInsight)
+			r.Get("/api/learning/findings", h.learningFindings)
+			r.Get("/api/learning/report", h.learningReport)
 		}
 	})
 

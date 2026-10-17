@@ -16,6 +16,7 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/store"
 )
 
@@ -66,6 +67,7 @@ type generationContext struct {
 	findings  []contextFinding
 	claims    []contextClaim
 	offers    []contextOffer
+	memory    []learning.MemoryFinding
 	refIDs    map[string]map[int64]bool
 }
 
@@ -184,7 +186,12 @@ func briefNote(ids []int64) string {
 // belong to the brand, claims are the brand's approved facts, offers the
 // brand's current versions.
 func (p *Plans) buildContext(ctx context.Context, actor core.Actor, prow store.Plan, briefIDs []int64) (generationContext, error) {
-	g := generationContext{brandID: prow.BrandID, projectID: prow.ProjectID.Int64, refIDs: map[string]map[int64]bool{"research_finding": {}, "fact": {}, "offer": {}}}
+	g := generationContext{brandID: prow.BrandID, projectID: prow.ProjectID.Int64, memory: []learning.MemoryFinding{}, refIDs: map[string]map[int64]bool{"research_finding": {}, "fact": {}, "offer": {}}}
+	if p.memory != nil {
+		if f, err := p.memory.Findings(ctx, actor); err == nil && f != nil {
+			g.memory = f
+		}
+	}
 	for _, id := range briefIDs {
 		brief, err := p.db.Reader().GetResearchBrief(ctx, store.GetResearchBriefParams{ID: id, WorkspaceID: actor.WorkspaceID})
 		if errors.Is(err, sql.ErrNoRows) {
@@ -295,7 +302,7 @@ func (p *Plans) buildRequest(prow store.Plan, current PlanVersion, g generationC
 		"allowedChannels": supportedChannelKeys(),
 	}
 	frameJSON, _ := json.Marshal(frame)
-	ctxJSON, _ := json.Marshal(map[string]any{"researchFindings": g.findings, "approvedClaims": g.claims, "currentOffers": g.offers})
+	ctxJSON, _ := json.Marshal(map[string]any{"researchFindings": g.findings, "approvedClaims": g.claims, "currentOffers": g.offers, "validatedFindings": g.memory})
 	text := "Plan frame (fixed by the team; do not change budget, currency or period):\n" + string(frameJSON) + "\n\nContext you may cite (ids are the only valid evidence refs):\n" + string(ctxJSON)
 	if strings.TrimSpace(instructions) != "" {
 		text += "\n\nThe team's instructions:\n" + strings.TrimSpace(instructions)

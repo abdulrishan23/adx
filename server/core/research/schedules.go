@@ -14,6 +14,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/runs"
@@ -151,6 +152,9 @@ type ReportDocument struct {
 	Events      []MarketEvent          `json:"events"`
 	Hypotheses  []Hypothesis           `json:"hypotheses"`
 	Prior       *PriorContext          `json:"prior"`
+	// Findings are organizational memory (core/learning): validated and
+	// supported insights with their lineage, carried into the report.
+	Findings []learning.MemoryFinding `json:"findings"`
 }
 
 type HypothesisReview struct {
@@ -481,6 +485,12 @@ func (r *Research) GenerateReport(ctx context.Context, actor core.Actor, briefID
 		}
 	}
 	doc.Hypotheses = hypotheses(doc, accountEvidence, limited)
+	doc.Findings = []learning.MemoryFinding{}
+	if r.memory != nil {
+		if f, err := r.memory.Findings(ctx, actor); err == nil && f != nil {
+			doc.Findings = f
+		}
+	}
 
 	var prevID sql.NullInt64
 	if prev, err := r.db.Reader().GetPreviousResearchReport(ctx, store.GetPreviousResearchReportParams{BriefID: briefID, PeriodStart: ft}); err == nil {
