@@ -108,6 +108,63 @@ func (q *Queries) ListAccountFreshness(ctx context.Context, workspaceID int64) (
 	return items, nil
 }
 
+const listAdAccounts = `-- name: ListAdAccounts :many
+SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+FROM accounts JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type IN ('google_ads', 'meta')
+ORDER BY accounts.type, accounts.external_id
+`
+
+type ListAdAccountsRow struct {
+	Account    Account
+	Credential Credential
+}
+
+func (q *Queries) ListAdAccounts(ctx context.Context) ([]ListAdAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listAdAccounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListAdAccountsRow{}
+	for rows.Next() {
+		var i ListAdAccountsRow
+		if err := rows.Scan(
+			&i.Account.ID,
+			&i.Account.Type,
+			&i.Account.ExternalID,
+			&i.Account.CredentialID,
+			&i.Account.ParentID,
+			&i.Account.Name,
+			&i.Account.Currency,
+			&i.Account.TimeZone,
+			&i.Account.Details,
+			&i.Account.ConnectedAt,
+			&i.Account.VerifiedAt,
+			&i.Credential.ID,
+			&i.Credential.Provider,
+			&i.Credential.Kind,
+			&i.Credential.Subject,
+			&i.Credential.EncryptedSecret,
+			&i.Credential.KeyVersion,
+			&i.Credential.Scopes,
+			&i.Credential.TokenExpiresAt,
+			&i.Credential.ConnectedBy,
+			&i.Credential.ConnectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAdCampaigns = `-- name: ListAdCampaigns :many
 SELECT id, workspace_id, account_id, platform, external_id, name, status, channel_type, budget_minor, budget_period, currency, project_id, first_seen_at, last_seen_at, removed_at FROM ad_campaigns
 WHERE workspace_id = ?1
@@ -125,6 +182,49 @@ type ListAdCampaignsParams struct {
 
 func (q *Queries) ListAdCampaigns(ctx context.Context, arg ListAdCampaignsParams) ([]AdCampaign, error) {
 	rows, err := q.db.QueryContext(ctx, listAdCampaigns, arg.WorkspaceID, arg.AccountID, arg.Platform)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AdCampaign{}
+	for rows.Next() {
+		var i AdCampaign
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AccountID,
+			&i.Platform,
+			&i.ExternalID,
+			&i.Name,
+			&i.Status,
+			&i.ChannelType,
+			&i.BudgetMinor,
+			&i.BudgetPeriod,
+			&i.Currency,
+			&i.ProjectID,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.RemovedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAllAdCampaigns = `-- name: ListAllAdCampaigns :many
+SELECT id, workspace_id, account_id, platform, external_id, name, status, channel_type, budget_minor, budget_period, currency, project_id, first_seen_at, last_seen_at, removed_at FROM ad_campaigns WHERE workspace_id = ? AND removed_at IS NULL ORDER BY id
+`
+
+func (q *Queries) ListAllAdCampaigns(ctx context.Context, workspaceID int64) ([]AdCampaign, error) {
+	rows, err := q.db.QueryContext(ctx, listAllAdCampaigns, workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -279,6 +379,131 @@ func (q *Queries) ListConversionActions(ctx context.Context, accountID int64) ([
 			&i.CountingType,
 			&i.IncludeInConversions,
 			&i.LastSeenAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeadAttributionsBetween = `-- name: ListLeadAttributionsBetween :many
+SELECT la.id, la.lead_id, la.observed_at, la.is_first, la.utm_source, la.utm_medium, la.utm_campaign, la.utm_content, la.utm_term, la.gclid, la.fbclid, la.referrer, la.landing_url, la.match_level, la.match_confidence, la.matched_platform, la.matched_campaign_ref, la.payload_hash FROM lead_attributions la
+JOIN leads l ON l.id = la.lead_id
+WHERE l.workspace_id = ?1 AND l.removed_at IS NULL
+  AND l.provider_added_at >= ?2 AND l.provider_added_at < ?3
+ORDER BY la.lead_id, la.is_first DESC, la.id
+`
+
+type ListLeadAttributionsBetweenParams struct {
+	WorkspaceID int64
+	FromAt      sql.NullTime
+	ToAt        sql.NullTime
+}
+
+func (q *Queries) ListLeadAttributionsBetween(ctx context.Context, arg ListLeadAttributionsBetweenParams) ([]LeadAttribution, error) {
+	rows, err := q.db.QueryContext(ctx, listLeadAttributionsBetween, arg.WorkspaceID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []LeadAttribution{}
+	for rows.Next() {
+		var i LeadAttribution
+		if err := rows.Scan(
+			&i.ID,
+			&i.LeadID,
+			&i.ObservedAt,
+			&i.IsFirst,
+			&i.UtmSource,
+			&i.UtmMedium,
+			&i.UtmCampaign,
+			&i.UtmContent,
+			&i.UtmTerm,
+			&i.Gclid,
+			&i.Fbclid,
+			&i.Referrer,
+			&i.LandingUrl,
+			&i.MatchLevel,
+			&i.MatchConfidence,
+			&i.MatchedPlatform,
+			&i.MatchedCampaignRef,
+			&i.PayloadHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listLeadsAddedBetween = `-- name: ListLeadsAddedBetween :many
+SELECT id, workspace_id, account_id, external_id, first_name, last_name, email, phone, phone_e164, dial_code, source_raw, project_raw, project_id, status_raw, status_observed_at, status_missing_since, stage, mapping_version, provider_added_at, provider_updated_at, first_seen_at, last_seen_at, last_seen_run_id, evidence_id, removed_at FROM leads
+WHERE workspace_id = ?1 AND removed_at IS NULL
+  AND provider_added_at >= ?2 AND provider_added_at < ?3
+  AND (?4 IS NULL OR account_id = ?4)
+ORDER BY provider_added_at, id
+`
+
+type ListLeadsAddedBetweenParams struct {
+	WorkspaceID int64
+	FromAt      sql.NullTime
+	ToAt        sql.NullTime
+	AccountID   interface{}
+}
+
+func (q *Queries) ListLeadsAddedBetween(ctx context.Context, arg ListLeadsAddedBetweenParams) ([]Lead, error) {
+	rows, err := q.db.QueryContext(ctx, listLeadsAddedBetween,
+		arg.WorkspaceID,
+		arg.FromAt,
+		arg.ToAt,
+		arg.AccountID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Lead{}
+	for rows.Next() {
+		var i Lead
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AccountID,
+			&i.ExternalID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.Phone,
+			&i.PhoneE164,
+			&i.DialCode,
+			&i.SourceRaw,
+			&i.ProjectRaw,
+			&i.ProjectID,
+			&i.StatusRaw,
+			&i.StatusObservedAt,
+			&i.StatusMissingSince,
+			&i.Stage,
+			&i.MappingVersion,
+			&i.ProviderAddedAt,
+			&i.ProviderUpdatedAt,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.LastSeenRunID,
+			&i.EvidenceID,
+			&i.RemovedAt,
 		); err != nil {
 			return nil, err
 		}

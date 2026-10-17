@@ -104,8 +104,10 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/api/connections/{provider}/start", h.startAds)
 		r.Get("/api/connections/{provider}/callback", h.finishAds)
 		if h.reporting != nil {
+			r.Get("/api/analytics", h.analytics)
 			r.Post("/api/analytics/refresh", h.refreshAnalytics)
 			r.Get("/api/analytics/freshness", h.analyticsFreshness)
+			r.Post("/api/analytics/assign-projects", h.assignProjects)
 		}
 	})
 

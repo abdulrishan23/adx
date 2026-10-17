@@ -31,6 +31,12 @@ export interface AddInput {
     role: Role;
 }
 
+// From api/analytics.go
+export interface AssignProjectsResponse {
+    assigned: number;
+    unresolved: string[];
+}
+
 // From voice/voice.go
 export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progress" | "no_answer" | "queued" | "ringing";
 
@@ -49,6 +55,13 @@ export const CapabilityReadLeads = "read.leads";
 // From connections/ads.go
 export const CapabilityReadReporting = "read.reporting";
 
+// From reporting/metrics.go
+export interface Change {
+    absolute: number | null;
+    relative: number | null;
+    undefined: boolean;
+}
+
 // From ops/ops.go
 export interface CheckResult {
     name: string;
@@ -58,8 +71,8 @@ export interface CheckResult {
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -156,6 +169,9 @@ export interface FieldLocation {
 
 // From assets/assets.go
 export type Format = "1.91:1" | "1:1" | "4:5" | "9:16";
+
+// From reporting/metrics.go
+export const FormulaVersion = "v1";
 
 // From reporting/ingest.go
 export interface Freshness {
@@ -311,6 +327,12 @@ export interface LeadsResponse {
 // From runs/runs.go
 export const MaxAutoAttempts = 3;
 
+// From reporting/metrics.go
+export interface Money {
+    minor: number | null;
+    currency: string;
+}
+
 // From leads/funnel.go
 export interface ObservedValue {
     raw: string | null;
@@ -400,6 +422,12 @@ export interface PutPolicyInput {
     document: PolicyDocument;
 }
 
+// From reporting/metrics.go
+export interface Ratio {
+    value: number | null;
+    undefined: boolean;
+}
+
 // From ops/ops.go
 export interface Readiness {
     ready: boolean;
@@ -477,6 +505,93 @@ export interface RefreshProgress {
     pages: number;
     throughDay: Day;
     unknownCampaignRows: number;
+}
+
+// From reporting/metrics.go
+export interface ReportComparison {
+    start: Day;
+    end: Day;
+    kind: string;
+}
+
+// From reporting/metrics.go
+export interface ReportCoverage {
+    eligibleCount: number;
+    matchedCount: number;
+    unclassifiedCount: number;
+    withStatus: number;
+    dependenciesMissing: string[];
+}
+
+// From reporting/metrics.go
+export interface ReportMetrics {
+    spend: Money;
+    impressions: number | null;
+    clicks: number | null;
+    googleConversions: number | null;
+    metaLeads: number | null;
+    leads: number;
+    qualifiedLeads: number | null;
+    deals: number | null;
+    revenue: Money;
+    costPerLead: Ratio;
+    costPerQualifiedLead: Ratio;
+    roas: Ratio;
+}
+
+// From reporting/metrics.go
+export interface ReportPeriod {
+    start: Day;
+    end: Day;
+    timeZone: string;
+    comparison: ReportComparison | null;
+}
+
+// From reporting/metrics.go
+export interface ReportRow {
+    key: string;
+    label: string;
+    platform: string;
+    campaignId: number | null;
+    projectId: number | null;
+    metrics: ReportMetrics;
+    previous: ReportMetrics | null;
+    changes: Record<string, Change> | null;
+}
+
+// From reporting/metrics.go
+export interface ReportScope {
+    workspaceId: number;
+    accountId: number | null;
+    platform: string;
+    projectId: number | null;
+}
+
+// From reporting/metrics.go
+export interface ReportWarning {
+    code: string;
+    message: string;
+}
+
+// From reporting/metrics.go
+export interface ReportingResult {
+    scope: ReportScope;
+    period: ReportPeriod;
+    freshness: ResultFreshness;
+    coverage: ReportCoverage;
+    summary: ReportRow;
+    rows: ReportRow[];
+    warnings: ReportWarning[];
+    formulaVersion: string;
+    groupBy: string;
+}
+
+// From reporting/metrics.go
+export interface ResultFreshness {
+    lastSuccessAt: string | null;
+    observedThrough: Day | null;
+    partial: boolean;
+    missingPeriods: string[];
 }
 
 // From assets/assets.go

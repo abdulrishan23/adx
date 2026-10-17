@@ -307,6 +307,11 @@ func (r *Reporting) Execute(ctx context.Context, h *runs.Handle) (runs.Completio
 	if err := h.Progress(ctx, progress, nil); err != nil {
 		return runs.Completion{}, err
 	}
+	// Campaign names carry the project (reference.md); read them now so the
+	// analytics screen groups fresh campaigns by project at once.
+	if _, _, err := r.AssignProjects(ctx, h.Actor); err != nil {
+		return runs.Completion{}, err
+	}
 	now := r.clock.Now().UTC()
 	if err := r.recordFreshness(ctx, h.Actor.WorkspaceID, params.AccountID, &now, through, h.Run.RowID(), partial, ""); err != nil {
 		return runs.Completion{}, err

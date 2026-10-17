@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/rand"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -123,4 +124,42 @@ func (h *handlers) analyticsFreshness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, FreshnessResponse{Accounts: list})
+}
+
+// analytics is GET /api/analytics: the reporting result for a period.
+// Query: from, to (YYYY-MM-DD), group (campaign|project|platform|day),
+// account_id, platform, project_id, compare (previous|year|custom),
+// compare_from, compare_to.
+func (h *handlers) analytics(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	q := r.URL.Query()
+	accountID, _ := strconv.ParseInt(q.Get("account_id"), 10, 64)
+	projectID, _ := strconv.ParseInt(q.Get("project_id"), 10, 64)
+	res, err := h.reporting.Analytics(r.Context(), actorFrom(r), reporting.AnalyticsQuery{
+		From: reporting.Day(q.Get("from")), To: reporting.Day(q.Get("to")), GroupBy: q.Get("group"),
+		AccountID: accountID, Platform: q.Get("platform"), ProjectID: projectID,
+		Compare: q.Get("compare"), CompareFrom: reporting.Day(q.Get("compare_from")), CompareTo: reporting.Day(q.Get("compare_to")),
+	})
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
+type AssignProjectsResponse struct {
+	Assigned   int      `json:"assigned"`
+	Unresolved []string `json:"unresolved"`
+}
+
+func (h *handlers) assignProjects(w http.ResponseWriter, r *http.Request) {
+	assigned, unresolved, err := h.reporting.AssignProjects(r.Context(), actorFrom(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	if unresolved == nil {
+		unresolved = []string{}
+	}
+	writeJSON(w, http.StatusOK, AssignProjectsResponse{Assigned: assigned, Unresolved: unresolved})
 }

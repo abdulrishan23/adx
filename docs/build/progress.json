@@ -539,13 +539,61 @@
         "B1.1",
         "B1.2"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/queries/reporting.sql (leads between, ad accounts, campaigns)",
+        "server/core/reporting/metrics.go",
+        "server/core/reporting/metrics_test.go",
+        "server/core/reporting/ingest.go (AssignProjects after refresh)",
+        "server/api/analytics.go",
+        "server/api/router.go",
+        "web/src/api/analytics.ts",
+        "web/src/routes/analytics.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "go test ./core/reporting/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Missing revenue produces null ROAS",
+          "result": "pass",
+          "evidence": "TestAnalyticsNullsRatiosAndComparison: Revenue.Minor nil, ROAS.Value nil, Undefined false"
+        },
+        {
+          "check": "Zero previous denominator has a defined non-infinite representation",
+          "result": "pass",
+          "evidence": "Change.Undefined true with Relative nil when the base is zero or missing"
+        },
+        {
+          "check": "Selected scope reconciles summary and detail; fixture fallback absent",
+          "result": "pass",
+          "evidence": "summary built from the same buckets; grouping tests assert row sums equal the summary; empty period returns empty rows"
+        }
+      ],
+      "remaining": [
+        "Campaign drill-down screen (daily rows per campaign) uses group=day with a campaign filter: add campaign_id filter to the API",
+        "Click-id to campaign resolution (B3.3)",
+        "Portal spend typed by hand (reference.md) not yet modelled"
+      ],
+      "blockers": [
+        {
+          "capability": "revenue and ROAS",
+          "unblocks": "Akarati sends Done-Deal value and date into GoHighLevel as real fields (#35)"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "ROAS or revenue shown as zero",
+        "cost per lead as zero or infinity with no leads",
+        "infinite relative change on a zero base",
+        "Google and Meta claims summed",
+        "summary not matching rows",
+        "lead counted on the UTC day instead of the Dubai day",
+        "qualified figures shown before a funnel exists"
+      ]
     },
     {
       "id": "B1.4",

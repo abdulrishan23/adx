@@ -70,3 +70,26 @@ SELECT * FROM account_freshness WHERE workspace_id = ?;
 
 -- name: GetAccountFreshness :one
 SELECT * FROM account_freshness WHERE account_id = ?;
+
+-- name: ListLeadsAddedBetween :many
+SELECT * FROM leads
+WHERE workspace_id = sqlc.arg(workspace_id) AND removed_at IS NULL
+  AND provider_added_at >= sqlc.arg(from_at) AND provider_added_at < sqlc.arg(to_at)
+  AND (sqlc.narg(account_id) IS NULL OR account_id = sqlc.narg(account_id))
+ORDER BY provider_added_at, id;
+
+-- name: ListLeadAttributionsBetween :many
+SELECT la.* FROM lead_attributions la
+JOIN leads l ON l.id = la.lead_id
+WHERE l.workspace_id = sqlc.arg(workspace_id) AND l.removed_at IS NULL
+  AND l.provider_added_at >= sqlc.arg(from_at) AND l.provider_added_at < sqlc.arg(to_at)
+ORDER BY la.lead_id, la.is_first DESC, la.id;
+
+-- name: ListAdAccounts :many
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.type IN ('google_ads', 'meta')
+ORDER BY accounts.type, accounts.external_id;
+
+-- name: ListAllAdCampaigns :many
+SELECT * FROM ad_campaigns WHERE workspace_id = ? AND removed_at IS NULL ORDER BY id;

@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { AnalyticsPage } from "@/routes/analytics";
 import { ConnectionsPage } from "@/routes/connections";
 import { FunnelPage } from "@/routes/funnel";
 import { LeadsPage } from "@/routes/leads";
@@ -38,6 +39,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Projects
+          </Link>
+          <Link
+            to="/analytics"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Analytics
           </Link>
           <Link
             to="/leads"
@@ -120,6 +128,12 @@ const policiesRoute = createRoute({
   component: PoliciesPage,
 });
 
+const analyticsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/analytics",
+  component: AnalyticsPage,
+});
+
 const leadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/leads",
@@ -150,6 +164,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   policiesRoute,
+  analyticsRoute,
   leadsRoute,
   funnelRoute,
   runsRoute,

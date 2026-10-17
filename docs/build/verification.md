@@ -139,3 +139,19 @@ make check && make test
 - Web: connect buttons for admins, per-account freshness line ("never read" is a state), "Refresh last 30 days" for marketers. Typecheck and biome clean. Not browser-tested.
 
 Live: not verified. Needs a Google Cloud OAuth client on a project with Google Ads API access and the Head of Marketing & AI's Google sign-in; a Meta Business app with the connecting person given a role (D-22). Neither exists on this machine. Same-account/date reconciliation against the platforms' own UI is therefore blocked.
+
+## B1.3 Deterministic metrics and comparison engine
+
+Local:
+
+```
+cd server && go test ./core/reporting/   # ok
+make check && make test
+```
+
+- `TestAnalyticsNullsRatiosAndComparison`: a lead at 02:00 Dubai (22:00 UTC the day before) counts on the Dubai day; Follow Up and Done-Deal are qualified; Google conversions (6) and Meta leads (30) stay in separate fields in rows and summary; cost per lead 200000 ÷ 2; revenue and ROAS null (not undefined); cost per qualified lead undefined with zero qualified; summary spend equals the rows' sum; coverage counts eligible, matched, unclassified and with-status; previous period computed as the two days before; Google +100% relative, Meta's relative change undefined with no base and absolute not available; leads from zero are undefined relative with a real absolute; `comparison_incomplete` warning when the comparison period has gaps.
+- `TestAnalyticsGroupingFiltersAndMissingDays`: project, day and platform groupings reconcile with the summary; platform filter keeps Meta out; a day with no rows is listed as missing for the account; empty period gives empty rows and null summary spend; role and parameter validation; year-over-year range.
+- `TestNoFunnelMeansNoQualifiedFigures`: without a funnel mapping qualified leads, deals and cost per qualified lead are null, and cost per lead is undefined with spend and no leads.
+- Web: `/analytics` with period, grouping, platform and comparison controls; freshness, coverage, dependencies-missing and warnings shown; "Not available", "No leads" and "no base" are distinct states. Typecheck and biome clean. Not browser-tested.
+
+Live: not applicable until B1.1's live gate opens; the engine runs on whatever rows the adapters import.
