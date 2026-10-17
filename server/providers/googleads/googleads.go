@@ -213,6 +213,7 @@ type row struct {
 		Name                   string `json:"name"`
 		Status                 string `json:"status"`
 		AdvertisingChannelType string `json:"advertisingChannelType"`
+		CampaignBudget         string `json:"campaignBudget"`
 	} `json:"campaign"`
 	CampaignBudget *struct {
 		AmountMicros string `json:"amountMicros"`

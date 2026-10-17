@@ -39,6 +39,7 @@ One Linux host (D-21: WokeWorks' Hostinger server), Caddy in front, the Go serve
 | Group | Variables | Notes |
 |---|---|---|
 | Identity | `ADX_AUTHENTIK_ISSUER`, `ADX_AUTHENTIK_API_TOKEN`, `ADX_AUTHENTIK_GROUP_ID`, `ADX_AUTHENTIK_EMAIL_STAGE_ID`, `ADX_BOOTSTRAP_ADMIN`, `ADX_PUBLIC_URL`, `ADX_OIDC_CLIENT_ID`, `ADX_OIDC_CLIENT_SECRET`, `ADX_AUTHENTIK_GROUP_NAME` | all required outside dev; discovery against the issuer must succeed at startup |
+| Writes | `ADX_LIVE_WRITES` | off by default; on, the Google Ads and Meta write adapters are registered and the outbox dispatches |
 | Storage | `ADX_DB_PATH`, `ADX_ASSETS_DIR`, `ADX_CONNECTION_KEY_FILE` | directories must exist in production |
 | Provider | `ADX_GHL_CREDENTIALS_FILE` (optional), `ADX_GOOGLE_OAUTH_CLIENT_ID`, `ADX_GOOGLE_OAUTH_CLIENT_SECRET`, `ADX_GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `ADX_META_APP_ID`, `ADX_META_APP_SECRET`, `ADX_ADS_REFRESH_TRAILING_DAYS` | a platform without its pair of settings can't be connected and says so |
 | Reports | `ADX_SMTP_HOST`, `ADX_SMTP_PORT`, `ADX_SMTP_USERNAME`, `ADX_SMTP_PASSWORD`, `ADX_SMTP_FROM` | optional; without a host reports are generated, not delivered |

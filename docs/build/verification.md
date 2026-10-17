@@ -341,3 +341,20 @@ make check && make test
 - Web: `/proposals` with envelopes (open from an accepted plan with accounts per platform, remaining shown), the proposal list by state, a new-proposal form from the policy catalog, the proposal view with now/proposed, policy then and now, approvals bound to target versions, approve/reject/execute, and the outbox with cancel before dispatch. Typecheck and biome clean. Not browser-tested.
 
 Live: nothing external; no account is enabled for writes anywhere, so every real proposal would be denied `account_write_not_enabled` until an admin enables one in Policies.
+
+## B3.5 Google/Meta controlled deployment and reconciliation
+
+Local:
+
+```
+cd server && go test ./core/execution/ ./providers/googleads/ ./providers/meta/   # ok
+make check && make test
+```
+
+- `core/execution` with scripted writers: a create whose response times out after landing leaves the intent `uncertain` with one object on the platform and no refs; the next minute's tick looks it up by marker, records it as `submitted` with the platform id, consumes the reservation and makes no second Apply; a request that never arrived is looked up, not found, returned to the outbox and sent again, ending with one object per intent; a submitted intent is verified a minute later and becomes `externally_confirmed`; the timeline reads dispatching, uncertain, reconciling, reserved, dispatching, submitted, externally_confirmed. Google submitted and Meta refused: the launch is `partial` with Google `submitted` and Meta `failed`, Meta's budget released; after verification Google is confirmed and the launch stays partial and never delivered; a marketer can't retry; an admin's retry reserves again and dispatches; with Google confirmed and Meta submitted the launch is `submitted`, and `confirmed` only once both are, still not delivered. With no writers registered an intent is held `reserved` with "no live write adapter" and zero attempts, and capabilities report nothing implemented and the switch; an action the fake writer doesn't implement fails with "not implemented" and no Apply; a kill switch holds an intent with the reason and no send, and clearing it lets the next tick submit; a manual reconcile by a marketer confirms, the assistant's actor is refused, and reconciling a finished intent is a conflict.
+- `providers/googleads`: the create sends one `googleAds:mutate` with a budget create (minor × 10,000 micros, temp resource `-1`) and a campaign create named with the marker, `PAUSED`, `SEARCH`; a budget change looks the campaign's budget resource up and sends `campaignBudgets:mutate` with `updateMask amount_micros`; a pause sends `campaigns:mutate` with `updateMask status`; an unclaimed action is refused; lookup searches by `LIKE '%[marker]%'`; verify reads status; a 502 is uncertain and a 400 is a refusal.
+- `providers/meta`: the create posts form fields with the marker in the name, `PAUSED`, `OUTCOME_LEADS`, `daily_budget` in minor units and `special_ad_categories=[]`, the token in the header and never in the URL; budget and pause post to the campaign id; ad sets are refused; lookup filters by name containing the marker; verify reads status; a 500 is uncertain and a 400 a refusal.
+- `api`: capabilities, launch status, timeline, retry and reconcile routes wired; covered by compile and core tests.
+- Web: the launch page shows the deployment per platform with each intent's state, refs, errors and timeline, retry (admin) and reconcile-now, plus what each platform can and cannot be written. Typecheck and biome clean. Not browser-tested.
+
+Live: no write was made to any account. `ADX_LIVE_WRITES` is unset here and no account is enabled for writes in any policy; the request shapes are unverified against the live APIs.

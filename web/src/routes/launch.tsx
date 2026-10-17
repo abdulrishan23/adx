@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAccounts } from "@/api/accounts";
+import { useExecutionAction, useExecutionCapabilities, useLaunchStatus } from "@/api/execution";
 import {
   useLaunchReadiness,
   useMeasurementCatalog,
@@ -86,7 +87,16 @@ export function LaunchPage() {
           <Readiness planId={planId} version={shownVersion} canEdit={canEdit} />
         )
       )}
+      {planId !== null && shownVersion !== null && (
+        <Deployment
+          planId={planId}
+          version={shownVersion}
+          isAdmin={session.data?.role === "admin"}
+          canEdit={canEdit}
+        />
+      )}
       <CatalogView />
+      <WriteCapabilities />
     </section>
   );
 }
@@ -367,5 +377,131 @@ function Evidence({ id, onClose }: { id: number; onClose: () => void }) {
         </pre>
       )}
     </section>
+  );
+}
+
+// Deployment: what the outbox did for this plan version, per platform, with
+// each intent's timeline. Submitted and confirmed are the platform's answers
+// about the request and the object; neither is delivery.
+function Deployment({
+  planId,
+  version,
+  isAdmin,
+  canEdit,
+}: {
+  planId: number;
+  version: number;
+  isAdmin: boolean;
+  canEdit: boolean;
+}) {
+  const launch = useLaunchStatus(planId, version);
+  const act = useExecutionAction();
+  if (launch.isPending) return <p className="text-muted-foreground">Loading deployment…</p>;
+  if (launch.error) return <p className="text-destructive">{launch.error.message}</p>;
+  const l = launch.data;
+  return (
+    <section className="space-y-3 rounded-lg border p-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="font-medium">
+          Deployment: {l.state}
+          {l.delivered ? " · delivered" : " · not delivered"}
+        </h3>
+      </div>
+      <p className="text-muted-foreground">{l.note}</p>
+      {l.platforms.length === 0 && (
+        <p className="text-muted-foreground">
+          No executions for this plan version. Proposals that spend from its envelopes appear here
+          once executed.
+        </p>
+      )}
+      <div className="grid gap-3 md:grid-cols-2">
+        {l.platforms.map((p) => (
+          <div key={p.platform} className="rounded-lg border p-2">
+            <p className="font-medium">
+              {p.platform} · {p.state}
+            </p>
+            {p.intents.map(({ intent, events }) => (
+              <div key={intent.id} className="mt-2 border-t pt-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>
+                    #{intent.id} · {intent.state} · attempts {intent.attempts}
+                  </span>
+                  {intent.providerRefs.map((r) => (
+                    <span key={`${r.kind}-${r.externalId}`} className="text-muted-foreground">
+                      {r.platform} {r.kind} {r.externalId}
+                    </span>
+                  ))}
+                  {isAdmin && intent.state === "failed" && (
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      disabled={act.isPending}
+                      onClick={() => act.mutate({ id: intent.id, action: "retry" })}
+                    >
+                      Retry
+                    </Button>
+                  )}
+                  {canEdit &&
+                    ["reserved", "uncertain", "reconciling", "submitted"].includes(
+                      intent.state,
+                    ) && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        disabled={act.isPending}
+                        onClick={() => act.mutate({ id: intent.id, action: "reconcile" })}
+                      >
+                        Reconcile now
+                      </Button>
+                    )}
+                </div>
+                {intent.lastError && (
+                  <p
+                    className={
+                      intent.state === "failed" ? "text-destructive" : "text-muted-foreground"
+                    }
+                  >
+                    {intent.lastError}
+                  </p>
+                )}
+                <ol className="mt-1 space-y-0.5 text-muted-foreground">
+                  {events.map((e) => (
+                    <li key={e.id}>
+                      {new Date(e.at).toLocaleTimeString()} · {e.fromState} → {e.toState} ·{" "}
+                      {e.detail}
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      {act.error && <p className="text-destructive">{act.error.message}</p>}
+    </section>
+  );
+}
+
+function WriteCapabilities() {
+  const caps = useExecutionCapabilities();
+  if (!caps.data) return null;
+  return (
+    <details className="rounded-lg border p-3">
+      <summary className="cursor-pointer font-medium">What ADX can write to each platform</summary>
+      {caps.data.platforms.map((p) => (
+        <div key={p.platform} className="mt-2">
+          <p className="font-medium">
+            {p.platform} · {p.live ? "live writes enabled" : "live writes off"}
+          </p>
+          {p.note && <p className="text-destructive">{p.note}</p>}
+          <p className="text-muted-foreground">
+            Implemented: {p.implemented.length > 0 ? p.implemented.join(", ") : "nothing"}.
+          </p>
+          <p className="text-muted-foreground">
+            Not implemented (fails honestly if proposed): {p.notImplemented.join(", ")}.
+          </p>
+        </div>
+      ))}
+    </details>
   );
 }

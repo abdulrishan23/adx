@@ -92,3 +92,24 @@ SET state = sqlc.arg(to_state), attempts = attempts + sqlc.arg(attempt_delta), p
     reconcile_after = sqlc.arg(reconcile_after), updated_at = sqlc.arg(updated_at),
     dispatched_at = COALESCE(sqlc.arg(dispatched_at), dispatched_at), confirmed_at = COALESCE(sqlc.arg(confirmed_at), confirmed_at)
 WHERE id = sqlc.arg(id) AND state = sqlc.arg(from_state);
+
+-- name: CreateExecutionEvent :one
+INSERT INTO execution_events (intent_id, attempt, from_state, to_state, detail, by_user, at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING *;
+
+-- name: ListExecutionEvents :many
+SELECT * FROM execution_events WHERE intent_id = ? ORDER BY id;
+
+-- name: ListIntentsForPlanVersion :many
+SELECT i.* FROM execution_intents i
+JOIN proposals p ON p.id = i.proposal_id
+JOIN budget_envelopes e ON e.id = p.envelope_id
+WHERE i.workspace_id = ? AND e.plan_id = ? AND e.plan_version = ?
+ORDER BY i.id;
+
+-- name: GetExecutionIntentAny :one
+SELECT * FROM execution_intents WHERE id = ?;
+
+-- name: ListIntentsByStateAll :many
+SELECT * FROM execution_intents WHERE state = ? ORDER BY updated_at, id LIMIT ?;

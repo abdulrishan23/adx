@@ -1205,13 +1205,47 @@
       "depends_on": [
         "B3.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00023_execution_events.sql",
+        "server/store/queries/proposals.sql",
+        "server/core/execution/",
+        "server/providers/googleads/writes.go",
+        "server/providers/googleads/googleads.go",
+        "server/providers/meta/writes.go",
+        "server/api/execution.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "server/cmd/adx/config.go",
+        "deploy/adx.env.example",
+        "web/src/api/execution.ts",
+        "web/src/routes/launch.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/execution/ ./providers/googleads/ ./providers/meta/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a timeout after a real create is found by marker and never duplicated on retry",
+        "a launch with one platform failed stays partial; confirmed only when every platform is confirmed, never delivered here",
+        "submitted is distinct from externally_confirmed and both from delivery",
+        "with ADX_LIVE_WRITES off no adapter is registered and intents are held, while fake-writer tests run"
+      ],
+      "remaining": [
+        "live verification of the four write actions per platform",
+        "ad sets, ads, creatives, keywords, audiences, exclusions are not written",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "an account enabled for writes in policy, a test account, ADX_LIVE_WRITES=1 and written approval",
+          "unblocks": "the live write gate"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-40."
     },
     {
       "id": "B3.6",

@@ -30,6 +30,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/measurement"
@@ -97,6 +98,9 @@ type config struct {
 	// AdsRefreshTrailingDays is how far back the daily refresh re-reads,
 	// because both platforms revise recent days (28 for Meta's windows).
 	AdsRefreshTrailingDays int `env:"ADX_ADS_REFRESH_TRAILING_DAYS" envDefault:"30"`
+	// LiveWrites registers the ad-platform write adapters. Off, every
+	// execution intent is held in the outbox and nothing is sent.
+	LiveWrites bool `env:"ADX_LIVE_WRITES" envDefault:"false"`
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
@@ -264,6 +268,20 @@ func run() error {
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
 	policyService := policies.New(db)
 	proposalService := proposals.New(db, policyService, planService, proposals.Config{})
+	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write
+	// adapter is registered and every intent is held with that reason.
+	writers := map[string]execution.Writer{}
+	if cfg.LiveWrites {
+		for name, p := range adPlatforms {
+			if w, ok := p.Reader.(execution.Writer); ok {
+				writers[name] = w
+			}
+		}
+		log.Warn("live ad-account writes are ENABLED", "platforms", len(writers))
+	} else {
+		slog.Info("live ad-account writes are off (ADX_LIVE_WRITES unset); execution intents are held")
+	}
+	executionService := execution.New(db, policyService, proposalService, adTokens, writers, execution.Config{LiveWritesEnabled: cfg.LiveWrites})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -278,6 +296,16 @@ func run() error {
 					log.WarnContext(ctx, "daily ads refresh could not start", "error", e)
 				}
 				log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
+				return nil
+			}},
+			{Kind: "execution.tick", Every: time.Minute, Run: func(ctx context.Context) error {
+				worked, errs := executionService.Tick(ctx)
+				for _, e := range errs {
+					log.WarnContext(ctx, "execution tick failed", "error", e)
+				}
+				if worked > 0 {
+					log.InfoContext(ctx, "execution tick", "worked", worked, "failed", len(errs))
+				}
 				return nil
 			}},
 			{Kind: "measurement.record_pending", Every: 10 * time.Minute, Run: func(ctx context.Context) error {
@@ -355,6 +383,7 @@ func run() error {
 			Pages:       pageService,
 			Measurement: measurementService,
 			Proposals:   proposalService,
+			Execution:   executionService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

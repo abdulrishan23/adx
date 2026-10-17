@@ -135,6 +135,46 @@ func (q *Queries) CreateBudgetReservation(ctx context.Context, arg CreateBudgetR
 	return i, err
 }
 
+const createExecutionEvent = `-- name: CreateExecutionEvent :one
+INSERT INTO execution_events (intent_id, attempt, from_state, to_state, detail, by_user, at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id, intent_id, attempt, from_state, to_state, detail, by_user, at
+`
+
+type CreateExecutionEventParams struct {
+	IntentID  int64
+	Attempt   int64
+	FromState string
+	ToState   string
+	Detail    string
+	ByUser    sql.NullInt64
+	At        time.Time
+}
+
+func (q *Queries) CreateExecutionEvent(ctx context.Context, arg CreateExecutionEventParams) (ExecutionEvent, error) {
+	row := q.db.QueryRowContext(ctx, createExecutionEvent,
+		arg.IntentID,
+		arg.Attempt,
+		arg.FromState,
+		arg.ToState,
+		arg.Detail,
+		arg.ByUser,
+		arg.At,
+	)
+	var i ExecutionEvent
+	err := row.Scan(
+		&i.ID,
+		&i.IntentID,
+		&i.Attempt,
+		&i.FromState,
+		&i.ToState,
+		&i.Detail,
+		&i.ByUser,
+		&i.At,
+	)
+	return i, err
+}
+
 const createExecutionIntent = `-- name: CreateExecutionIntent :one
 INSERT INTO execution_intents (workspace_id, proposal_id, account_id, idempotency_key, reservation_id, state, authorized_by, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -329,6 +369,34 @@ type GetExecutionIntentParams struct {
 
 func (q *Queries) GetExecutionIntent(ctx context.Context, arg GetExecutionIntentParams) (ExecutionIntent, error) {
 	row := q.db.QueryRowContext(ctx, getExecutionIntent, arg.ID, arg.WorkspaceID)
+	var i ExecutionIntent
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ProposalID,
+		&i.AccountID,
+		&i.IdempotencyKey,
+		&i.ReservationID,
+		&i.State,
+		&i.Attempts,
+		&i.ProviderRefs,
+		&i.LastErrorSafe,
+		&i.ReconcileAfter,
+		&i.AuthorizedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DispatchedAt,
+		&i.ConfirmedAt,
+	)
+	return i, err
+}
+
+const getExecutionIntentAny = `-- name: GetExecutionIntentAny :one
+SELECT id, workspace_id, proposal_id, account_id, idempotency_key, reservation_id, state, attempts, provider_refs, last_error_safe, reconcile_after, authorized_by, created_at, updated_at, dispatched_at, confirmed_at FROM execution_intents WHERE id = ?
+`
+
+func (q *Queries) GetExecutionIntentAny(ctx context.Context, id int64) (ExecutionIntent, error) {
+	row := q.db.QueryRowContext(ctx, getExecutionIntentAny, id)
 	var i ExecutionIntent
 	err := row.Scan(
 		&i.ID,
@@ -659,6 +727,42 @@ func (q *Queries) ListDispatchableIntents(ctx context.Context, arg ListDispatcha
 	return items, nil
 }
 
+const listExecutionEvents = `-- name: ListExecutionEvents :many
+SELECT id, intent_id, attempt, from_state, to_state, detail, by_user, at FROM execution_events WHERE intent_id = ? ORDER BY id
+`
+
+func (q *Queries) ListExecutionEvents(ctx context.Context, intentID int64) ([]ExecutionEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listExecutionEvents, intentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExecutionEvent{}
+	for rows.Next() {
+		var i ExecutionEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.IntentID,
+			&i.Attempt,
+			&i.FromState,
+			&i.ToState,
+			&i.Detail,
+			&i.ByUser,
+			&i.At,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listExecutionIntents = `-- name: ListExecutionIntents :many
 SELECT id, workspace_id, proposal_id, account_id, idempotency_key, reservation_id, state, attempts, provider_refs, last_error_safe, reconcile_after, authorized_by, created_at, updated_at, dispatched_at, confirmed_at FROM execution_intents
 WHERE workspace_id = ?1
@@ -674,6 +778,109 @@ type ListExecutionIntentsParams struct {
 
 func (q *Queries) ListExecutionIntents(ctx context.Context, arg ListExecutionIntentsParams) ([]ExecutionIntent, error) {
 	rows, err := q.db.QueryContext(ctx, listExecutionIntents, arg.WorkspaceID, arg.State, arg.Max)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExecutionIntent{}
+	for rows.Next() {
+		var i ExecutionIntent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProposalID,
+			&i.AccountID,
+			&i.IdempotencyKey,
+			&i.ReservationID,
+			&i.State,
+			&i.Attempts,
+			&i.ProviderRefs,
+			&i.LastErrorSafe,
+			&i.ReconcileAfter,
+			&i.AuthorizedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DispatchedAt,
+			&i.ConfirmedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIntentsByStateAll = `-- name: ListIntentsByStateAll :many
+SELECT id, workspace_id, proposal_id, account_id, idempotency_key, reservation_id, state, attempts, provider_refs, last_error_safe, reconcile_after, authorized_by, created_at, updated_at, dispatched_at, confirmed_at FROM execution_intents WHERE state = ? ORDER BY updated_at, id LIMIT ?
+`
+
+type ListIntentsByStateAllParams struct {
+	State string
+	Limit int64
+}
+
+func (q *Queries) ListIntentsByStateAll(ctx context.Context, arg ListIntentsByStateAllParams) ([]ExecutionIntent, error) {
+	rows, err := q.db.QueryContext(ctx, listIntentsByStateAll, arg.State, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ExecutionIntent{}
+	for rows.Next() {
+		var i ExecutionIntent
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProposalID,
+			&i.AccountID,
+			&i.IdempotencyKey,
+			&i.ReservationID,
+			&i.State,
+			&i.Attempts,
+			&i.ProviderRefs,
+			&i.LastErrorSafe,
+			&i.ReconcileAfter,
+			&i.AuthorizedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DispatchedAt,
+			&i.ConfirmedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIntentsForPlanVersion = `-- name: ListIntentsForPlanVersion :many
+SELECT i.id, i.workspace_id, i.proposal_id, i.account_id, i.idempotency_key, i.reservation_id, i.state, i.attempts, i.provider_refs, i.last_error_safe, i.reconcile_after, i.authorized_by, i.created_at, i.updated_at, i.dispatched_at, i.confirmed_at FROM execution_intents i
+JOIN proposals p ON p.id = i.proposal_id
+JOIN budget_envelopes e ON e.id = p.envelope_id
+WHERE i.workspace_id = ? AND e.plan_id = ? AND e.plan_version = ?
+ORDER BY i.id
+`
+
+type ListIntentsForPlanVersionParams struct {
+	WorkspaceID int64
+	PlanID      int64
+	PlanVersion int64
+}
+
+func (q *Queries) ListIntentsForPlanVersion(ctx context.Context, arg ListIntentsForPlanVersionParams) ([]ExecutionIntent, error) {
+	rows, err := q.db.QueryContext(ctx, listIntentsForPlanVersion, arg.WorkspaceID, arg.PlanID, arg.PlanVersion)
 	if err != nil {
 		return nil, err
 	}

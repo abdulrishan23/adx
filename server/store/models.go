@@ -325,6 +325,17 @@ type Evidence struct {
 	SupersededBy   sql.NullInt64
 }
 
+type ExecutionEvent struct {
+	ID        int64
+	IntentID  int64
+	Attempt   int64
+	FromState string
+	ToState   string
+	Detail    string
+	ByUser    sql.NullInt64
+	At        time.Time
+}
+
 type ExecutionIntent struct {
 	ID             int64
 	WorkspaceID    int64

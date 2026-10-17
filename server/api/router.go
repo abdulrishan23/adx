@@ -16,6 +16,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
+	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/measurement"
@@ -56,6 +57,7 @@ type Deps struct {
 	Pages       *pages.Pages
 	Measurement *measurement.Measurement
 	Proposals   *proposals.Proposals
+	Execution   *execution.Dispatcher
 }
 
 type handlers struct {
@@ -79,12 +81,13 @@ type handlers struct {
 	pages       *pages.Pages
 	measurement *measurement.Measurement
 	proposals   *proposals.Proposals
+	execution   *execution.Dispatcher
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -273,6 +276,13 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/executions/{id}/cancel", h.cancelExecution)
 			r.Get("/api/budgets/envelopes", h.listEnvelopes)
 			r.Post("/api/budgets/envelopes", h.openEnvelopes)
+		}
+		if h.execution != nil {
+			r.Get("/api/executions/capabilities", h.executionCapabilities)
+			r.Get("/api/executions/launch", h.launchStatus)
+			r.Get("/api/executions/{id}/timeline", h.executionTimeline)
+			r.Post("/api/executions/{id}/retry", h.retryExecution)
+			r.Post("/api/executions/{id}/reconcile", h.reconcileExecution)
 		}
 	})
 

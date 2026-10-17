@@ -346,6 +346,11 @@ export interface Capabilities {
     aiGeneration: AIGenerationState;
 }
 
+// From api/execution.go
+export interface CapabilitiesResponse {
+    platforms: PlatformCapabilities[];
+}
+
 // From connections/accounts.go
 export interface Capability {
     name: string;
@@ -465,7 +470,7 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From runs/runs.go
+// From evidence/evidence.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -684,6 +689,18 @@ export interface ErrorResponse {
 // From api/reports.go
 export interface EvaluateAlertsInput {
     day: Day;
+}
+
+// From execution/execution.go
+export interface Event {
+    id: number;
+    intentId: number;
+    attempt: number;
+    fromState: string;
+    toState: string;
+    detail: string;
+    byUser: number | null;
+    at: string;
 }
 
 // From evidence/evidence.go
@@ -1021,6 +1038,12 @@ export interface Intent {
     confirmedAt: string | null;
 }
 
+// From execution/execution.go
+export interface IntentWithEvents {
+    intent: Intent;
+    events: Event[];
+}
+
 // From plans/diff.go
 export interface Invalidation {
     acceptedVersion: number;
@@ -1113,6 +1136,16 @@ export interface LaunchReadiness {
     warnings: ReadinessIssue[];
     claims: ClaimCheck[];
     bindings: ClaimReport;
+}
+
+// From execution/execution.go
+export interface LaunchStatus {
+    planId: number;
+    planVersion: number;
+    state: string;
+    platforms: PlatformLaunch[];
+    delivered: boolean;
+    note: string;
 }
 
 // From assets/assets.go
@@ -1610,6 +1643,22 @@ export interface PlansResponse {
     plans: PlanSummary[];
     channels: ChannelInfo[];
     templates: TemplateGate;
+}
+
+// From execution/execution.go
+export interface PlatformCapabilities {
+    platform: string;
+    live: boolean;
+    implemented: string[];
+    notImplemented: string[];
+    note: string;
+}
+
+// From execution/execution.go
+export interface PlatformLaunch {
+    platform: string;
+    intents: IntentWithEvents[];
+    state: string;
 }
 
 // From policies/policies.go
