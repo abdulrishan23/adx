@@ -435,6 +435,24 @@ type FunnelMapping struct {
 	CreatedAt   time.Time
 }
 
+type InteractionEvent struct {
+	ID            int64
+	WorkspaceID   int64
+	PersonID      sql.NullInt64
+	EnquiryID     sql.NullInt64
+	Source        string
+	Kind          string
+	OccurrenceKey string
+	Confidence    string
+	Identity      string
+	Payload       string
+	OccurredAt    time.Time
+	ReceivedAt    time.Time
+	EvidenceID    sql.NullInt64
+	DiscardedAt   sql.NullTime
+	DiscardReason string
+}
+
 type KillSwitch struct {
 	WorkspaceID int64
 	AccountID   int64
@@ -882,6 +900,28 @@ type Run struct {
 	ObservedThrough sql.NullTime
 }
 
+type ScoreAssessment struct {
+	ID           int64
+	WorkspaceID  int64
+	PersonID     int64
+	RulesVersion sql.NullInt64
+	Trigger      string
+	Fit          sql.NullInt64
+	Intent       sql.NullInt64
+	Temperature  sql.NullString
+	Explanation  string
+	AssessedAt   time.Time
+}
+
+type ScoringRule struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type Session struct {
 	IDHash      string
 	UserID      int64
@@ -899,6 +939,18 @@ type SignInAttempt struct {
 	CodeVerifier string
 	ReturnTo     string
 	ExpiresAt    time.Time
+}
+
+type SignalCorrection struct {
+	ID           int64
+	WorkspaceID  int64
+	EventID      int64
+	Action       string
+	FromPersonID sql.NullInt64
+	ToPersonID   sql.NullInt64
+	Reason       string
+	CreatedBy    sql.NullInt64
+	CreatedAt    time.Time
 }
 
 type User struct {

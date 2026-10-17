@@ -578,6 +578,13 @@ export interface Copy {
     cta: string;
 }
 
+// From api/signals.go
+export interface CorrectSignalInput {
+    action: string;
+    personId: number;
+    reason: string;
+}
+
 // From alerts/alerts.go
 export interface CostSpikeConfig {
     thresholdPct: number | null;
@@ -687,6 +694,11 @@ export interface Deployment {
     error: string;
     deployedBy: number | null;
     deployedAt: string;
+}
+
+// From api/signals.go
+export interface DeriveResponse {
+    derived: number;
 }
 
 // From plans/diff.go
@@ -813,6 +825,12 @@ export interface ExactTemplateState {
     unblocks: string;
 }
 
+// From signals/signals.go
+export interface ExcludedEvent {
+    eventId: number;
+    reason: string;
+}
+
 // From api/proposals.go
 export interface ExecuteInput {
     idempotencyKey: string;
@@ -926,6 +944,22 @@ export type FindingKind = "audit_metric" | "audit_note" | "keyword" | "page_text
 // From api/research.go
 export interface FindingsResponse {
     findings: Finding[];
+}
+
+// From signals/signals.go
+export interface FitContribution {
+    attribute: string;
+    value: string;
+    class: string;
+    points: number;
+}
+
+// From signals/signals.go
+export interface FitRule {
+    attribute: string;
+    values: Record<string, number> | null;
+    present: number;
+    statedOnly: boolean;
 }
 
 // From assets/brand.go
@@ -1123,6 +1157,24 @@ export interface Intent {
     updatedAt: string;
     dispatchedAt: string | null;
     confirmedAt: string | null;
+}
+
+// From signals/signals.go
+export interface IntentContribution {
+    kind: string;
+    events: number;
+    raw: number;
+    cap: number;
+    points: number;
+}
+
+// From signals/signals.go
+export interface IntentRule {
+    kind: string;
+    points: number;
+    halfLifeDays: number;
+    repeatFactor: number;
+    cap: number;
 }
 
 // From execution/execution.go
@@ -2375,7 +2427,7 @@ export interface ReviewInput {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From assistant/model.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From runs/runs.go
 export interface Run {
@@ -2453,6 +2505,67 @@ export interface SchedulesResponse {
 // From research/research.go
 export type Scope = "account" | "public";
 
+// From signals/signals.go
+export interface ScoreAssessment {
+    id: number;
+    personId: number;
+    rulesVersion: number | null;
+    trigger: string;
+    fit: number | null;
+    intent: number | null;
+    temperature: string | null;
+    explanation: ScoreExplanation;
+    assessedAt: string;
+}
+
+// From signals/signals.go
+export interface ScoreExplanation {
+    rulesVersion: number | null;
+    fitAvailable: boolean;
+    fit: FitContribution[];
+    intent: IntentContribution[];
+    excluded: ExcludedEvent[];
+    stages: StageCriteria | null;
+    temperature: string | null;
+    unconfigured: string[];
+    trigger: string;
+    previousTemperature: string | null;
+}
+
+// From signals/signals.go
+export interface ScoreView {
+    personId: number;
+    latest: ScoreAssessment | null;
+    history: ScoreAssessment[];
+    events: SignalEvent[];
+    corrections: SignalCorrection[];
+    rules: ScoringState;
+}
+
+// From signals/signals.go
+export interface ScoringDocument {
+    fit: FitRule[];
+    intent: IntentRule[];
+    stages: StageCriteria | null;
+    note: string;
+}
+
+// From signals/signals.go
+export interface ScoringState {
+    configured: boolean;
+    current: ScoringVersion | null;
+    catalog: SignalKind[];
+    suggested: ScoringDocument;
+}
+
+// From signals/signals.go
+export interface ScoringVersion {
+    version: number;
+    document: ScoringDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
 // From pages/pages.go
 export interface Section {
     kind: string;
@@ -2494,11 +2607,91 @@ export interface SessionResponse {
     dev: boolean;
 }
 
+// From signals/signals.go
+export interface SignalCorrection {
+    id: number;
+    eventId: number;
+    action: string;
+    fromPersonId: number | null;
+    toPersonId: number | null;
+    reason: string;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From signals/signals.go
+export interface SignalEvent {
+    id: number;
+    personId: number | null;
+    enquiryId: number | null;
+    source: string;
+    kind: string;
+    occurrenceKey: string;
+    confidence: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    identity: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    payload: string;
+    occurredAt: string;
+    receivedAt: string;
+    evidenceId: number | null;
+    discardedAt: string | null;
+    discardReason: string;
+}
+
+// From api/signals.go
+export interface SignalEventsResponse {
+    events: SignalEvent[];
+}
+
+// From signals/signals.go
+export interface SignalIdentity {
+    personId: number;
+    email: string;
+    phone: string;
+    external: string;
+    anonymousId: string;
+}
+
+// From signals/signals.go
+export interface SignalIngested {
+    event: SignalEvent;
+    duplicate: boolean;
+    scored: boolean;
+}
+
+// From signals/signals.go
+export interface SignalInput {
+    source: string;
+    kind: string;
+    occurrenceKey: string;
+    occurredAt: string;
+    identity: SignalIdentity;
+    projectId: number;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    payload: string;
+}
+
+// From signals/signals.go
+export interface SignalKind {
+    kind: string;
+    source: string;
+    description: string;
+    supported: boolean;
+    reason: string;
+}
+
 // From voice/voice.go
 export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
 
 // From leads/funnel.go
 export type Stage = "attempted" | "dead" | "disqualified" | "engaged" | "excluded" | "meeting" | "offer" | "open" | "won";
+
+// From signals/signals.go
+export interface StageCriteria {
+    hot: number;
+    warm: number;
+}
 
 // From alerts/alerts.go
 export interface StaleIngestionConfig {
@@ -2702,6 +2895,14 @@ export interface VersionInput {
 
 // From core/core.go
 export type Via = "assistant" | "job" | "mcp" | "startup" | "web";
+
+// From api/signals.go
+export interface WebhookResponse {
+    accepted: boolean;
+    ignored: string;
+    duplicate: boolean;
+    eventId: number;
+}
 
 // From policies/policies.go
 export type WriteAction = "ad.pause" | "adset.pause" | "audiences.upsert" | "bids.change" | "budget.lower" | "budget.raise" | "campaign.create_paused" | "campaign.pause" | "conversions.upload" | "exclusions.update" | "launch" | "ghl.lead_fields.set" | "organic.post" | "targeting.change";

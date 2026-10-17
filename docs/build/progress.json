@@ -1343,13 +1343,49 @@
         "B4.1",
         "B0.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00025_signals_and_scoring.sql",
+        "server/store/queries/signals.sql",
+        "server/core/signals/signals.go",
+        "server/core/signals/signals_test.go",
+        "server/core/alerts/alerts.go",
+        "server/api/signals.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "web/src/api/signals.ts",
+        "web/src/routes/scoring.tsx",
+        "web/src/routes/person-score.tsx",
+        "web/src/routes/people.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/signals/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a repeated webhook is one event and one assessment",
+        "unknown or ambiguous identity never scores and stays visible",
+        "no rules or no stage thresholds classify nobody; fit without attributes is not available",
+        "corrections re-assess and keep earlier assessments and versions"
+      ],
+      "remaining": [
+        "tracked-link identity for page views",
+        "a real GoHighLevel webhook against a location",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "ADX_WEBHOOK_SECRET and a GoHighLevel webhook action pointing at /webhooks/ghl",
+          "unblocks": "live stage and message signals"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-43."
     },
     {
       "id": "B4.3",

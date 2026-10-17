@@ -388,3 +388,18 @@ make check && make test
 - Web: `/people` page with search, uncertain-match banner and decisions, enquiries by project, identifiers and links with reversal, attributes with class and conflict, stated-attribute entry and the enrichment state. Typecheck and biome clean. Not browser-tested.
 
 Live: no enrichment provider exists; the `Enricher` contract is the seam, and the page says enrichment is not configured.
+
+## B4.2 Observable signals and scoring
+
+Local:
+
+```
+cd server && go test ./core/signals/   # ok
+make check && make test
+```
+
+- `core/signals`: the same occurrence key twice is one event, one assessment and no second score; three forms are damped (20, 12, 7.2) and a fourth is capped at 40; fit with no attributes is not available rather than 0. A device id alone is `unknown` and scores nobody; Amal's email with Omar's phone is `unknown` with "different people" in the identity evidence; a phone shared by two people is `unknown` with "shared by 2 people"; attributing the page view by hand scores it and removes it from the unknown list. With no rules saved an assessment is recorded with "scoring rules" unconfigured and no figures; with rules but no stages the intent is 20 and the temperature is null; hot below warm and an unobservable kind are rejected; a marketer can't save rules; version 2 classifies warm and the earlier assessment keeps version 1; a stated purchase timeline adds 30 and crosses hot with the previous temperature on record. Reattributing a call to Omar zeroes Amal with the 25 kept in history and scores Omar 25; discarding needs a reason, keeps the event on the timeline as excluded and refuses a second discard with 409; two weeks later the daily reassessment halves a form to 10 with trigger `decay`. Derivation records a lead's first status once, re-observing the same status adds nothing, and a move to follow-up is one change with the previous status in the payload.
+- `api`: rules, ingest, unknown, correct, derive and person score routes; `POST /webhooks/ghl` is public, 503 without `ADX_WEBHOOK_SECRET`, 401 on a wrong secret, maps `OpportunityStageUpdate` and `InboundMessage` and acknowledges other types as ignored. Jobs `signals.derive` (10 min) and `signals.reassess` (daily).
+- Web: `/settings/scoring` rules editor with the catalog and the unknown-event list with attribute/discard; the person page shows fit, intent, temperature, the explanation lines, the timeline, history and corrections. Typecheck and biome clean. Not browser-tested.
+
+Live: no GoHighLevel webhook is configured against a real location; the adapter's parsing is tested on documented payload shapes only.

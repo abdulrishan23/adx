@@ -15,6 +15,7 @@ import { useProjects } from "@/api/projects";
 import { useSession } from "@/api/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ScoreSection } from "@/routes/person-score";
 
 // People and their enquiries. A person is who; an enquiry is a project
 // they asked about. Matching is conservative and every uncertain match is
@@ -266,6 +267,8 @@ function PersonView({
         ))}
         {reverse.error && <p className="text-destructive">{reverse.error.message}</p>}
       </section>
+
+      <ScoreSection id={id} canEdit={canEdit} />
 
       <section className="space-y-2">
         <h3 className="font-medium">

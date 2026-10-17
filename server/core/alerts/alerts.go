@@ -341,6 +341,21 @@ func (e *AlertEvaluation) count(fresh bool) {
 	}
 }
 
+// Raise lets another domain record an evidence-backed observation as an
+// alert: the same open-alert rules as the daily checks, under config version
+// 0 because no alert config governs it. The check name must be stable.
+func (a *Alerts) Raise(ctx context.Context, actor core.Actor, check, subjectKey, subjectLabel, severity, message string, evidence any) (bool, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return false, core.ErrForbidden
+	}
+	switch severity {
+	case "info", "warning", "urgent":
+	default:
+		return false, core.Invalid("severity must be info, warning or urgent")
+	}
+	return a.raise(ctx, actor, 0, check, subjectKey, subjectLabel, severity, message, evidence)
+}
+
 // raise creates an alert or adds an occurrence to the open one for the same
 // check and subject. It returns true when a new alert was created.
 func (a *Alerts) raise(ctx context.Context, actor core.Actor, configVersion int64, check, subjectKey, subjectLabel, severity, message string, evidence any) (bool, error) {

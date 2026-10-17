@@ -31,6 +31,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
+	"github.com/WokeWorks/adx/server/core/signals"
 )
 
 type Deps struct {
@@ -60,37 +61,43 @@ type Deps struct {
 	Proposals   *proposals.Proposals
 	Execution   *execution.Dispatcher
 	CRM         *crm.CRM
+	Signals     *signals.Signals
+	// WebhookSecret is the shared secret public webhook adapters require.
+	// Empty disables them.
+	WebhookSecret string
 }
 
 type handlers struct {
-	log         *slog.Logger
-	dev         bool
-	projects    *projects.Projects
-	connections *connections.Connections
-	ops         *ops.Ops
-	identity    *identity.Identity
-	policies    *policies.Policies
-	runs        *runs.Runs
-	leads       *leads.Leads
-	reporting   *reporting.Reporting
-	reports     *reports.Reports
-	alerts      *alerts.Alerts
-	assistant   *assistant.Assistant
-	creative    *creative.Service
-	brands      *brands.Brands
-	research    *research.Research
-	plans       *plans.Plans
-	pages       *pages.Pages
-	measurement *measurement.Measurement
-	proposals   *proposals.Proposals
-	execution   *execution.Dispatcher
-	crm         *crm.CRM
+	log           *slog.Logger
+	dev           bool
+	projects      *projects.Projects
+	connections   *connections.Connections
+	ops           *ops.Ops
+	identity      *identity.Identity
+	policies      *policies.Policies
+	runs          *runs.Runs
+	leads         *leads.Leads
+	reporting     *reporting.Reporting
+	reports       *reports.Reports
+	alerts        *alerts.Alerts
+	assistant     *assistant.Assistant
+	creative      *creative.Service
+	brands        *brands.Brands
+	research      *research.Research
+	plans         *plans.Plans
+	pages         *pages.Pages
+	measurement   *measurement.Measurement
+	proposals     *proposals.Proposals
+	execution     *execution.Dispatcher
+	crm           *crm.CRM
+	signals       *signals.Signals
+	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -110,6 +117,9 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/p/{slug}", h.publicPage)
 		r.Get("/p/{slug}/thanks", h.publicThanks)
 		r.Post("/p/{slug}/form", h.publicForm)
+		if h.signals != nil {
+			r.Post("/webhooks/ghl", h.ghlWebhook)
+		}
 	}
 
 	// Sign-in happens before there is a session.
@@ -305,6 +315,15 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/crm/people/{id}/attributes", h.setStatedAttribute)
 			r.Post("/api/crm/people/{id}/links", h.linkPerson)
 			r.Post("/api/crm/links/{id}/reverse", h.reverseLink)
+		}
+		if h.signals != nil {
+			r.Get("/api/signals/rules", h.getScoringRules)
+			r.Put("/api/signals/rules", h.putScoringRules)
+			r.Post("/api/signals/events", h.ingestEvent)
+			r.Get("/api/signals/events/unknown", h.unknownEvents)
+			r.Post("/api/signals/events/{id}/correct", h.correctEvent)
+			r.Post("/api/signals/derive", h.deriveSignals)
+			r.Get("/api/signals/people/{id}", h.personScore)
 		}
 	})
 

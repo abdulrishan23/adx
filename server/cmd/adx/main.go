@@ -45,6 +45,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
+	"github.com/WokeWorks/adx/server/core/signals"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
@@ -102,6 +103,9 @@ type config struct {
 	// LiveWrites registers the ad-platform write adapters. Off, every
 	// execution intent is held in the outbox and nothing is sent.
 	LiveWrites bool `env:"ADX_LIVE_WRITES" envDefault:"false"`
+	// WebhookSecret is required in X-ADX-Webhook-Secret by the public
+	// webhook adapters. Empty keeps them off.
+	WebhookSecret string `env:"ADX_WEBHOOK_SECRET"`
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
@@ -286,6 +290,7 @@ func run() error {
 	// No enrichment provider is wired; people are resolved from CRM leads and
 	// form submissions only.
 	crmService := crm.New(db, evidenceStore, crm.Config{})
+	signalService := signals.New(db, evidenceStore, crmService, signals.Config{Alerts: alertsService})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -325,6 +330,24 @@ func run() error {
 					log.WarnContext(ctx, "person resolution failed", "error", err)
 				} else if n > 0 {
 					log.InfoContext(ctx, "resolved records to people", "linked", n)
+				}
+				return nil
+			}},
+			{Kind: "signals.derive", Every: 10 * time.Minute, Run: func(ctx context.Context) error {
+				n, err := signalService.Derive(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "signal derivation failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "derived signals", "events", n)
+				}
+				return nil
+			}},
+			{Kind: "signals.reassess", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
+				n, err := signalService.Reassess(ctx, core.System(core.ViaJob), 90*24*time.Hour)
+				if err != nil {
+					log.WarnContext(ctx, "score reassessment failed", "error", err)
+				} else {
+					log.InfoContext(ctx, "reassessed scores", "people", n)
 				}
 				return nil
 			}},
@@ -383,28 +406,30 @@ func run() error {
 
 	srv := &http.Server{
 		Handler: api.NewRouter(api.Deps{
-			Log:         log,
-			Dev:         dev,
-			Projects:    projects.New(db),
-			Connections: connections,
-			Ops:         readiness,
-			Identity:    sessions,
-			Policies:    policyService,
-			Runs:        runsService,
-			Leads:       leadsService,
-			Reporting:   reportingService,
-			Reports:     reportsService,
-			Alerts:      alertsService,
-			Assistant:   assistantService,
-			Creative:    creativeService,
-			Brands:      brandService,
-			Research:    researchService,
-			Plans:       planService,
-			Pages:       pageService,
-			Measurement: measurementService,
-			Proposals:   proposalService,
-			Execution:   executionService,
-			CRM:         crmService,
+			Log:           log,
+			Dev:           dev,
+			Projects:      projects.New(db),
+			Connections:   connections,
+			Ops:           readiness,
+			Identity:      sessions,
+			Policies:      policyService,
+			Runs:          runsService,
+			Leads:         leadsService,
+			Reporting:     reportingService,
+			Reports:       reportsService,
+			Alerts:        alertsService,
+			Assistant:     assistantService,
+			Creative:      creativeService,
+			Brands:        brandService,
+			Research:      researchService,
+			Plans:         planService,
+			Pages:         pageService,
+			Measurement:   measurementService,
+			Proposals:     proposalService,
+			Execution:     executionService,
+			CRM:           crmService,
+			Signals:       signalService,
+			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
