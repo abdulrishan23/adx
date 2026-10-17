@@ -11,6 +11,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
 import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
+import { AskPage } from "@/routes/ask";
 import { ConnectionsPage } from "@/routes/connections";
 import { FunnelPage } from "@/routes/funnel";
 import { LeadsPage } from "@/routes/leads";
@@ -48,6 +49,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Analytics
+          </Link>
+          <Link
+            to="/ask"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Ask ADX
           </Link>
           <Link
             to="/reports"
@@ -150,6 +158,12 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
+const askRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/ask",
+  component: AskPage,
+});
+
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reports",
@@ -193,6 +207,7 @@ const routeTree = rootRoute.addChildren([
   connectionsRoute,
   policiesRoute,
   analyticsRoute,
+  askRoute,
   reportsRoute,
   alertsRoute,
   leadsRoute,

@@ -171,3 +171,18 @@ make check && make test
 - Web: `/reports` (schedules with delivery state, generate now, generated list with delivery status and an expandable snapshot, add schedule for admins) and `/alerts` (open/acknowledged/resolved filter, acknowledge/resolve, run checks for yesterday, threshold editor saving a new version, unconfigured banner). Typecheck and biome clean. Not browser-tested.
 
 Live: none. Recipients and thresholds are the owner's inputs; SMTP settings and a shared sender (D-24) don't exist yet.
+
+## B1.5 Read-only grounded assistant
+
+Local:
+
+```
+cd server && go test ./core/assistant/ ./providers/anthropic/   # ok
+make check && make test
+```
+
+- `core/assistant` with the scripted model: a tool call runs `get_analytics` as the viewer, the result reaches the model as a `tool_result` block, the answer carries evidence refs and no warning when every number is in the tool output; an invented 9876 AED and 42 leads are flagged `ungrounded_numbers`; numbers with no tool call are flagged `no_tool_evidence`; ROAS comes back null with the dependency explained, so the gap is explicit; `set_budget` and `pause_campaign` (the second prompted by data) are refused, the campaign budget is unchanged and no policy row exists; missing required fields, unknown fields and bad enum values are refused before the tool runs; a retryable outage records an `unavailable` turn with `retryable`, a non-retryable one without, a refusal records `refused`, failed turns are not replayed as history, and no configured model gives an honest unavailable turn; the tool-round limit stops a looping model; cost is computed from configured prices (1000 micros for 100+30 tokens at $4/$20 per million) and null without them; the daily token budget blocks further turns; conversations are private to their owner.
+- `providers/anthropic` against a fake Messages API: path, `x-api-key` header, model, `max_tokens`, `output_config.effort`, system text, tool schema with `additionalProperties:false` and `required`, assistant `tool_use` and user `tool_result` blocks sent with their ids, thinking omitted; `text` and `tool_use` blocks, stop reason, model and usage parsed; 429 → retryable without the provider's text, 401 → not retryable naming the key; config validation.
+- Web: `/ask` with conversations, turns, collapsible tool input/result and evidence counts, model/tokens/cost per turn, unavailable and refused states, warning texts. Typecheck and biome clean. Not browser-tested.
+
+Live: not verified. No model API key exists on this machine; the first live question will also confirm the SDK's request shape against the real API.

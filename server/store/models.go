@@ -96,6 +96,34 @@ type AlertConfig struct {
 	CreatedAt   time.Time
 }
 
+type AssistantConversation struct {
+	ID          int64
+	WorkspaceID int64
+	UserID      sql.NullInt64
+	Title       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type AssistantMessage struct {
+	ID             int64
+	ConversationID int64
+	Role           string
+	Status         string
+	Content        string
+	ToolCalls      string
+	ToolName       sql.NullString
+	ToolInput      sql.NullString
+	ToolResult     sql.NullString
+	EvidenceRefs   string
+	Warnings       string
+	Model          sql.NullString
+	InputTokens    sql.NullInt64
+	OutputTokens   sql.NullInt64
+	CostMicros     sql.NullInt64
+	CreatedAt      time.Time
+}
+
 type AuditLog struct {
 	ID           int64
 	At           time.Time

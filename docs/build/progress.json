@@ -675,13 +675,73 @@
         "B1.3",
         "B0.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00013_assistant.sql",
+        "server/store/queries/assistant.sql",
+        "server/core/assistant/",
+        "server/core/assistant/assistanttest/",
+        "server/providers/anthropic/",
+        "server/api/assistant.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go (configuredModel)",
+        "web/src/api/assistant.ts",
+        "web/src/routes/ask.tsx",
+        "web/src/router.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "server/go.mod (anthropic-sdk-go v1.82.0)"
+      ],
+      "commands": [
+        "go test ./core/assistant/ ./providers/anthropic/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Question without needed data produces an explicit gap",
+          "result": "pass",
+          "evidence": "assistant TestQuestionWithoutDataProducesAnExplicitGap (ROAS null with the dependency named)"
+        },
+        {
+          "check": "Retrieved content cannot authorize tools",
+          "result": "pass",
+          "evidence": "assistant TestWritesAndInjectedInstructionsAreRefused (tool asked for after reading data is refused by the allowlist)"
+        },
+        {
+          "check": "Budget-change request cannot dispatch a mutation",
+          "result": "pass",
+          "evidence": "set_budget refused; campaign budget unchanged; no policy consulted"
+        },
+        {
+          "check": "Model outage returns retryable state without invented response",
+          "result": "pass",
+          "evidence": "assistant TestModelOutageIsRetryableAndInventsNothing; anthropic TestErrorMapping"
+        }
+      ],
+      "remaining": [
+        "Live call with a real API key",
+        "Streaming answers (currently one request per turn, synchronous)",
+        "Evidence drill-down links from refs to screens",
+        "Server-side refusal fallbacks are off (BD-29) pending the owner's view"
+      ],
+      "blockers": [
+        {
+          "capability": "live assistant answers",
+          "unblocks": "ADX_MODEL_API_KEY (an Anthropic API key with budget) and the owner's data-use approval for sending aggregated figures to the model (D-25 open point)"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "tool running with more than the asker's role",
+        "numbers in an answer that no tool produced passing silently",
+        "a write tool reachable from the model or from injected text",
+        "bad tool input running",
+        "outage turned into an invented answer",
+        "failed turns replayed as history",
+        "cost shown as zero without a price",
+        "a looping model never stopping"
+      ]
     },
     {
       "id": "B1.6",

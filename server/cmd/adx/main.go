@@ -24,6 +24,7 @@ import (
 	"github.com/WokeWorks/adx/server/api"
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/alerts"
+	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -35,6 +36,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
+	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/store"
@@ -91,6 +93,19 @@ type config struct {
 	SMTPUsername string `env:"ADX_SMTP_USERNAME"`
 	SMTPPassword string `env:"ADX_SMTP_PASSWORD"`
 	SMTPFrom     string `env:"ADX_SMTP_FROM"`
+
+	// Ask ADX (B1.5). The model is configuration: provider, name, key,
+	// effort, timeout, daily token budget and prices for cost accounting.
+	// Without a key the assistant answers "not configured" and invents nothing.
+	ModelProvider          string `env:"ADX_MODEL_PROVIDER" envDefault:"anthropic"`
+	ModelAPIKey            string `env:"ADX_MODEL_API_KEY"`
+	ModelName              string `env:"ADX_MODEL_NAME" envDefault:"claude-opus-5-5"`
+	ModelEffort            string `env:"ADX_MODEL_EFFORT" envDefault:"medium"`
+	ModelBaseURL           string `env:"ADX_MODEL_BASE_URL"`
+	ModelTimeoutSeconds    int    `env:"ADX_MODEL_TIMEOUT_SECONDS" envDefault:"120"`
+	AssistantDailyTokens   int64  `env:"ADX_ASSISTANT_DAILY_TOKEN_BUDGET" envDefault:"2000000"`
+	ModelInputPriceMicros  int64  `env:"ADX_MODEL_INPUT_PRICE_MICROS"`
+	ModelOutputPriceMicros int64  `env:"ADX_MODEL_OUTPUT_PRICE_MICROS"`
 }
 
 func main() {
@@ -209,6 +224,12 @@ func run() error {
 	}
 	reportsService := reports.New(db, reportingService, mailer, reports.Config{})
 	alertsService := alerts.New(db, reportingService, alerts.Config{})
+	model, err := configuredModel(cfg)
+	if err != nil {
+		return err
+	}
+	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
+		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
 		Executors: runExecutors(leadsService, reportingService),
@@ -270,6 +291,7 @@ func run() error {
 			Reporting:   reportingService,
 			Reports:     reportsService,
 			Alerts:      alertsService,
+			Assistant:   assistantService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -291,6 +313,25 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Client.Stop(shutdownCtx))
+}
+
+// configuredModel builds the assistant's model, or returns nil when no key
+// is set. Only the Anthropic provider exists; the name is checked so a typo
+// fails at startup rather than at the first question.
+func configuredModel(cfg config) (assistant.Model, error) {
+	if cfg.ModelAPIKey == "" {
+		slog.Info("no model API key; Ask ADX answers that it is not configured")
+		return nil, nil
+	}
+	if cfg.ModelProvider != "anthropic" {
+		return nil, fmt.Errorf("ADX_MODEL_PROVIDER %q is not supported; only anthropic is", cfg.ModelProvider)
+	}
+	m, err := anthropicprovider.New(anthropicprovider.Config{APIKey: cfg.ModelAPIKey, Model: cfg.ModelName, BaseURL: cfg.ModelBaseURL,
+		Timeout: time.Duration(cfg.ModelTimeoutSeconds) * time.Second, Effort: cfg.ModelEffort})
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // configuredMailer builds the SMTP transport, or returns nil when no host is

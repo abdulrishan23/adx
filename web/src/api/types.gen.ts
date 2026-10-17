@@ -147,8 +147,8 @@ export const CheckZeroLeads = "zero_leads";
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From runs/runs.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -174,6 +174,19 @@ export interface ContentAcceptance {
     ref: Ref;
     acceptedBy: number;
     acceptedAt: string;
+}
+
+// From assistant/assistant.go
+export interface Conversation {
+    id: number;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From api/assistant.go
+export interface ConversationsResponse {
+    conversations: Conversation[];
 }
 
 // From alerts/alerts.go
@@ -248,6 +261,13 @@ export interface Evidence {
     completeness: Completeness;
     retainUntil: string | null;
     supersededById: number | null;
+}
+
+// From assistant/tools.go
+export interface EvidenceRef {
+    kind: string;
+    ref: string;
+    detail?: string;
 }
 
 // From leads/funnel.go
@@ -607,6 +627,11 @@ export interface RefreshProgress {
     unknownCampaignRows: number;
 }
 
+// From assistant/assistant.go
+export interface Reply {
+    turns: Turn[];
+}
+
 // From reports/reports.go
 export interface Report {
     id: number;
@@ -753,7 +778,7 @@ export interface ResultFreshness {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From core/core.go
-export type Role = "admin" | "marketer" | "viewer";
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From runs/runs.go
 export interface Run {
@@ -794,6 +819,11 @@ export interface Segment {
     text: string;
     startMs: number;
     endMs: number;
+}
+
+// From api/assistant.go
+export interface SendMessageInput {
+    text: string;
 }
 
 // From identity/identity.go
@@ -844,10 +874,52 @@ export type State = "failed" | "interrupted" | "partial" | "queued" | "running" 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
 
+// From assistant/assistant.go
+export interface ToolCall {
+    id: string;
+    name: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    input: string;
+}
+
+// From assistant/tools.go
+export interface ToolResult {
+    // empty interface{} type, falling back to unknown
+    output: unknown;
+    evidenceRefs: EvidenceRef[];
+    error?: string;
+}
+
 // From voice/voice.go
 export interface Transcript {
     segments: Segment[];
     duration: number;
+}
+
+// From assistant/assistant.go
+export interface Turn {
+    id: number;
+    role: string;
+    status: string;
+    content: string;
+    toolCalls: ToolCall[];
+    toolName: string | null;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    toolInput: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    toolResult: string;
+    evidenceRefs: EvidenceRef[];
+    warnings: string[];
+    model: string | null;
+    inputTokens: number | null;
+    outputTokens: number | null;
+    costMicros: number | null;
+    createdAt: string;
+}
+
+// From api/assistant.go
+export interface TurnsResponse {
+    turns: Turn[];
 }
 
 // From users/users.go

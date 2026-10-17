@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/WokeWorks/adx/server/core/alerts"
+	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -40,6 +41,7 @@ type Deps struct {
 	Reporting *reporting.Reporting
 	Reports   *reports.Reports
 	Alerts    *alerts.Alerts
+	Assistant *assistant.Assistant
 }
 
 type handlers struct {
@@ -55,11 +57,12 @@ type handlers struct {
 	reporting   *reporting.Reporting
 	reports     *reports.Reports
 	alerts      *alerts.Alerts
+	assistant   *assistant.Assistant
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
-		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts}
+		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -137,6 +140,12 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/alerts/config", h.getAlertConfig)
 			r.Put("/api/alerts/config", h.putAlertConfig)
 			r.Post("/api/alerts/evaluate", h.evaluateAlerts)
+		}
+		if h.assistant != nil {
+			r.Get("/api/assistant/conversations", h.listConversations)
+			r.Post("/api/assistant/conversations", h.createConversation)
+			r.Get("/api/assistant/conversations/{id}", h.conversationTurns)
+			r.Post("/api/assistant/conversations/{id}/messages", h.sendMessage)
 		}
 	})
 

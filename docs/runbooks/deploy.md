@@ -42,6 +42,7 @@ One Linux host (D-21: WokeWorks' Hostinger server), Caddy in front, the Go serve
 | Storage | `ADX_DB_PATH`, `ADX_ASSETS_DIR`, `ADX_CONNECTION_KEY_FILE` | directories must exist in production |
 | Provider | `ADX_GHL_CREDENTIALS_FILE` (optional), `ADX_GOOGLE_OAUTH_CLIENT_ID`, `ADX_GOOGLE_OAUTH_CLIENT_SECRET`, `ADX_GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `ADX_META_APP_ID`, `ADX_META_APP_SECRET`, `ADX_ADS_REFRESH_TRAILING_DAYS` | a platform without its pair of settings can't be connected and says so |
 | Reports | `ADX_SMTP_HOST`, `ADX_SMTP_PORT`, `ADX_SMTP_USERNAME`, `ADX_SMTP_PASSWORD`, `ADX_SMTP_FROM` | optional; without a host reports are generated, not delivered |
+| Model | `ADX_MODEL_PROVIDER`, `ADX_MODEL_API_KEY`, `ADX_MODEL_NAME`, `ADX_MODEL_EFFORT`, `ADX_MODEL_BASE_URL`, `ADX_MODEL_TIMEOUT_SECONDS`, `ADX_ASSISTANT_DAILY_TOKEN_BUDGET`, `ADX_MODEL_INPUT_PRICE_MICROS`, `ADX_MODEL_OUTPUT_PRICE_MICROS` | optional; without a key Ask ADX says it is not configured |
 | Deployment | `ADX_ADDR`, `ADX_ENV` | Caddy owns the public domain |
 
 Later phases add their own groups to this table and to `deploy/adx.env.example`.
