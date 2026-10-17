@@ -1453,13 +1453,58 @@
         "B4.1",
         "B0.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00027_calls.sql",
+        "server/store/queries/calls.sql",
+        "server/core/calls/calls.go",
+        "server/core/calls/calls_test.go",
+        "server/core/voice/voice.go",
+        "server/core/voice/voicetest/fakes.go",
+        "server/core/outreach/outreach.go",
+        "server/providers/twilio/twilio.go",
+        "server/providers/twilio/twilio_test.go",
+        "server/api/calls.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "web/src/api/calls.ts",
+        "web/src/routes/calls.tsx",
+        "web/src/routes/call-button.tsx",
+        "web/src/routes/brief.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/calls/ ./core/voice/... ./providers/twilio/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "simultaneous requests place exactly one call",
+        "an unknown result blocks repeats until reconciled",
+        "no named and authorized route (or mismatched adapter) blocks live calling; the fake route passes in tests",
+        "an unsigned or wrongly signed callback is refused and records nothing"
+      ],
+      "remaining": [
+        "media stream endpoint (B4.5)",
+        "live call on an authorized route",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "policy",
+          "what": "a chosen UAE telecom route authorized in writing, and Reportage's written reversal of 'not open to automated calls'",
+          "unblocks": "live calling"
+        },
+        {
+          "kind": "external",
+          "what": "ADX_TELECOM_ROUTE=twilio with account SID and auth token",
+          "unblocks": "the reference adapter"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-45."
     },
     {
       "id": "B4.5",

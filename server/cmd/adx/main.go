@@ -28,6 +28,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/calls"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evidence"
@@ -48,12 +49,14 @@ import (
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
 	"github.com/WokeWorks/adx/server/core/users"
+	"github.com/WokeWorks/adx/server/core/voice"
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
 	"github.com/WokeWorks/adx/server/providers/filestore"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/providers/svgrender"
+	"github.com/WokeWorks/adx/server/providers/twilio"
 	"github.com/WokeWorks/adx/server/providers/webfetch"
 	"github.com/WokeWorks/adx/server/store"
 
@@ -107,6 +110,12 @@ type config struct {
 	// WebhookSecret is required in X-ADX-Webhook-Secret by the public
 	// webhook adapters. Empty keeps them off.
 	WebhookSecret string `env:"ADX_WEBHOOK_SECRET"`
+	// TelecomRoute names the telephony adapter to wire: "" (none) or
+	// "twilio". The calling policy must name and authorize the same route
+	// before any call is placed.
+	TelecomRoute     string `env:"ADX_TELECOM_ROUTE"`
+	TwilioAccountSID string `env:"ADX_TWILIO_ACCOUNT_SID"`
+	TwilioAuthToken  string `env:"ADX_TWILIO_AUTH_TOKEN"`
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
@@ -305,6 +314,21 @@ func run() error {
 	crmService := crm.New(db, evidenceStore, crm.Config{})
 	signalService := signals.New(db, evidenceStore, crmService, signals.Config{Alerts: alertsService})
 	outreachService.Attach(brandService, signalService, crmService, policyService)
+	// Telephony: only the route the configuration names. With none, the
+	// calls service exists for policy and history and places nothing.
+	var telephony voice.Telephony
+	switch cfg.TelecomRoute {
+	case "":
+	case "twilio":
+		tw, err := twilio.New(twilio.Config{AccountSID: cfg.TwilioAccountSID, AuthToken: cfg.TwilioAuthToken, PublicURL: cfg.PublicURL})
+		if err != nil {
+			return fmt.Errorf("ADX_TELECOM_ROUTE=twilio: %w", err)
+		}
+		telephony = tw
+	default:
+		return fmt.Errorf("ADX_TELECOM_ROUTE %q is not a known route", cfg.TelecomRoute)
+	}
+	callService := calls.New(db, calls.Config{Telephony: telephony, Policies: policyService, Outreach: outreachService, CRM: crmService, PublicURL: cfg.PublicURL})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -371,6 +395,15 @@ func run() error {
 					log.WarnContext(ctx, "score sync failed", "error", err)
 				} else if n > 0 {
 					log.InfoContext(ctx, "queued score fields", "queued", n)
+				}
+				return nil
+			}},
+			{Kind: "calls.expire_recordings", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
+				n, err := callService.ExpireRecordings(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "recording retention failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "deleted recordings past retention", "count", n)
 				}
 				return nil
 			}},

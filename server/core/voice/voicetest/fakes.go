@@ -7,6 +7,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -21,6 +22,12 @@ type Telephony struct {
 	// Secret is what ParseStatusCallback expects in the X-Fake-Signature
 	// header, standing in for a provider's HMAC.
 	Secret string
+	// StartErr makes StartCall fail after recording the request, standing in
+	// for a transport failure whose outcome is unknown.
+	StartErr error
+	// Known is what LookupCall answers, by provider call id.
+	Known   map[string]voice.StatusEvent
+	Deleted []string
 }
 
 func (t *Telephony) Name() string { return "fake" }
@@ -29,7 +36,26 @@ func (t *Telephony) StartCall(_ context.Context, req voice.CallRequest) (string,
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.Calls = append(t.Calls, req)
+	if t.StartErr != nil {
+		return "", t.StartErr
+	}
 	return "fake-call-" + req.OccurrenceKey, nil
+}
+
+// LookupCall answers from Known; a call the fake was never asked about is
+// not found.
+func (t *Telephony) LookupCall(_ context.Context, id string) (voice.StatusEvent, bool, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	ev, ok := t.Known[id]
+	return ev, ok, nil
+}
+
+func (t *Telephony) DeleteRecording(_ context.Context, ref string) error {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.Deleted = append(t.Deleted, ref)
+	return nil
 }
 
 func (t *Telephony) Hangup(_ context.Context, id string) error {
@@ -43,7 +69,13 @@ func (t *Telephony) ParseStatusCallback(r *http.Request) (voice.StatusEvent, err
 	if r.Header.Get("X-Fake-Signature") != t.Secret || t.Secret == "" {
 		return voice.StatusEvent{}, voice.ErrBadSignature
 	}
-	return voice.StatusEvent{ProviderCallID: r.FormValue("CallSid"), State: voice.CallState(r.FormValue("CallStatus")), At: time.Now()}, nil
+	var d time.Duration
+	if secs := r.FormValue("CallDuration"); secs != "" {
+		if n, err := strconv.Atoi(secs); err == nil {
+			d = time.Duration(n) * time.Second
+		}
+	}
+	return voice.StatusEvent{ProviderCallID: r.FormValue("CallSid"), State: voice.CallState(r.FormValue("CallStatus")), Duration: d, RecordingRef: r.FormValue("RecordingSid"), At: time.Now(), EventID: r.FormValue("SequenceNumber")}, nil
 }
 
 // Transport is an in-memory media stream. The test feeds caller audio with

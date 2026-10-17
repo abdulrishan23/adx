@@ -352,8 +352,104 @@ export interface BriefsResponse {
 // From reports/reports.go
 export type Cadence = "daily" | "monthly" | "quarterly" | "weekly";
 
+// From calls/calls.go
+export interface Call {
+    id: number;
+    personId: number;
+    enquiryId: number;
+    occurrenceKey: string;
+    mode: string;
+    to: string;
+    from: string;
+    state: string;
+    reason: string;
+    provider: string;
+    providerCallId: string;
+    policyVersion: number;
+    consentBasis: string;
+    attempt: number;
+    record: boolean;
+    recordingRef: string;
+    recordingDeletedAt: string | null;
+    durationSeconds: number | null;
+    requestedBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    startedAt: string | null;
+    endedAt: string | null;
+    unknownSince: string | null;
+}
+
+// From calls/calls.go
+export interface CallDetail {
+    call: Call;
+    events: CallEvent[];
+}
+
+// From calls/calls.go
+export interface CallEvent {
+    id: number;
+    callId: number;
+    kind: string;
+    fromState: string;
+    toState: string;
+    detail: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    payload: string;
+    receivedAt: string;
+}
+
+// From calls/calls.go
+export interface CallInput {
+    enquiryId: number;
+    mode: string;
+    consentBasis: string;
+    reason: string;
+}
+
+// From calls/calls.go
+export interface CallPolicy {
+    version: number;
+    document: CallPolicyDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From calls/calls.go
+export interface CallPolicyDocument {
+    route: Route;
+    consentRequired: boolean;
+    window: CallingWindow;
+    maxConcurrent: number;
+    maxAttemptsPerDay: number;
+    fromNumber: string;
+    recording: RecordingPolicy;
+    note: string;
+}
+
+// From calls/calls.go
+export interface CallPolicyState {
+    configured: boolean;
+    current: CallPolicy | null;
+    adapter: string;
+    liveCalling: boolean;
+    reasons: string[];
+    suggested: CallPolicyDocument;
+}
+
 // From voice/voice.go
 export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progress" | "no_answer" | "queued" | "ringing";
+
+// From calls/calls.go
+export interface CallingWindow {
+    start: string;
+    end: string;
+}
+
+// From api/calls.go
+export interface CallsResponse {
+    calls: Call[];
+}
 
 // From api/proposals.go
 export interface CancelInput {
@@ -549,6 +645,15 @@ export interface Connection {
 // From api/connections.go
 export interface ConnectionsResponse {
     connections: Connection[];
+}
+
+// From calls/calls.go
+export interface Contactability {
+    enquiryId: number;
+    personId: number;
+    to: string;
+    blockers: string[];
+    active: Call | null;
 }
 
 // From assets/assets.go
@@ -2317,6 +2422,13 @@ export const ReasonUnknownAction = "unknown_action";
 // From policies/policies.go
 export const ReasonWorkspaceMismatch = "workspace_mismatch";
 
+// From calls/calls.go
+export interface RecordingPolicy {
+    enabled: boolean;
+    retentionDays: number;
+    accessRole: string;
+}
+
 // From assets/assets.go
 export interface Ref {
     key: string;
@@ -2592,8 +2704,16 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From core/core.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+// From assistant/model.go
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+
+// From calls/calls.go
+export interface Route {
+    provider: string;
+    authorizedBy: string;
+    authorizedOn: string;
+    note: string;
+}
 
 // From runs/runs.go
 export interface Run {

@@ -420,3 +420,19 @@ make check && make test
 - Web: `/settings/outreach` with the config editor, messaging and field-writer state, the outbox and conflict resolution; a "Sales brief" panel per enquiry on the person page with next step, facts, objections, preferences and opt-outs, drafts with approve/send, and CRM field states. Typecheck and biome clean. Not browser-tested.
 
 Live: no message was sent and no CRM field was written. Both need an adapter (`Messenger`; GoHighLevel field writes need `ADX_LIVE_WRITES=1`, the policy row and a verified capability) and Reportage's messaging policy.
+
+## B4.4 UAE telecom integration and call lifecycle
+
+Local:
+
+```
+cd server && go test ./core/calls/ ./core/voice/... ./providers/twilio/   # ok
+make check && make test
+```
+
+- `core/calls` with the fake route authorized: eight simultaneous requests for one enquiry place exactly one call (the rest are 409), the provider is asked once with the stream and status URLs and the recording flag; a second person takes the second line and a third is refused "at capacity". A provider error leaves the call `unknown`; a repeat is refused with "reconcile"; reconcile inside the grace period keeps it unknown, a provider record applies `no_answer` with the provider id and end time, a settled call is not reconciled again, the second attempt is attempt 2, a third today is over the daily limit, and an unknown call past the grace period with nothing at the provider is `failed`. With no policy, with a policy lacking route, authorization and adapter, live calling is off with each reason named and requests are refused; the fake route authorized with the fake adapter is allowed; a policy naming twilio with the fake adapter is blocked; half an authorization and a marketer's policy are refused. Contactability names a missing consent basis, a call opt-out (and refuses the request with the adapter untouched), 22:30 Dubai as outside hours, the workspace kill switch; a viewer can't request. An unsigned callback is refused and changes nothing; ringing, in_progress and completed apply once each with duration and recording; an unknown status spelling is refused; a redelivered earlier event does not move the call back; a late `failed` after `completed` is recorded as late and ignored; a callback for a call ADX never placed is refused; hangup on a finished call is refused; recording access needs admin under the policy; retention deletes the recording at the provider after 30 days and keeps the reference.
+- `providers/twilio`: call creation posts To, From, TwiML with the stream and `<Hangup/>`, status callback and the four events, basic auth, no recording unless asked, a 5xx is an error; callbacks need a valid `X-Twilio-Signature` over the public URL (unsigned, wrong, and other-token signatures refused), statuses map (`in-progress`, `no-answer`), recording callbacks carry the recording id; lookup treats 404 as not found and maps `busy`; hangup posts `Status=completed`; recording deletion.
+- `api`: policy, contactability, calls list/get/request/hangup/reconcile; `POST /webhooks/voice/status` public, 403 on a bad signature. Job `calls.expire_recordings` daily.
+- Web: `/calls` with the policy editor, live-calling state and reasons, call list with events, reconcile and hang up; a "Call now" control on the sales brief that lists every blocker first. Typecheck and biome clean. Not browser-tested.
+
+Live: no call was placed. Needs `ADX_TELECOM_ROUTE=twilio` with credentials, a calling policy naming twilio with written authorization, and Reportage's reversal of "not open to automated calls" in writing.

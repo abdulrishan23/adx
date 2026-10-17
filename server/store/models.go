@@ -204,6 +204,56 @@ type BudgetReservation struct {
 	UpdatedAt   time.Time
 }
 
+type Call struct {
+	ID                 int64
+	WorkspaceID        int64
+	PersonID           int64
+	EnquiryID          int64
+	OccurrenceKey      string
+	Mode               string
+	Direction          string
+	ToNumber           string
+	FromNumber         string
+	State              string
+	Reason             string
+	Provider           string
+	ProviderCallID     string
+	PolicyVersion      int64
+	ConsentBasis       string
+	Attempt            int64
+	Record             int64
+	RecordingRef       string
+	RecordingDeletedAt sql.NullTime
+	DurationSeconds    sql.NullInt64
+	RequestedBy        sql.NullInt64
+	CreatedAt          time.Time
+	UpdatedAt          time.Time
+	StartedAt          sql.NullTime
+	EndedAt            sql.NullTime
+	UnknownSince       sql.NullTime
+}
+
+type CallEvent struct {
+	ID         int64
+	CallID     int64
+	Kind       string
+	FromState  string
+	ToState    string
+	Detail     string
+	Payload    string
+	EventKey   string
+	ReceivedAt time.Time
+}
+
+type CallPolicy struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type CampaignDailyMetric struct {
 	ID                    int64
 	WorkspaceID           int64

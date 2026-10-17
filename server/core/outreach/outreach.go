@@ -496,6 +496,15 @@ func (o *Outreach) Lift(ctx context.Context, actor core.Actor, id int64, reason 
 	return suppressionFromRow(row), nil
 }
 
+// Suppressed says whether a channel is blocked for the person right now,
+// for other domains (calling) that must check at dispatch.
+func (o *Outreach) Suppressed(ctx context.Context, actor core.Actor, personID int64, channel string) (bool, string, error) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
+		return false, "", core.ErrForbidden
+	}
+	return o.suppressed(ctx, personID, channel)
+}
+
 // suppressed says whether a channel is blocked for the person right now.
 func (o *Outreach) suppressed(ctx context.Context, personID int64, channel string) (bool, string, error) {
 	rows, err := o.db.Reader().ListActiveSuppressions(ctx, personID)

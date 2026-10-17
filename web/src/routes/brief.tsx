@@ -11,6 +11,7 @@ import {
 } from "@/api/outreach";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CallButton } from "@/routes/call-button";
 
 // The sales brief for one enquiry: what we know, what the customer pushed
 // back on, how they want to be contacted, and one recommended step with its
@@ -51,6 +52,12 @@ export function BriefPanel({
           {b.score?.temperature ? ` · ${b.score.temperature}` : " · temperature not available"}
         </span>
       </p>
+      {canEdit && (
+        <div>
+          <h4 className="font-medium">Qualification call</h4>
+          <CallButton enquiryId={enquiryId} />
+        </div>
+      )}
       <div>
         <h4 className="font-medium">Approved facts to quote</h4>
         {b.claims.length === 0 && (

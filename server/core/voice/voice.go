@@ -68,6 +68,21 @@ type StatusEvent struct {
 	Duration       time.Duration
 	RecordingRef   string
 	At             time.Time
+	// EventID is the provider's id or sequence for this callback, so a
+	// redelivery is the same event. Empty means the adapter has none.
+	EventID string
+}
+
+// Reconciler is the optional read side of a telephony provider: what it
+// knows about a call it was asked to place. The call lifecycle uses it to
+// settle an unknown result before placing another attempt.
+type Reconciler interface {
+	LookupCall(ctx context.Context, providerCallID string) (StatusEvent, bool, error)
+}
+
+// Deleter removes a recording at the provider, for retention.
+type Deleter interface {
+	DeleteRecording(ctx context.Context, recordingRef string) error
 }
 
 // ErrBadSignature means a callback did not come from the provider.

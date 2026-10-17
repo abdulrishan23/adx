@@ -13,6 +13,7 @@ import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
 import { AskPage } from "@/routes/ask";
 import { BrandsPage } from "@/routes/brands";
+import { CallsPage } from "@/routes/calls";
 import { ConnectionsPage } from "@/routes/connections";
 import { CreativesPage } from "@/routes/creatives";
 import { FunnelPage } from "@/routes/funnel";
@@ -136,6 +137,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             People
+          </Link>
+          <Link
+            to="/calls"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Calls
           </Link>
           <Link
             to="/settings/outreach"
@@ -316,6 +324,12 @@ const peopleRoute = createRoute({
   component: PeoplePage,
 });
 
+const callsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/calls",
+  component: CallsPage,
+});
+
 const leadsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/leads",
@@ -360,6 +374,7 @@ const routeTree = rootRoute.addChildren([
   reportsRoute,
   alertsRoute,
   peopleRoute,
+  callsRoute,
   leadsRoute,
   funnelRoute,
   runsRoute,

@@ -14,6 +14,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/calls"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
@@ -64,6 +65,7 @@ type Deps struct {
 	CRM         *crm.CRM
 	Signals     *signals.Signals
 	Outreach    *outreach.Outreach
+	Calls       *calls.Calls
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -94,13 +96,14 @@ type handlers struct {
 	crm           *crm.CRM
 	signals       *signals.Signals
 	outreach      *outreach.Outreach
+	calls         *calls.Calls
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -122,6 +125,9 @@ func NewRouter(d Deps) http.Handler {
 		r.Post("/p/{slug}/form", h.publicForm)
 		if h.signals != nil {
 			r.Post("/webhooks/ghl", h.ghlWebhook)
+		}
+		if h.calls != nil {
+			r.Post("/webhooks/voice/status", h.voiceStatusWebhook)
 		}
 	}
 
@@ -345,6 +351,16 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/outreach/fields/{id}/resolve", h.resolveFieldConflict)
 			r.Post("/api/outreach/fields/dispatch", h.dispatchFieldWrites)
 			r.Post("/api/outreach/fields/sync-scores", h.syncScores)
+		}
+		if h.calls != nil {
+			r.Get("/api/voice/policy", h.getCallPolicy)
+			r.Put("/api/voice/policy", h.putCallPolicy)
+			r.Get("/api/voice/contactability", h.contactability)
+			r.Get("/api/voice/calls", h.listCalls)
+			r.Post("/api/voice/calls", h.requestCall)
+			r.Get("/api/voice/calls/{id}", h.getCall)
+			r.Post("/api/voice/calls/{id}/hangup", h.hangupCall)
+			r.Post("/api/voice/calls/{id}/reconcile", h.reconcileCall)
 		}
 	})
 
