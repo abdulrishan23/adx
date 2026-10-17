@@ -600,3 +600,19 @@ make check && make test
 - `api`: `/api/ops/cost`, `/api/ops/load`, `/api/ops/releases` (list, evaluate, promote, reject). Web: `/ops` with readiness, usage against limits, releases with promote/reject for admins and evaluation for marketers, and the load measurement with its conditions or the note that none exists. Typecheck and biome clean. Not browser-tested.
 
 Live: none. A release evaluation against a real candidate needs ADX_MODEL_API_KEY and labelled calls, neither of which exists yet.
+
+## B6.4 Final seven-phase capability verification and handoff
+
+Local:
+
+```
+cd server && go test ./journey/   # ok
+make check && make test           # every package
+```
+
+- `server/journey`: one test runs brand, project and plan (accepted v1); render upload, brand kit, 1:1 creative rendered by the template renderer, submitted and approved by an admin; a page bound to the plan published on ADX's host with readiness `live: false` and no execution authorization; a form submission that records one counted event and one enquiry; CRM sync linking it to one person with one enquiry; one derived form signal (a second derive adds nothing); an assessment with no temperature because no scoring rules exist; one opportunity per enquiry; a learning record adopted and an outcome three days later attached to it; then a second client that may name its project "The Wadi" and lists no people, pages, plans or memory and cannot read the first client's person or opportunity.
+- Reconciliation: every `changed_paths` entry in `progress.json` exists (annotated entries checked by their path), every test package in `commands` exists; one stale path fixed (B3.5 `config.go` is `main.go`). `tasks.json` statuses set from `progress.json`. 37 of 38 tasks `implemented_local` before this one; none `verified`.
+- `docs/build/capability-matrix.md` generated; `docs/build/pilot-gate.md` has the phase 6 gate.
+- Not done: browser journeys; operator review with business users; any live verification.
+
+Live: none. Production verified: nothing in this build.

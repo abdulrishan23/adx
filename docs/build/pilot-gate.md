@@ -93,3 +93,22 @@ Taken on 2026-10-17. Every phase 5 task is implemented locally with its pass con
 | Learning: decisions, cohort-attached outcomes, evidence-gated insights, memory into plans and research | `core/learning/learning_test.go` | none needed |
 
 What live use still needs: a model key for the workflow runner; Reportage's objective names and autonomy modes; and the phase 3 and 4 blockers for anything a workflow proposes to actually execute.
+
+## Phase 6 gate: multi-client, channels, reliability and handoff
+
+Taken on 2026-10-17 at the end of the build. Every phase 6 task is implemented locally with its pass conditions as tests, and the cross-phase journey the specification names runs as one test through the real core with fake providers. Nothing here is production verified; the inputs that would make it so are in `docs/build/capability-matrix.md`.
+
+| Capability | Where it is proven | Live state |
+|---|---|---|
+| Same-named projects and same provider ids across two clients; isolated people, pages, plans, opportunities, memory | `core/workspaces/workspaces_test.go`, `server/journey/journey_test.go` | ADX's own data; sign-in with two memberships needs authentik |
+| Membership-driven sessions and switching; versioned industry configuration that cannot grant permissions | `core/identity/identity_test.go`, `core/workspaces/workspaces_test.go` | authentik client for live sign-in |
+| Connector capability matrix with a reason for everything unsupported; no publishing anywhere | `core/connections/catalog_test.go`, `/api/connections/capabilities` | none needed |
+| WhatsApp Cloud and SMTP outreach adapters behind live writes, channel mode, approval | `providers/whatsapp`, `providers/smtpmail/outreach_test.go`, `core/outreach` | messaging policy, credentials, `ADX_LIVE_WRITES=1` |
+| A failing account does not stop the others' refresh | `core/reporting/ingest_test.go` | none needed |
+| Server-wide metered model cap; cost view against assistant, server and workflow budgets | `core/ops/budget_test.go` | model key to have anything to meter |
+| Model release evaluation; regression never promoted; running model reported against approved | `core/evaluation/release_test.go` | model key and labelled calls |
+| Interrupted workload recovery and linked-state restore from backup; retention pruning | `cmd/adx/backup_test.go`, `core/runs`, `core/workflows` | retention period from Reportage |
+| Load measured with its conditions, or stated as unmeasured | `core/ops/budget_test.go`, `adx loadtest` (2,115 ops/s on the build laptop, 8 workers, 10 s) | measure on the production host |
+| Brand to plan to reviewed asset to published page to enquiry to person, score, opportunity and attached outcome, then a second client sees none of it | `server/journey/journey_test.go` | the phase 1 to 4 inputs for any of it to touch a real system |
+
+What live use still needs is the table "What live use needs" in `docs/build/capability-matrix.md`: hosting approval, authentik client, provider credentials and a test account with written approval, a model key, SMTP, the messaging and calling policies, the Excel template and a retention period.

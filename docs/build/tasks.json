@@ -8,7 +8,7 @@
       "phase": 0,
       "title": "Baseline, migration map and build ledger",
       "depends_on": [],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "platform",
       "implementation": [
         "Inventory current working/deployed source and preserve unrelated edits",
@@ -30,7 +30,7 @@
       "depends_on": [
         "B0.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "platform",
       "implementation": [
         "Complete documented web/proxy/API/worker configuration using current deployment conventions",
@@ -52,7 +52,7 @@
       "depends_on": [
         "B0.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "identity/users",
       "implementation": [
         "Wire existing Authentik/user scaffolding to verified session identity; choose documented session or trusted-proxy boundary",
@@ -74,7 +74,7 @@
       "depends_on": [
         "B0.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "connections/policies",
       "implementation": [
         "Keep existing credential encryption and credential/account separation",
@@ -97,7 +97,7 @@
         "B0.1",
         "B0.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "evidence/runs",
       "implementation": [
         "Add scoped evidence and run records with timestamps, source classification and completeness",
@@ -120,7 +120,7 @@
         "B0.1",
         "B0.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "assets/voice",
       "implementation": [
         "Inventory and recover supplied creative source units; record unavailable dependencies",
@@ -143,7 +143,7 @@
         "B0.4",
         "B0.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "reporting/providers",
       "implementation": [
         "Implement separate Google/Meta provider packages from current official schemas",
@@ -166,7 +166,7 @@
         "B0.4",
         "B0.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "leads/reporting",
       "implementation": [
         "Extend current lead import rather than duplicate it",
@@ -189,7 +189,7 @@
         "B1.1",
         "B1.2"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "reporting",
       "implementation": [
         "Implement reporting queries with source grain, match coverage and formula version",
@@ -211,7 +211,7 @@
       "depends_on": [
         "B1.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "reports/alerts",
       "implementation": [
         "Store schedule/report occurrence, parameters, evidence references and delivery state",
@@ -234,7 +234,7 @@
         "B1.3",
         "B0.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "assistant",
       "implementation": [
         "Implement configurable Model interface, fake model and at least one documented production adapter when chosen",
@@ -259,7 +259,7 @@
         "B0.3",
         "B1.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "assets/platform",
       "implementation": [
         "Integrate chosen creative boundary for supplied renders/copy, brand kit, canvas edit, review and export",
@@ -283,7 +283,7 @@
         "B0.5",
         "B1.6"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "brands",
       "implementation": [
         "Add scoped brand/project/offer records and versioned facts/assets with effective dates",
@@ -306,7 +306,7 @@
         "B2.1",
         "B1.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "research",
       "implementation": [
         "Implement ResearchProvider interfaces and scoped retrieval with URL/network validation",
@@ -330,7 +330,7 @@
         "B2.1",
         "B2.2"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "plans",
       "implementation": [
         "Create immutable plan versions and typed allocation/asset/page/measurement/test requirements",
@@ -353,7 +353,7 @@
         "B2.3",
         "B1.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "plans/workflows",
       "implementation": [
         "Compose research outputs through bounded structured model generation",
@@ -377,7 +377,7 @@
         "B2.4",
         "B1.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "research/reports",
       "implementation": [
         "Schedule monthly competitor comparison and configurable market refresh",
@@ -400,7 +400,7 @@
         "B2.4",
         "B1.6"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "assets",
       "implementation": [
         "Make published outputs immutable with checksum/storage references",
@@ -424,7 +424,7 @@
         "B2.4",
         "B3.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "pages",
       "implementation": [
         "Build versioned structured landing-page document, preview and publishing adapter",
@@ -448,7 +448,7 @@
         "B3.2",
         "B1.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "measurement",
       "implementation": [
         "Define event catalog, UTM construction, attribution fields and conversion deduplication",
@@ -472,7 +472,7 @@
         "B3.3",
         "B0.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "proposals/execution",
       "implementation": [
         "Persist typed action proposals with before/after, exact targets/versions, policy and approval",
@@ -495,7 +495,7 @@
       "depends_on": [
         "B3.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "execution/providers",
       "implementation": [
         "Implement declared supported write capabilities per provider using current documentation",
@@ -518,7 +518,7 @@
       "depends_on": [
         "B3.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "execution/platform",
       "implementation": [
         "Implement supported pause/cancel/compensation with truth about reversibility",
@@ -542,7 +542,7 @@
         "B1.2",
         "B2.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "interactions/crm",
       "implementation": [
         "Separate person from multiple project enquiries; preserve external record links and match evidence",
@@ -565,7 +565,7 @@
         "B4.1",
         "B0.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "interactions/scoring",
       "implementation": [
         "Ingest attributable first-party and supported owned-channel events with deduplication",
@@ -589,7 +589,7 @@
         "B4.2",
         "B1.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "outreach/crm",
       "implementation": [
         "Generate next action from enquiry context, approved facts, objections and preferences",
@@ -614,7 +614,7 @@
         "B4.1",
         "B0.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "voice/providers",
       "implementation": [
         "Implement verified telecom adapter separately from speech engine",
@@ -638,7 +638,7 @@
         "B4.4",
         "B4.2"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "voice/scoring",
       "implementation": [
         "Adapt ElevenLabs streaming/session bridge with tested codec, interruptions, ambience and graceful end",
@@ -663,7 +663,7 @@
         "B1.5",
         "B4.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "assistant/platform",
       "implementation": [
         "Add user-to-ADX voice mode through same tools/permissions with transcript and visible action preview",
@@ -685,7 +685,7 @@
       "depends_on": [
         "B4.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "crm",
       "implementation": [
         "Implement scoped opportunities, assignment, interactions, follow-up tasks and configurable stages",
@@ -709,7 +709,7 @@
         "B2.4",
         "B0.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "workflows/policies",
       "implementation": [
         "Version skill instructions, typed inputs/outputs, evidence scope and permitted tools",
@@ -733,7 +733,7 @@
         "B3.4",
         "B5.1"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "workflows",
       "implementation": [
         "Implement persistent dependency graph, leases, attempts, inputs/outputs and stale-result invalidation",
@@ -756,7 +756,7 @@
       "depends_on": [
         "B5.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "policies/workflows",
       "implementation": [
         "Unify approval/failure/missing-evidence/uncertain-action inbox",
@@ -780,7 +780,7 @@
         "B5.4",
         "B4.6"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "evidence/reporting",
       "implementation": [
         "Record recommendation, adopted/modified/ignored decision, actual action and delayed outcome",
@@ -803,7 +803,7 @@
       "depends_on": [
         "B5.4"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "identity/platform",
       "implementation": [
         "Add client onboarding and membership/account provisioning atop existing workspace scoping",
@@ -826,7 +826,7 @@
         "B6.1",
         "B3.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "connections/platform",
       "implementation": [
         "Implement prioritized additional adapters with explicit read/write capability matrix",
@@ -849,7 +849,7 @@
         "B6.1",
         "B5.5"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "platform",
       "implementation": [
         "Test representative read/job/action/media load and interrupted recovery",
@@ -873,7 +873,7 @@
         "B6.2",
         "B6.3"
       ],
-      "status": "pending",
+      "status": "implemented_local",
       "domain": "platform",
       "implementation": [
         "Run cross-phase journeys from brand to plan to reviewed asset to deployment to enquiry/outcome",

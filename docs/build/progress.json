@@ -1216,7 +1216,7 @@
         "server/api/execution.go",
         "server/api/router.go",
         "server/cmd/adx/main.go",
-        "server/cmd/adx/config.go",
+        "server/cmd/adx/main.go (config)",
         "deploy/adx.env.example",
         "web/src/api/execution.ts",
         "web/src/routes/launch.tsx"
@@ -1984,13 +1984,39 @@
         "B6.2",
         "B6.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/journey/journey_test.go",
+        "docs/build/capability-matrix.md",
+        "docs/build/pilot-gate.md (phase 6 gate)",
+        "docs/build/tasks.json (statuses)",
+        "docs/build/progress.json"
+      ],
+      "commands": [
+        "cd server && go test ./journey/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "every task's evidence paths and test packages exist and task statuses match the ledger",
+        "no task is labelled verified; every live gap is listed with its input and local evidence",
+        "the cross-phase journey runs end to end with fake providers and a second client is isolated from it",
+        "make check and make test pass"
+      ],
+      "remaining": [
+        "browser journeys through the web app",
+        "operator effort and autonomy review with real business users",
+        "everything in docs/build/capability-matrix.md under what live use needs"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "real business users and a connected environment",
+          "unblocks": "the operator-effort review and production verification"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-56."
     }
   ]
 }
