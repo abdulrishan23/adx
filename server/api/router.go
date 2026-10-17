@@ -19,6 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/reporting"
@@ -48,6 +49,7 @@ type Deps struct {
 	Creative  *creative.Service
 	Brands    *brands.Brands
 	Research  *research.Research
+	Plans     *plans.Plans
 }
 
 type handlers struct {
@@ -67,12 +69,13 @@ type handlers struct {
 	creative    *creative.Service
 	brands      *brands.Brands
 	research    *research.Research
+	plans       *plans.Plans
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -201,6 +204,16 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/research/briefs/{id}/competitors", h.resolveCompetitor)
 			r.Get("/api/research/briefs/{id}/findings", h.listFindings)
 			r.Get("/api/research/evidence/{id}", h.researchEvidence)
+		}
+		if h.plans != nil {
+			r.Get("/api/plans", h.listPlans)
+			r.Post("/api/plans", h.createPlan)
+			r.Post("/api/plans/validate", h.validatePlan)
+			r.Get("/api/plans/{id}", h.getPlan)
+			r.Post("/api/plans/{id}/versions", h.savePlanVersion)
+			r.Post("/api/plans/{id}/import", h.importPlanVersion)
+			r.Post("/api/plans/{id}/versions/{version}/accept", h.acceptPlanVersion)
+			r.Get("/api/plans/{id}/versions/{version}/export", h.exportPlanVersion)
 		}
 	})
 

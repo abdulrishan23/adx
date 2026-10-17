@@ -235,3 +235,18 @@ make check && make test
 - Web: `/research` with briefs, a new-brief form (brand, project, title, question, country, language, pages, competitors with pages, keyword seeds, Google Ads account, audit), the unresolved-competitors panel with candidates and a picker, the sources table with states and safe notes, "Your account (observed, private)" and "Public web" shown apart, keyword ideas labelled as Google's estimates, and an evidence panel with the stored text. Typecheck and biome clean. Not browser-tested.
 
 Live: no page was fetched from the internet in this build and Keyword Planner was not called (no Google OAuth client). The request shape is in `api-notes/google-ads.md` as unverified.
+
+## B2.3 Structured plan schema and template adapter
+
+Local:
+
+```
+cd server && go test ./core/plans/ ./api/   # ok
+make check && make test
+```
+
+- `core/plans`: a plan whose two allocations total the budget is `ready` with the allocated sum reported; trimming one allocation makes the next version `invalid` with `budget_mismatch` naming both figures and it can't be accepted. A marketer can't accept; an admin accepts a ready version (acceptance carries the actor and time, `GrantsSpend` false, no execution authorization); accepting again is a no-op; an edit becomes version 2, ready and unaccepted, while version 1 stays accepted with its text; a version missing budget and allocations is `needs_input` and its acceptance is a conflict. JSON export re-imports to an equal document as an `imported` version; CSV export re-imports with equal allocations and budget and no requirements (stated); `xlsx` export and import are conflicts naming the missing template; `pdf` is invalid; with an adapter configured the gate opens and export runs. Validation codes: the empty document is `needs_input` with objective, budget, currency, period and allocations missing; an unknown channel is `invalid`; TikTok warns `channel_unsupported` and stays ready; a cited assumption pointing at an existing fact passes; three references to missing facts, offers and findings block as `evidence_missing`; a dangling citation blocks; a project of another brand blocks; a missing expected CPL warns `cpl_unavailable`. Roles and brand ownership on create.
+- `api`: routes under `/api/plans` wired (list with channel catalog and template gate, create, validate, get, versions, import, accept, export with content disposition). Covered by the shared router tests' compile and by core tests; no dedicated HTTP test yet.
+- Web: `/plans` with the plan list, new-plan form, version tabs, validation panel with the allocated-vs-budget bar, the plan fields, the allocation editor with the channel catalog (manual channels marked), list editors for assets, pages, measurement, hypotheses, evidence and assumptions, live validation while editing, save as next version, accept content (admin, ready only), JSON and CSV export, JSON import and the exact-template gate notice. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external. The exact Excel template remains blocked on the file.

@@ -896,13 +896,41 @@
         "B2.1",
         "B2.2"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00017_plans.sql",
+        "server/store/queries/plans.sql",
+        "server/core/plans/",
+        "server/api/plans.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/plans.ts",
+        "web/src/routes/plans.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/plans/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "allocations must total the declared minor-unit budget or the version is invalid",
+        "JSON round trip preserves the whole document; CSV preserves the allocation table and says what it drops",
+        "exact-template export and import are a stated 409 gate while no template is supplied; a configured adapter opens it"
+      ],
+      "remaining": [
+        "exact Excel adapter once the template file arrives",
+        "HTTP test for plan routes",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "Reportage's Excel media-plan template (.xlsx) and the marketing skill file",
+          "unblocks": "the exact-template adapter and its round-trip test"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-33."
     },
     {
       "id": "B2.4",

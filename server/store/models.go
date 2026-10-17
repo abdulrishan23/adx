@@ -425,6 +425,32 @@ type OfferVersion struct {
 	ApprovedAt    sql.NullTime
 }
 
+type Plan struct {
+	ID          int64
+	WorkspaceID int64
+	BrandID     int64
+	ProjectID   sql.NullInt64
+	Title       string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type PlanVersion struct {
+	ID         int64
+	PlanID     int64
+	Version    int64
+	Document   string
+	State      string
+	Validation string
+	Source     string
+	Note       string
+	CreatedBy  sql.NullInt64
+	CreatedAt  time.Time
+	AcceptedBy sql.NullInt64
+	AcceptedAt sql.NullTime
+}
+
 type Policy struct {
 	ID          int64
 	WorkspaceID int64

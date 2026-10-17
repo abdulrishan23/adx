@@ -105,6 +105,18 @@ export interface AlertsResponse {
     alerts: Alert[];
 }
 
+// From plans/plans.go
+export interface Allocation {
+    channel: string;
+    objective: string;
+    budgetMinor: number;
+    geography: string;
+    audience: string;
+    projectId: number | null;
+    expectedCplMinor: number | null;
+    note: string;
+}
+
 // From creative/creative.go
 export interface Asset {
     id: number;
@@ -114,6 +126,15 @@ export interface Asset {
     ref: Ref;
     uploadedBy: number | null;
     createdAt: string;
+}
+
+// From plans/plans.go
+export interface AssetRequirement {
+    format: Format;
+    language: Language;
+    count: number;
+    offerId: number | null;
+    note: string;
 }
 
 // From api/creative.go
@@ -131,6 +152,15 @@ export interface AssignProjectInput {
 export interface AssignProjectsResponse {
     assigned: number;
     unresolved: string[];
+}
+
+// From plans/plans.go
+export interface Assumption {
+    key: string;
+    text: string;
+    value: string | null;
+    class: string;
+    evidenceRef: number | null;
 }
 
 // From brands/brands.go
@@ -280,6 +310,14 @@ export interface Change {
     undefined: boolean;
 }
 
+// From plans/plans.go
+export interface ChannelInfo {
+    key: string;
+    platform: string;
+    label: string;
+    supported: boolean;
+}
+
 // From alerts/alerts.go
 export const CheckCostSpike = "cost_spike";
 
@@ -321,7 +359,7 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From runs/runs.go
+// From evidence/evidence.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -501,6 +539,13 @@ export interface EvidenceRef {
     kind: string;
     ref: string;
     detail?: string;
+}
+
+// From plans/plans.go
+export interface ExactTemplateState {
+    available: boolean;
+    reason: string;
+    unblocks: string;
 }
 
 // From brands/facts.go
@@ -817,10 +862,25 @@ export interface LeadsResponse {
 // From runs/runs.go
 export const MaxAutoAttempts = 3;
 
+// From plans/plans.go
+export interface MeasurementRequirement {
+    kind: string;
+    platform: string;
+    name: string;
+    required: boolean;
+    note: string;
+}
+
 // From reporting/metrics.go
 export interface Money {
     minor: number | null;
     currency: string;
+}
+
+// From plans/plans.go
+export interface ObservationWindow {
+    name: string;
+    days: number;
 }
 
 // From leads/funnel.go
@@ -898,6 +958,113 @@ export interface OfferVersion {
     createdAt: string;
     approvedBy: number | null;
     approvedAt: string | null;
+}
+
+// From plans/plans.go
+export interface PageRequirement {
+    kind: string;
+    language: string;
+    url: string;
+    formPath: string;
+    note: string;
+}
+
+// From plans/plans.go
+export interface Plan {
+    id: number;
+    brandId: number;
+    projectId: number | null;
+    title: string;
+    createdBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From plans/plans.go
+export interface PlanAcceptance {
+    versionId: number;
+    acceptedBy: number;
+    acceptedAt: string;
+}
+
+// From plans/plans.go
+export interface PlanDetail {
+    plan: Plan;
+    versions: PlanVersion[];
+}
+
+// From plans/plans.go
+export interface PlanDocument {
+    objective: string;
+    budgetMinor: number;
+    currency: string;
+    periodFrom: string;
+    periodTo: string;
+    allocations: Allocation[];
+    assetRequirements: AssetRequirement[];
+    pageRequirements: PageRequirement[];
+    measurementRequirements: MeasurementRequirement[];
+    testHypotheses: TestHypothesis[];
+    observationWindows: ObservationWindow[];
+    evidenceRefs: PlanEvidenceRef[];
+    assumptions: Assumption[];
+    notes: string;
+}
+
+// From plans/plans.go
+export interface PlanEvidenceRef {
+    kind: string;
+    id: number;
+    note: string;
+}
+
+// From plans/plans.go
+export interface PlanInput {
+    brandId: number;
+    projectId: number;
+    title: string;
+    document: PlanDocument;
+    note: string;
+}
+
+// From plans/plans.go
+export type PlanState = "accepted" | "draft" | "invalid" | "needs_input" | "ready" | "validating";
+
+// From plans/plans.go
+export interface PlanSummary extends Plan {
+    latestVersion: number;
+    latestState: PlanState;
+    accepted: boolean;
+}
+
+// From plans/plans.go
+export interface PlanValidation {
+    blocking: ValidationIssue[];
+    warnings: ValidationIssue[];
+    allocatedMinor: number;
+}
+
+// From plans/plans.go
+export interface PlanVersion {
+    id: number;
+    planId: number;
+    version: number;
+    document: PlanDocument;
+    state: PlanState;
+    validation: PlanValidation;
+    source: string;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
+    acceptance: PlanAcceptance | null;
+    executionAuthorization: string | null;
+}
+
+// From api/plans.go
+export interface PlansResponse {
+    plans: PlanSummary[];
+    channels: ChannelInfo[];
+    templates: TemplateGate;
 }
 
 // From policies/policies.go
@@ -1274,8 +1441,8 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+// From core/core.go
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From runs/runs.go
 export interface Run {
@@ -1393,6 +1560,19 @@ export type State = "failed" | "interrupted" | "partial" | "queued" | "running" 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
 
+// From plans/plans.go
+export interface TemplateGate {
+    generic: string[];
+    exact: ExactTemplateState;
+}
+
+// From plans/plans.go
+export interface TestHypothesis {
+    hypothesis: string;
+    metric: string;
+    windowDays: number;
+}
+
 // From assistant/assistant.go
 export interface ToolCall {
     id: string;
@@ -1453,6 +1633,19 @@ export interface User {
     authentikUuid: string;
 }
 
+// From api/plans.go
+export interface ValidatePlanInput {
+    brandId: number;
+    document: PlanDocument;
+}
+
+// From plans/plans.go
+export interface ValidationIssue {
+    code: string;
+    path: string;
+    message: string;
+}
+
 // From creative/creative.go
 export interface Version {
     id: number;
@@ -1467,6 +1660,12 @@ export interface Version {
     reviews: Review[];
     acceptance: ContentAcceptance | null;
     createdAt: string;
+}
+
+// From plans/plans.go
+export interface VersionInput {
+    document: PlanDocument;
+    note: string;
 }
 
 // From core/core.go
