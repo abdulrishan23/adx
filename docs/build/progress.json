@@ -1297,13 +1297,43 @@
         "B1.2",
         "B2.1"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00024_people_and_enquiries.sql",
+        "server/store/queries/crm.sql",
+        "server/core/crm/crm.go",
+        "server/core/crm/crm_test.go",
+        "server/api/crm.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/crm.ts",
+        "web/src/routes/people.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/crm/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a shared family phone makes candidates, never a merge; the one agreeing name is exact",
+        "a conflicting enriched value sits beside the stated one and flags the conflict; stated is shown",
+        "no exact match creates a new person with visible candidates",
+        "links and merges are reversible with a recorded reason"
+      ],
+      "remaining": [
+        "an enrichment provider adapter when one is chosen",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "an enrichment provider with a contract, cost and permitted attributes",
+          "unblocks": "live enrichment runs"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-42."
     },
     {
       "id": "B4.2",

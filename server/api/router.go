@@ -16,6 +16,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
+	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -58,6 +59,7 @@ type Deps struct {
 	Measurement *measurement.Measurement
 	Proposals   *proposals.Proposals
 	Execution   *execution.Dispatcher
+	CRM         *crm.CRM
 }
 
 type handlers struct {
@@ -82,12 +84,13 @@ type handlers struct {
 	measurement *measurement.Measurement
 	proposals   *proposals.Proposals
 	execution   *execution.Dispatcher
+	crm         *crm.CRM
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -287,6 +290,21 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/executions/{id}/repair", h.repairExecution)
 			r.Get("/api/executions/{id}/reversibility", h.executionReversibility)
 			r.Get("/api/executions/milestones", h.launchMilestones)
+		}
+		if h.crm != nil {
+			r.Get("/api/crm/people", h.listPeople)
+			r.Post("/api/crm/people", h.createPerson)
+			r.Post("/api/crm/sync", h.syncCRM)
+			r.Get("/api/crm/candidates", h.listCandidates)
+			r.Post("/api/crm/candidates/{id}/decide", h.decideCandidate)
+			r.Get("/api/crm/enquiries", h.listEnquiries)
+			r.Get("/api/crm/people/{id}", h.getPerson)
+			r.Post("/api/crm/people/{id}/merge", h.mergePerson)
+			r.Post("/api/crm/people/{id}/unmerge", h.unmergePerson)
+			r.Post("/api/crm/people/{id}/enrich", h.enrichPerson)
+			r.Post("/api/crm/people/{id}/attributes", h.setStatedAttribute)
+			r.Post("/api/crm/people/{id}/links", h.linkPerson)
+			r.Post("/api/crm/links/{id}/reverse", h.reverseLink)
 		}
 	})
 

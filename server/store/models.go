@@ -305,6 +305,20 @@ type Credential struct {
 	ConnectedAt     time.Time
 }
 
+type Enquiry struct {
+	ID             int64
+	WorkspaceID    int64
+	PersonID       int64
+	ProjectID      sql.NullInt64
+	State          string
+	Stage          sql.NullString
+	SourceKind     string
+	SourceRef      string
+	FirstContactAt time.Time
+	LastActivityAt time.Time
+	CreatedAt      time.Time
+}
+
 type Evidence struct {
 	ID             int64
 	WorkspaceID    int64
@@ -479,6 +493,19 @@ type LeadAttribution struct {
 	PayloadHash        string
 }
 
+type MatchCandidate struct {
+	ID          int64
+	WorkspaceID int64
+	PersonID    int64
+	CandidateID int64
+	Reason      string
+	State       string
+	CreatedAt   time.Time
+	DecidedBy   sql.NullInt64
+	DecidedAt   sql.NullTime
+	Note        string
+}
+
 type MeasurementCheck struct {
 	ID           int64
 	WorkspaceID  int64
@@ -586,6 +613,61 @@ type PageVersion struct {
 	Note      string
 	CreatedBy sql.NullInt64
 	CreatedAt time.Time
+}
+
+type Person struct {
+	ID           int64
+	WorkspaceID  int64
+	DisplayName  string
+	PrimaryPhone sql.NullString
+	PrimaryEmail sql.NullString
+	Country      sql.NullString
+	Language     sql.NullString
+	Notes        string
+	MergedIntoID sql.NullInt64
+	MergeRecord  string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type PersonAttribute struct {
+	ID           int64
+	WorkspaceID  int64
+	PersonID     int64
+	Key          string
+	Value        string
+	Class        string
+	Source       string
+	EvidenceID   sql.NullInt64
+	ObservedAt   time.Time
+	SupersededAt sql.NullTime
+}
+
+type PersonIdentifier struct {
+	ID          int64
+	WorkspaceID int64
+	PersonID    int64
+	Kind        string
+	Value       string
+	Class       string
+	Source      string
+	EvidenceID  sql.NullInt64
+	FirstSeenAt time.Time
+}
+
+type PersonLink struct {
+	ID             int64
+	WorkspaceID    int64
+	PersonID       int64
+	Kind           string
+	Ref            string
+	MatchLevel     string
+	MatchEvidence  string
+	LinkedAt       time.Time
+	LinkedBy       sql.NullInt64
+	ReversedAt     sql.NullTime
+	ReversedBy     sql.NullInt64
+	ReversalReason string
 }
 
 type Plan struct {

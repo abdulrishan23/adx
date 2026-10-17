@@ -210,6 +210,26 @@ export interface Assumption {
     evidenceRef: number | null;
 }
 
+// From crm/crm.go
+export interface Attribute {
+    id: number;
+    key: string;
+    value: string;
+    class: string;
+    source: string;
+    evidenceId: number | null;
+    observedAt: string;
+}
+
+// From crm/crm.go
+export interface AttributeView {
+    key: string;
+    value: string;
+    class: string;
+    enriched: Attribute | null;
+    conflict: boolean;
+}
+
 // From brands/brands.go
 export interface Brand {
     id: number;
@@ -338,6 +358,23 @@ export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progr
 // From api/proposals.go
 export interface CancelInput {
     reason: string;
+}
+
+// From crm/crm.go
+export interface Candidate {
+    id: number;
+    personId: number;
+    candidateId: number;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    reason: string;
+    state: string;
+    createdAt: string;
+    other: Person | null;
+}
+
+// From api/crm.go
+export interface CandidatesResponse {
+    candidates: Candidate[];
 }
 
 // From creative/production.go
@@ -475,8 +512,8 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From brands/facts.go
 export interface Conflict {
@@ -621,6 +658,12 @@ export interface DateRange {
 // From reporting/ingest.go
 export type Day = string;
 
+// From api/crm.go
+export interface DecideCandidateInput {
+    accept: boolean;
+    note: string;
+}
+
 // From api/proposals.go
 export interface DecisionInput {
     note: string;
@@ -663,6 +706,34 @@ export interface Document {
     background: string;
     image: Image | null;
     layers: Layer[];
+}
+
+// From api/crm.go
+export interface EnquiriesResponse {
+    enquiries: Enquiry[];
+}
+
+// From crm/crm.go
+export interface Enquiry {
+    id: number;
+    personId: number;
+    projectId: number | null;
+    state: string;
+    stage: string | null;
+    sourceKind: string;
+    sourceRef: string;
+    firstContactAt: string;
+    lastActivityAt: string;
+}
+
+// From crm/crm.go
+export interface EnrichmentState {
+    configured: boolean;
+    provider: string;
+    costMinor: number;
+    currency: string;
+    permitted: string[];
+    reason: string;
 }
 
 // From proposals/proposals.go
@@ -990,6 +1061,17 @@ export interface HypothesisReviewInput {
     note: string;
 }
 
+// From crm/crm.go
+export interface Identifier {
+    id: number;
+    kind: string;
+    value: string;
+    class: string;
+    source: string;
+    evidenceId: number | null;
+    firstSeenAt: string;
+}
+
 // From research/research.go
 export type IdentityState = "ambiguous" | "n/a" | "resolved" | "unknown";
 
@@ -1212,6 +1294,27 @@ export interface LeadsResponse {
     nextAfterId: number | null;
 }
 
+// From crm/crm.go
+export interface Link {
+    id: number;
+    personId: number;
+    kind: string;
+    ref: string;
+    matchLevel: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    matchEvidence: string;
+    linkedAt: string;
+    linkedBy: number | null;
+    reversedAt: string | null;
+    reversalReason: string;
+}
+
+// From api/crm.go
+export interface ManualLinkInput {
+    kind: string;
+    ref: string;
+}
+
 // From research/schedules.go
 export interface MarketEvent {
     evidenceId: number;
@@ -1318,6 +1421,12 @@ export interface MeasurementRequirement {
     name: string;
     required: boolean;
     note: string;
+}
+
+// From api/crm.go
+export interface MergeInput {
+    intoId: number;
+    reason: string;
 }
 
 // From execution/recovery.go
@@ -1543,6 +1652,53 @@ export interface PageVersionInput {
 export interface PagesResponse {
     pages: Page[];
     publishing: PublishingGate;
+}
+
+// From api/crm.go
+export interface PeopleResponse {
+    people: PersonSummary[];
+}
+
+// From crm/crm.go
+export interface Person {
+    id: number;
+    displayName: string;
+    primaryPhone: string | null;
+    primaryEmail: string | null;
+    country: string | null;
+    language: string | null;
+    notes: string;
+    mergedIntoId: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From crm/crm.go
+export interface PersonDetail {
+    person: Person;
+    identifiers: Identifier[];
+    enquiries: Enquiry[];
+    links: Link[];
+    candidates: Candidate[];
+    attributes: AttributeView[];
+    enrichment: EnrichmentState;
+}
+
+// From crm/crm.go
+export interface PersonInput {
+    displayName: string;
+    phone: string;
+    email: string;
+    country: string;
+    language: string;
+    notes: string;
+}
+
+// From crm/crm.go
+export interface PersonSummary extends Person {
+    enquiries: number;
+    openCandidates: number;
+    uncertain: boolean;
 }
 
 // From plans/plans.go
@@ -1929,6 +2085,11 @@ export const ReasonCapabilityUnproven = "write_capability_unverified";
 // From policies/policies.go
 export const ReasonForbiddenRole = "role_cannot_write";
 
+// From api/crm.go
+export interface ReasonInput {
+    reason: string;
+}
+
 // From policies/policies.go
 export const ReasonKillSwitch = "kill_switch";
 
@@ -2214,7 +2375,7 @@ export interface ReviewInput {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From runs/runs.go
 export interface Run {
@@ -2359,6 +2520,13 @@ export interface StartRunResponse {
 // From runs/runs.go
 export type State = "failed" | "interrupted" | "partial" | "queued" | "running" | "succeeded";
 
+// From api/crm.go
+export interface StatedAttributeInput {
+    key: string;
+    value: string;
+    source: string;
+}
+
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
 
@@ -2380,6 +2548,11 @@ export interface Submission {
 // From api/pages.go
 export interface SubmissionsResponse {
     submissions: Submission[];
+}
+
+// From api/crm.go
+export interface SyncResponse {
+    linked: number;
 }
 
 // From plans/plans.go

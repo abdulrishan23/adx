@@ -373,3 +373,18 @@ make check && make test
 - Web: milestones line, per-intent reversibility text with spend, compensate (admin) and repair (marketer) controls on the launch page. Typecheck and biome clean. Not browser-tested.
 
 Live: the approved test-account journey was not run. It needs a test account enabled for writes in Policies, `ADX_LIVE_WRITES=1` and written approval; none exists here.
+
+## B4.1 Person/enquiry resolution and enrichment
+
+Local:
+
+```
+cd server && go test ./core/crm/   # ok
+make check && make test
+```
+
+- `core/crm`: two leads on one phone with different surnames-first names become two people with a candidate between them, and the second one is marked uncertain with the shared phone as the reason; the same name on the same phone for another project is an exact match that adds a second enquiry to the same person; a third name on the phone adds a third person and candidates in every direction; a second sync links nothing. Accepting a candidate merges the newer person into the older, carries both enquiries, both links and the identifiers (one phone, one email, two external ids), hides the merged person from the list and refuses a second decision; unmerge restores both people with their own enquiries and links; reversing a link needs a reason, refuses a second reversal with 409, and the next sync resolves the freed lead again; a viewer cannot decide. A stated company survives an enrichment that disagrees: the stated value is shown with the conflict flagged and the provider's value beside it; a new enriched attribute is stored with class enriched; attributes outside ADX's permitted list are dropped and listed in the inferred evidence with the provider cost; without a provider, enrichment is a 409 that says so. A test form submission never becomes a person; a real submission whose email matches exactly becomes a second enquiry on the same person; a submission matching nobody becomes a new person.
+- `api`: people, candidates, enquiries, merge, unmerge, enrich, stated attributes, manual link, reverse link and sync routes wired; a ten-minute `crm.sync` job runs resolution as the system actor.
+- Web: `/people` page with search, uncertain-match banner and decisions, enquiries by project, identifiers and links with reversal, attributes with class and conflict, stated-attribute entry and the enrichment state. Typecheck and biome clean. Not browser-tested.
+
+Live: no enrichment provider exists; the `Enricher` contract is the seam, and the page says enrichment is not configured.

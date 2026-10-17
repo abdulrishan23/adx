@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/creative"
+	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
@@ -282,6 +283,9 @@ func run() error {
 		slog.Info("live ad-account writes are off (ADX_LIVE_WRITES unset); execution intents are held")
 	}
 	executionService := execution.New(db, policyService, proposalService, adTokens, writers, execution.Config{LiveWritesEnabled: cfg.LiveWrites})
+	// No enrichment provider is wired; people are resolved from CRM leads and
+	// form submissions only.
+	crmService := crm.New(db, evidenceStore, crm.Config{})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -312,6 +316,15 @@ func run() error {
 				}
 				if worked > 0 {
 					log.InfoContext(ctx, "execution tick", "worked", worked, "failed", len(errs))
+				}
+				return nil
+			}},
+			{Kind: "crm.sync", Every: 10 * time.Minute, Run: func(ctx context.Context) error {
+				n, err := crmService.Sync(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "person resolution failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "resolved records to people", "linked", n)
 				}
 				return nil
 			}},
@@ -391,6 +404,7 @@ func run() error {
 			Measurement: measurementService,
 			Proposals:   proposalService,
 			Execution:   executionService,
+			CRM:         crmService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
