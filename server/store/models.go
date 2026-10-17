@@ -1041,6 +1041,16 @@ type QualificationLabel struct {
 	LabeledAt   time.Time
 }
 
+type Recommendation struct {
+	ID          int64
+	WorkspaceID int64
+	ProposalID  int64
+	Source      string
+	Capability  string
+	Objective   string
+	CreatedAt   time.Time
+}
+
 type RegistryEntry struct {
 	ID          int64
 	WorkspaceID int64
@@ -1255,6 +1265,28 @@ type SignalCorrection struct {
 	Reason       string
 	CreatedBy    sql.NullInt64
 	CreatedAt    time.Time
+}
+
+type SupervisorConfig struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
+type SupervisorConflict struct {
+	ID          int64
+	WorkspaceID int64
+	EnvelopeID  int64
+	ProposalIds string
+	State       string
+	Detail      string
+	Resolution  string
+	CreatedAt   time.Time
+	ResolvedBy  sql.NullInt64
+	ResolvedAt  sql.NullTime
 }
 
 type User struct {

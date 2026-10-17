@@ -515,3 +515,18 @@ make check && make test
 - Web: `/workflows` with runs, graphs, task states and reasons, retry (never for a task that acted externally), output correction with a reason, and events. Typecheck and biome clean. Not browser-tested.
 
 Live: no model-run workflow has executed; the model runner is tested only through the scripted runner's contract.
+
+## B5.4 Supervisor, conflict arbitration and constrained autonomy
+
+Local:
+
+```
+cd server && go test ./core/supervisor/ ./core/workflows/ ./core/proposals/   # ok
+make check && make test
+```
+
+- `core/supervisor`: two approved AED 7,000 recommendations on a 10,000 envelope: the first executes, the second is refused "insufficient remaining budget" and one reservation exists. Without precedence a competing pair is escalated with "a person decides", both stay `proposed`, the conflict is in the inbox as urgent with a `keep` action, arbitrating again raises nothing new, and keeping one rejects the other. With precedence `cpl > volume`, the volume proposal is rejected and the cpl one stays for approval; an unknown objective among them escalates. A proposal denied with no policy cannot be approved (409) or executed after the policy allows the action; it keeps no policy version; reconsidering creates a new proposal that names the old one and is approved under the new policy while the old stays denied; a non-denied proposal cannot be reconsidered. Under recommend mode an agent's proposal is `proposed` with "autonomy mode" in the reason even though policy allows the role, the recommendation records the source and objective, and the second of the day is refused by the cap of 1; with no configuration at all the default is recommend. With the workspace kill switch engaged by an admin (a marketer's attempt is 403): a proposal is denied `kill_switch`, an approved WhatsApp draft is held "kill switch", a queued CRM field is held with the policy reason, a workflow tick leases nothing (a `held` event, the runner never asked), a call is blocked and the fake telephony untouched; the inbox shows the switch; releasing it lets the workflow finish. The inbox lists an awaiting proposal with approve/reject; a marketer acting through the supervisor is still 403; an admin's approval goes through; an unknown action and an invalid autonomy mode are refused.
+- `api`: inbox, act, config, arbitrate, conflicts, recommendations, halt. Job `supervisor.arbitrate` every 5 minutes.
+- Web: `/supervisor` with the inbox and its actions, the kill switch, the autonomy and precedence editor, conflicts and recommendations. Typecheck and biome clean. Not browser-tested.
+
+Live: none needed.

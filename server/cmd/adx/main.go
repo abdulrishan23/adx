@@ -52,6 +52,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
+	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/voice"
 	"github.com/WokeWorks/adx/server/core/workflows"
@@ -357,13 +358,15 @@ func run() error {
 	// Workflows run registry definitions. Reads come from core; the only
 	// write is propose_change, which is a proposal under policy. With no
 	// model the runner is absent and ready tasks are held with the reason.
-	workflowDispatch := &workflows.CoreDispatcher{Proposals: proposalService, Reads: workflowReads(reportingService, leadsService, alertsService, connections)}
+	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
+	supervisorService := supervisor.New(db, supervisor.Config{Proposals: proposalService, Execution: executionService, Calls: callService, Qualification: qualificationService, Outreach: outreachService, CRM: crmService, Policies: policyService})
+	workflowDispatch := &workflows.CoreDispatcher{Proposals: proposalService, Recommender: supervisorService, Reads: workflowReads(reportingService, leadsService, alertsService, connections)}
 	var workflowRunner workflows.Runner
 	if model != nil {
 		workflowRunner = &workflows.ModelRunner{Model: model}
 	}
-	workflowService := workflows.New(db, workflows.Config{Registry: registryService, Runner: workflowRunner, Dispatch: workflowDispatch, External: workflowDispatch, Owner: hostname(), DefaultBudget: cfg.WorkflowDefaultBudget})
-	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
+	workflowService := workflows.New(db, workflows.Config{Gate: policyService, Registry: registryService, Runner: workflowRunner, Dispatch: workflowDispatch, External: workflowDispatch, Owner: hostname(), DefaultBudget: cfg.WorkflowDefaultBudget})
+	supervisorService.AttachWorkflows(workflowService)
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -439,6 +442,15 @@ func run() error {
 					log.WarnContext(ctx, "recording retention failed", "error", err)
 				} else if n > 0 {
 					log.InfoContext(ctx, "deleted recordings past retention", "count", n)
+				}
+				return nil
+			}},
+			{Kind: "supervisor.arbitrate", Every: 5 * time.Minute, Run: func(ctx context.Context) error {
+				conflicts, err := supervisorService.Arbitrate(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "arbitration failed", "error", err)
+				} else if len(conflicts) > 0 {
+					log.InfoContext(ctx, "recommendation conflicts found", "count", len(conflicts))
 				}
 				return nil
 			}},
@@ -545,6 +557,7 @@ func run() error {
 			Pipeline:      pipelineService,
 			Registry:      registryService,
 			Workflows:     workflowService,
+			Supervisor:    supervisorService,
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

@@ -131,8 +131,15 @@ type WorkflowStartInput struct {
 	BudgetTokens int64           `json:"budgetTokens"`
 }
 
+// Gate is the kill switch as the workflow engine sees it: engaged means no
+// task is leased, whatever the graph says.
+type Gate interface {
+	KillSwitchEngaged(ctx context.Context, workspaceID, accountID int64) (bool, string, error)
+}
+
 type Config struct {
 	Clock    core.Clock
+	Gate     Gate
 	Registry *registry.Registry
 	Runner   Runner
 	Dispatch Dispatcher
@@ -310,6 +317,14 @@ func (w *Workflows) advance(ctx context.Context, run store.WorkflowRun) (int, er
 		return worked, err
 	}
 	tasks, _ = w.db.Reader().ListWorkflowTasks(ctx, run.ID)
+	if w.cfg.Gate != nil {
+		if engaged, why, err := w.cfg.Gate.KillSwitchEngaged(ctx, run.WorkspaceID, 0); err != nil {
+			return worked, err
+		} else if engaged {
+			_ = w.db.Writer().CreateWorkflowEvent(ctx, store.CreateWorkflowEventParams{RunID: run.ID, Kind: "held", Detail: "kill switch engaged: " + why + "; no task leased", At: w.clock.Now().UTC()})
+			return worked, nil
+		}
+	}
 	if run.State == "running" || run.State == "blocked" {
 		for _, t := range tasks {
 			if t.State != "ready" {

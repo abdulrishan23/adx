@@ -43,6 +43,15 @@ export interface AccountsResponse {
 // From audit/audit.go
 export type Action = "sign_in" | "sign_in.refused" | "user.added" | "user.disabled" | "user.enabled" | "user.password_link_sent" | "user.role_changed";
 
+// From supervisor/supervisor.go
+export interface ActionInput {
+    kind: string;
+    ref: number;
+    action: string;
+    note: string;
+    target: number;
+}
+
 // From assistant/voice.go
 export interface ActionPreview {
     detected: boolean;
@@ -297,6 +306,15 @@ export interface AttributeView {
     class: string;
     enriched: Attribute | null;
     conflict: boolean;
+}
+
+// From supervisor/supervisor.go
+export type AutonomyMode = "allowed" | "approval_required" | "recommend";
+
+// From supervisor/supervisor.go
+export interface AutonomyRule {
+    mode: AutonomyMode;
+    maxPerDay: number;
 }
 
 // From brands/brands.go
@@ -729,8 +747,8 @@ export interface CompleteTaskInput {
     canceled: boolean;
 }
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From brands/facts.go
 export interface Conflict {
@@ -745,6 +763,11 @@ export interface Conflict {
     resolvedAt: string | null;
     winnerId: number | null;
     resolution: string;
+}
+
+// From api/supervisor.go
+export interface ConflictsResponse {
+    conflicts: RecommendationConflict[];
 }
 
 // From connections/gohighlevel.go
@@ -1407,6 +1430,13 @@ export interface GenerationNote {
     message: string;
 }
 
+// From api/supervisor.go
+export interface HaltInput {
+    accountId: number;
+    engaged: boolean;
+    reason: string;
+}
+
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
 
@@ -1522,6 +1552,22 @@ export interface ImportRow {
 // From api/pipeline.go
 export interface ImportsResponse {
     imports: ImportBatch[];
+}
+
+// From supervisor/supervisor.go
+export interface InboxItem {
+    kind: string;
+    ref: number;
+    severity: string;
+    title: string;
+    detail: string;
+    actions: string[];
+    since: string;
+}
+
+// From api/supervisor.go
+export interface InboxResponse {
+    items: InboxItem[];
 }
 
 // From proposals/proposals.go
@@ -2620,6 +2666,8 @@ export interface ProposalInput {
     currency: string;
     envelopeId: number;
     idempotencyKey: string;
+    requireApproval: boolean;
+    supersedes: number;
 }
 
 // From api/proposals.go
@@ -2828,6 +2876,34 @@ export const ReasonUnknownAction = "unknown_action";
 
 // From policies/policies.go
 export const ReasonWorkspaceMismatch = "workspace_mismatch";
+
+// From supervisor/supervisor.go
+export interface Recommendation {
+    id: number;
+    proposalId: number;
+    source: string;
+    capability: string;
+    objective: string;
+    createdAt: string;
+}
+
+// From supervisor/supervisor.go
+export interface RecommendationConflict {
+    id: number;
+    envelopeId: number;
+    proposalIds: number[];
+    state: string;
+    detail: string;
+    resolution: string;
+    createdAt: string;
+    resolvedBy: number | null;
+    resolvedAt: string | null;
+}
+
+// From api/supervisor.go
+export interface RecommendationsResponse {
+    recommendations: Recommendation[];
+}
 
 // From calls/calls.go
 export interface RecordingPolicy {
@@ -3148,7 +3224,7 @@ export interface ReviewInput {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From calls/calls.go
 export interface Route {
@@ -3544,6 +3620,29 @@ export interface Submission {
 // From api/pages.go
 export interface SubmissionsResponse {
     submissions: Submission[];
+}
+
+// From supervisor/supervisor.go
+export interface SupervisorConfig {
+    version: number;
+    document: SupervisorDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From supervisor/supervisor.go
+export interface SupervisorDocument {
+    objectives: string[];
+    autonomy: Record<string, AutonomyRule> | null;
+    note: string;
+}
+
+// From supervisor/supervisor.go
+export interface SupervisorState {
+    configured: boolean;
+    current: SupervisorConfig | null;
+    suggested: SupervisorDocument;
+    killSwitches: KillSwitch[];
 }
 
 // From api/outreach.go

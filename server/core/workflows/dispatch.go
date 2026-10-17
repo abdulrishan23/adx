@@ -22,6 +22,16 @@ type ReadTool func(ctx context.Context, actor core.Actor, input map[string]any) 
 type CoreDispatcher struct {
 	Reads     map[string]ReadTool
 	Proposals *proposals.Proposals
+	// Recommender, when set, decides whether a person must approve the
+	// proposal (autonomy mode), enforces the day's cap, and records where
+	// the recommendation came from.
+	Recommender Recommender
+}
+
+// Recommender is the supervisor as the dispatcher sees it.
+type Recommender interface {
+	Allow(ctx context.Context, actor core.Actor, capability string) (requireApproval bool, err error)
+	Record(ctx context.Context, actor core.Actor, proposalID int64, source, capability, objective string) error
 }
 
 func (d *CoreDispatcher) Call(ctx context.Context, actor core.Actor, tool string, input map[string]any) (any, error) {
@@ -66,9 +76,21 @@ func (d *CoreDispatcher) propose(ctx context.Context, actor core.Actor, input ma
 	if in.Reason == "" {
 		in.Reason = "proposed by workflow step " + key
 	}
+	if d.Recommender != nil {
+		requireApproval, err := d.Recommender.Allow(ctx, actor, "propose_change")
+		if err != nil {
+			return nil, err
+		}
+		in.RequireApproval = requireApproval
+	} else {
+		in.RequireApproval = true
+	}
 	p, created, err := d.Proposals.Propose(ctx, actor, in)
 	if err != nil {
 		return nil, err
+	}
+	if d.Recommender != nil && created {
+		_ = d.Recommender.Record(ctx, actor, p.ID, "workflow:"+key, "propose_change", str(input["objective"]))
 	}
 	return map[string]any{"externalRef": "proposal:" + strconv.FormatInt(p.ID, 10), "proposalId": p.ID, "state": p.State, "policyReason": p.PolicyReason, "created": created}, nil
 }

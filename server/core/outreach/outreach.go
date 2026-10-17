@@ -858,6 +858,13 @@ func (o *Outreach) Send(ctx context.Context, actor core.Actor, draftID int64) (M
 	} else if blocked {
 		return hold("suppressed", why+"; not sent")
 	}
+	if o.cfg.Policies != nil {
+		if engaged, why, err := o.cfg.Policies.KillSwitchEngaged(ctx, actor.WorkspaceID, 0); err != nil {
+			return MessageDraft{}, err
+		} else if engaged {
+			return hold("held", "kill switch engaged: "+why+"; nothing is sent")
+		}
+	}
 	cur, err := o.current(ctx, actor.WorkspaceID)
 	if err != nil {
 		return MessageDraft{}, err

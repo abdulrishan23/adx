@@ -122,6 +122,14 @@ type ProposalInput struct {
 	Currency       string `json:"currency"`
 	EnvelopeID     int64  `json:"envelopeId"`
 	IdempotencyKey string `json:"idempotencyKey"`
+	// RequireApproval keeps the proposal waiting for a person even when
+	// policy would allow the proposer's role to act alone. The supervisor
+	// sets it for recommendations under a "recommend" or "approval required"
+	// autonomy mode.
+	RequireApproval bool `json:"requireApproval"`
+	// Supersedes names an earlier proposal this one re-asks, after a policy
+	// or evidence change. The earlier one keeps its own decision.
+	Supersedes int64 `json:"supersedes"`
 }
 
 type Config struct{ Clock core.Clock }
@@ -339,6 +347,13 @@ func (p *Proposals) Propose(ctx context.Context, actor core.Actor, in ProposalIn
 		state = "proposed"
 	case policies.Allowed:
 		state = "approved"
+		if in.RequireApproval {
+			state = "proposed"
+			decision.Reason = decision.Reason + "; a person must approve under the autonomy mode"
+		}
+	}
+	if in.Supersedes != 0 {
+		in.Reason = fmt.Sprintf("%s (re-asks proposal %d, which keeps its own decision)", in.Reason, in.Supersedes)
 	}
 	refs, _ := json.Marshal(nonNil(in.EvidenceRefs))
 	now := p.clock.Now().UTC()

@@ -38,6 +38,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
+	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/workflows"
 )
 
@@ -76,6 +77,7 @@ type Deps struct {
 	Pipeline      *pipeline.Pipeline
 	Registry      *registry.Registry
 	Workflows     *workflows.Workflows
+	Supervisor    *supervisor.Supervisor
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -112,13 +114,14 @@ type handlers struct {
 	pipeline      *pipeline.Pipeline
 	registry      *registry.Registry
 	workflows     *workflows.Workflows
+	supervisor    *supervisor.Supervisor
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -432,6 +435,16 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/workflows/runs/{id}/cancel", h.workflowTransition("cancel"))
 			r.Post("/api/workflows/tasks/{id}/retry", h.retryWorkflowTask)
 			r.Post("/api/workflows/tasks/{id}/correct", h.correctWorkflowTask)
+		}
+		if h.supervisor != nil {
+			r.Get("/api/supervisor/inbox", h.supervisorInbox)
+			r.Post("/api/supervisor/act", h.supervisorAct)
+			r.Get("/api/supervisor/config", h.getSupervisorConfig)
+			r.Put("/api/supervisor/config", h.putSupervisorConfig)
+			r.Post("/api/supervisor/arbitrate", h.supervisorArbitrate)
+			r.Get("/api/supervisor/conflicts", h.supervisorConflicts)
+			r.Get("/api/supervisor/recommendations", h.supervisorRecommendations)
+			r.Post("/api/supervisor/halt", h.supervisorHalt)
 		}
 	})
 

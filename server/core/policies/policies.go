@@ -294,6 +294,22 @@ func (p *Policies) SetKillSwitch(ctx context.Context, actor core.Actor, accountI
 	return KillSwitch{AccountID: accountID, Engaged: engaged, Reason: reason, SetBy: by, SetAt: now}, nil
 }
 
+// KillSwitchEngaged says whether the workspace switch, or the account's,
+// is on. Every entry point that could reach an outside system asks this
+// (directly or through Evaluate) before doing anything.
+func (p *Policies) KillSwitchEngaged(ctx context.Context, workspaceID, accountID int64) (bool, string, error) {
+	switches, err := p.db.Reader().ListKillSwitches(ctx, workspaceID)
+	if err != nil {
+		return false, "", err
+	}
+	for _, s := range switches {
+		if s.Engaged == 1 && (s.AccountID == 0 || s.AccountID == accountID) {
+			return true, s.Reason, nil
+		}
+	}
+	return false, "", nil
+}
+
 // Evaluate answers whether actor may make req now. It never returns an error
 // for a policy reason: those are decisions. Errors are database failures.
 func (p *Policies) Evaluate(ctx context.Context, actor core.Actor, req PolicyRequest) (PolicyDecision, error) {

@@ -248,6 +248,8 @@ function NewProposal({ onCreated }: { onCreated: (id: number) => void }) {
             currency: form.currency,
             envelopeId: form.envelopeId,
             idempotencyKey: form.key || `${form.action}:${form.targetRef}:${Date.now()}`,
+            requireApproval: false,
+            supersedes: 0,
           },
           { onSuccess: (p) => onCreated(p.id) },
         );

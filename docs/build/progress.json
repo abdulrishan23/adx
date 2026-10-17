@@ -1739,13 +1739,42 @@
       "depends_on": [
         "B5.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00033_supervisor.sql",
+        "server/store/queries/supervisor.sql",
+        "server/core/supervisor/supervisor.go",
+        "server/core/supervisor/supervisor_test.go",
+        "server/core/proposals/proposals.go",
+        "server/core/policies/policies.go",
+        "server/core/workflows/workflows.go",
+        "server/core/workflows/dispatch.go",
+        "server/core/outreach/outreach.go",
+        "server/api/supervisor.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/supervisor.ts",
+        "web/src/routes/supervisor.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/supervisor/ ./core/workflows/ ./core/proposals/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "two recommendations cannot both reserve one allocation",
+        "no precedence escalates the conflict to a person; configured precedence arbitrates",
+        "a denied proposal stays denied after a policy change; a re-ask is a new proposal",
+        "the kill switch denies proposals, holds sends and field writes, stops workflow leasing and blocks calls"
+      ],
+      "remaining": [
+        "objective names from Reportage",
+        "browser inspection"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-51."
     },
     {
       "id": "B5.5",
