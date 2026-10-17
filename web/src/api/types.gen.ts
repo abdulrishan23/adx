@@ -95,10 +95,49 @@ export interface AlertsResponse {
     alerts: Alert[];
 }
 
+// From creative/creative.go
+export interface Asset {
+    id: number;
+    projectId: number | null;
+    kind: string;
+    name: string;
+    ref: Ref;
+    uploadedBy: number | null;
+    createdAt: string;
+}
+
+// From api/creative.go
+export interface AssetsResponse {
+    assets: Asset[];
+}
+
 // From api/analytics.go
 export interface AssignProjectsResponse {
     assigned: number;
     unresolved: string[];
+}
+
+// From assets/brand.go
+export interface BrandKit {
+    version: number;
+    logos: Record<string, Ref | null> | null;
+    fonts: Record<string, FontSpec> | null;
+    colors: Record<string, string> | null;
+    notes: string;
+}
+
+// From api/creative.go
+export interface BrandKitResponse {
+    kit: BrandKitVersion;
+    saved: boolean;
+}
+
+// From creative/creative.go
+export interface BrandKitVersion {
+    version: number;
+    projectId: number;
+    kit: BrandKit;
+    createdAt: string;
 }
 
 // From reports/reports.go
@@ -147,8 +186,8 @@ export const CheckZeroLeads = "zero_leads";
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -189,6 +228,15 @@ export interface ConversationsResponse {
     conversations: Conversation[];
 }
 
+// From assets/brand.go
+export interface Copy {
+    eyebrow: string;
+    title: string;
+    text: string;
+    note: string;
+    cta: string;
+}
+
 // From alerts/alerts.go
 export interface CostSpikeConfig {
     thresholdPct: number | null;
@@ -213,6 +261,38 @@ export interface Coverage {
 // From projects/projects.go
 export interface CreateInput {
     name: string;
+}
+
+// From creative/creative.go
+export interface Creative {
+    id: number;
+    projectId: number | null;
+    name: string;
+    format: Format;
+    language: Language;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From creative/creative.go
+export interface CreativeInput {
+    projectId: number;
+    name: string;
+    format: Format;
+    language: Language;
+    copy: Copy;
+    renderAssetId: number;
+}
+
+// From api/creative.go
+export interface CreativeResponse {
+    creative: Creative;
+    versions: Version[];
+}
+
+// From api/creative.go
+export interface CreativesResponse {
+    creatives: Creative[];
 }
 
 // From reporting/ingest.go
@@ -274,6 +354,12 @@ export interface EvidenceRef {
 export interface FieldLocation {
     kind: string;
     ref: string;
+}
+
+// From assets/brand.go
+export interface FontSpec {
+    family: string;
+    file: Ref | null;
 }
 
 // From assets/assets.go
@@ -408,6 +494,12 @@ export interface Layer {
     opacity?: number;
 }
 
+// From assets/layout.go
+export interface LayoutCheck {
+    level: string;
+    text: string;
+}
+
 // From leads/leads.go
 export interface Lead {
     id: number;
@@ -530,6 +622,11 @@ export const ProviderMeta = "meta";
 // From api/reports.go
 export interface PutAlertConfigInput {
     document: AlertDocument;
+}
+
+// From api/creative.go
+export interface PutBrandKitInput {
+    kit: BrandKit;
 }
 
 // From api/leads.go
@@ -774,11 +871,26 @@ export interface ResultFreshness {
     missingPeriods: string[];
 }
 
+// From creative/creative.go
+export interface Review {
+    decision: string;
+    outputSha256: string;
+    note: string;
+    decidedBy: number;
+    decidedAt: string;
+}
+
+// From api/creative.go
+export interface ReviewInput {
+    decision: string;
+    note: string;
+}
+
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From core/core.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+// From assistant/model.go
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From runs/runs.go
 export interface Run {
@@ -806,6 +918,11 @@ export const RunKind = "ghl.import";
 // From api/runs.go
 export interface RunsResponse {
     runs: Run[];
+}
+
+// From api/creative.go
+export interface SaveDocumentInput {
+    document: Document;
 }
 
 // From api/reports.go
@@ -932,6 +1049,22 @@ export interface User {
     createdAt: string;
     lastSignInAt: string | null;
     authentikUuid: string;
+}
+
+// From creative/creative.go
+export interface Version {
+    id: number;
+    creativeId: number;
+    version: number;
+    document: Document;
+    reviewState: ReviewState;
+    renderer: string | null;
+    output: Ref | null;
+    renderedAt: string | null;
+    checks: LayoutCheck[];
+    reviews: Review[];
+    acceptance: ContentAcceptance | null;
+    createdAt: string;
 }
 
 // From core/core.go

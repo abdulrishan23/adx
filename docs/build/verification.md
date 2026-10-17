@@ -186,3 +186,20 @@ make check && make test
 - Web: `/ask` with conversations, turns, collapsible tool input/result and evidence counts, model/tokens/cost per turn, unavailable and refused states, warning texts. Typecheck and biome clean. Not browser-tested.
 
 Live: not verified. No model API key exists on this machine; the first live question will also confirm the SDK's request shape against the real API.
+
+## B1.6 Pilot creative workflow
+
+Local:
+
+```
+cd server && go test ./core/assets/ ./core/creative/ ./providers/svgrender/ ./api/   # ok
+make check && make test
+```
+
+- `core/assets`: layout for the four formats in English and Arabic keeps the logo top centre under the 9:16 keep-clear zone and the text block above the bottom zone; Arabic copy is right-aligned and right-to-left with the Arabic fonts; a "20% off" without its condition is a warning and "25% off" is an error; a title inside a keep-clear zone is an error; a brand kit with a bad colour is refused.
+- `core/creative`: uploading stores by SHA-256 and dedupes; a draft with a rule error can't render; a clean draft renders to a `template` SVG whose bytes are stored and whose checksum the version carries; submit moves rendered → in review; a marketer can't approve; an admin's approval binds the output checksum and yields a content acceptance that never grants delivery; editing the approved document creates a new unapproved version while the approved one keeps its acceptance; export streams the stored bytes and refuses a corrupted file.
+- `providers/svgrender`: deterministic output for the same document, RTL text direction and anchor, escaped text, colour sanitising, embedded render image.
+- `api`: upload needs a session and refuses viewers; served files carry `Content-Security-Policy: sandbox` and `nosniff`; an unknown key is 404; create → render → submit works for a marketer, review is forbidden for a marketer, export returns `image/svg+xml`.
+- Web: `/creatives` with a list, a new-creative form (project, format, language, copy, render upload), the rendered preview, checks, a text-layer editor, render/submit/approve/send back buttons by role and state, export link and version history. Typecheck and biome clean. Not browser-tested; long Arabic copy not inspected visually (see `pilot-gate.md`).
+
+Live: nothing to verify against a provider. The pilot gate is recorded in `docs/build/pilot-gate.md`.

@@ -13,6 +13,7 @@ import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
 import { AskPage } from "@/routes/ask";
 import { ConnectionsPage } from "@/routes/connections";
+import { CreativesPage } from "@/routes/creatives";
 import { FunnelPage } from "@/routes/funnel";
 import { LeadsPage } from "@/routes/leads";
 import { PoliciesPage } from "@/routes/policies";
@@ -56,6 +57,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Ask ADX
+          </Link>
+          <Link
+            to="/creatives"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Creatives
           </Link>
           <Link
             to="/reports"
@@ -164,6 +172,12 @@ const askRoute = createRoute({
   component: AskPage,
 });
 
+const creativesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/creatives",
+  component: CreativesPage,
+});
+
 const reportsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/reports",
@@ -208,6 +222,7 @@ const routeTree = rootRoute.addChildren([
   policiesRoute,
   analyticsRoute,
   askRoute,
+  creativesRoute,
   reportsRoute,
   alertsRoute,
   leadsRoute,

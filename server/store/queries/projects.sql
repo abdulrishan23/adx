@@ -9,3 +9,6 @@ RETURNING *;
 
 -- name: GetProjectByName :one
 SELECT * FROM projects WHERE name = ? COLLATE NOCASE;
+
+-- name: GetProject :one
+SELECT * FROM projects WHERE id = ?;

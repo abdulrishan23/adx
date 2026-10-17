@@ -14,6 +14,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
@@ -42,6 +43,7 @@ type Deps struct {
 	Reports   *reports.Reports
 	Alerts    *alerts.Alerts
 	Assistant *assistant.Assistant
+	Creative  *creative.Service
 }
 
 type handlers struct {
@@ -58,11 +60,13 @@ type handlers struct {
 	reports     *reports.Reports
 	alerts      *alerts.Alerts
 	assistant   *assistant.Assistant
+	creative    *creative.Service
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
-		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant}
+		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
+		creative: d.Creative}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -146,6 +150,25 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/assistant/conversations", h.createConversation)
 			r.Get("/api/assistant/conversations/{id}", h.conversationTurns)
 			r.Post("/api/assistant/conversations/{id}/messages", h.sendMessage)
+		}
+		if h.creative != nil {
+			r.Get("/api/assets", h.listAssets)
+			r.Post("/api/assets", h.uploadAsset)
+			r.Get("/api/assets/files/{key}", h.serveAsset)
+			r.Get("/api/brands/{projectID}/kit", h.getBrandKit)
+			r.Put("/api/brands/{projectID}/kit", h.putBrandKit)
+			r.Get("/api/creatives", h.listCreatives)
+			r.Post("/api/creatives", h.createCreative)
+			r.Get("/api/creatives/{id}", h.getCreative)
+			r.Put("/api/creatives/{id}/document", h.saveCreativeDocument)
+			r.Post("/api/creatives/{id}/render", h.creativeAction(func(r *http.Request, id int64) (creative.Version, error) {
+				return h.creative.Render(r.Context(), actorFrom(r), id)
+			}))
+			r.Post("/api/creatives/{id}/submit", h.creativeAction(func(r *http.Request, id int64) (creative.Version, error) {
+				return h.creative.Submit(r.Context(), actorFrom(r), id)
+			}))
+			r.Post("/api/creatives/{id}/review", h.reviewCreative)
+			r.Get("/api/creatives/{id}/export/{version}", h.exportCreative)
 		}
 	})
 

@@ -752,13 +752,46 @@
         "B0.3",
         "B1.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00014_assets_and_brand_kits.sql",
+        "server/store/queries/creative.sql",
+        "server/store/queries/projects.sql",
+        "server/core/assets/brand.go",
+        "server/core/assets/layout.go",
+        "server/core/creative/",
+        "server/providers/svgrender/",
+        "server/api/creative.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/creative.ts",
+        "web/src/routes/creatives.tsx",
+        "docs/build/pilot-gate.md"
+      ],
+      "commands": [
+        "cd server && go test ./core/assets/ ./core/creative/ ./providers/svgrender/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "upload \u2192 layout \u2192 render \u2192 review board \u2192 approve \u2192 export works locally for 9:16, 4:5, 1:1 and 1.91:1 in en and ar",
+        "editing an approved version creates a new unapproved version",
+        "approval is content acceptance and never grants delivery",
+        "house-rule errors block rendering",
+        "files served sandboxed"
+      ],
+      "remaining": [
+        "browser inspection of long Arabic copy in all four formats",
+        "canvas drag editor and pixel export (B3.1)"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "pilot inputs listed in docs/build/pilot-gate.md",
+          "unblocks": "the connected pilot"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-30. Pilot gate recorded in docs/build/pilot-gate.md."
     },
     {
       "id": "B2.1",

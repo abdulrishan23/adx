@@ -25,6 +25,7 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
+	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -38,7 +39,9 @@ import (
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
+	"github.com/WokeWorks/adx/server/providers/filestore"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
+	"github.com/WokeWorks/adx/server/providers/svgrender"
 	"github.com/WokeWorks/adx/server/store"
 
 	// Containers often ship without time zone data, and reports need Asia/Dubai.
@@ -228,6 +231,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	assetStore, err := filestore.New(cfg.AssetsDir)
+	if err != nil {
+		return err
+	}
+	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
@@ -292,6 +300,7 @@ func run() error {
 			Reports:     reportsService,
 			Alerts:      alertsService,
 			Assistant:   assistantService,
+			Creative:    creativeService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

@@ -28,6 +28,17 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	return i, err
 }
 
+const getProject = `-- name: GetProject :one
+SELECT id, name, created_at FROM projects WHERE id = ?
+`
+
+func (q *Queries) GetProject(ctx context.Context, id int64) (Project, error) {
+	row := q.db.QueryRowContext(ctx, getProject, id)
+	var i Project
+	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	return i, err
+}
+
 const getProjectByName = `-- name: GetProjectByName :one
 SELECT id, name, created_at FROM projects WHERE name = ? COLLATE NOCASE
 `

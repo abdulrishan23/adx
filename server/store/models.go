@@ -96,6 +96,20 @@ type AlertConfig struct {
 	CreatedAt   time.Time
 }
 
+type Asset struct {
+	ID          int64
+	WorkspaceID int64
+	ProjectID   sql.NullInt64
+	Kind        string
+	Name        string
+	Key         string
+	Sha256      string
+	Size        int64
+	ContentType string
+	UploadedBy  sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type AssistantConversation struct {
 	ID          int64
 	WorkspaceID int64
@@ -132,6 +146,16 @@ type AuditLog struct {
 	Action       string
 	TargetUserID sql.NullInt64
 	Detail       string
+}
+
+type BrandKit struct {
+	ID          int64
+	WorkspaceID int64
+	ProjectID   int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
 }
 
 type CampaignDailyMetric struct {
@@ -175,6 +199,44 @@ type ConversionAction struct {
 	CountingType         sql.NullString
 	IncludeInConversions int64
 	LastSeenAt           time.Time
+}
+
+type Creative struct {
+	ID          int64
+	WorkspaceID int64
+	ProjectID   sql.NullInt64
+	Name        string
+	Format      string
+	Language    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type CreativeReview struct {
+	ID           int64
+	VersionID    int64
+	Decision     string
+	OutputSha256 string
+	Note         string
+	DecidedBy    int64
+	DecidedAt    time.Time
+}
+
+type CreativeVersion struct {
+	ID           int64
+	CreativeID   int64
+	Version      int64
+	Document     string
+	ReviewState  string
+	Renderer     sql.NullString
+	OutputKey    sql.NullString
+	OutputSha256 sql.NullString
+	OutputSize   sql.NullInt64
+	OutputType   sql.NullString
+	RenderedAt   sql.NullTime
+	CreatedBy    sql.NullInt64
+	CreatedAt    time.Time
 }
 
 type Credential struct {
