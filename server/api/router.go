@@ -168,11 +168,11 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/api/projects/{projectID}/brand-kit", h.putBrandKit)
 			r.Get("/api/creatives", h.listCreatives)
 			r.Post("/api/creatives", h.createCreative)
+			r.Get("/api/creatives/queue", h.creativeQueue)
 			r.Get("/api/creatives/{id}", h.getCreative)
+			r.Get("/api/creatives/{id}/readiness", h.creativeReadiness)
 			r.Put("/api/creatives/{id}/document", h.saveCreativeDocument)
-			r.Post("/api/creatives/{id}/render", h.creativeAction(func(r *http.Request, id int64) (creative.Version, error) {
-				return h.creative.Render(r.Context(), actorFrom(r), id)
-			}))
+			r.Post("/api/creatives/{id}/render", h.startRender)
 			r.Post("/api/creatives/{id}/submit", h.creativeAction(func(r *http.Request, id int64) (creative.Version, error) {
 				return h.creative.Submit(r.Context(), actorFrom(r), id)
 			}))

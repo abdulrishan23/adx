@@ -541,7 +541,7 @@ func (q *Queries) ListClaims(ctx context.Context, arg ListClaimsParams) ([]Fact,
 }
 
 const listCreativesByOffer = `-- name: ListCreativesByOffer :many
-SELECT c.id, c.workspace_id, c.project_id, c.name, c.format, c.language, c.created_by, c.created_at, c.updated_at, c.offer_id, c.offer_version, v.version AS current_version, v.review_state
+SELECT c.id, c.workspace_id, c.project_id, c.name, c.format, c.language, c.created_by, c.created_at, c.updated_at, c.offer_id, c.offer_version, c.plan_id, c.plan_version, v.version AS current_version, v.review_state
 FROM creatives c
 JOIN creative_versions v ON v.creative_id = c.id
  AND v.version = (SELECT MAX(version) FROM creative_versions WHERE creative_id = c.id)
@@ -566,6 +566,8 @@ type ListCreativesByOfferRow struct {
 	UpdatedAt      time.Time
 	OfferID        sql.NullInt64
 	OfferVersion   sql.NullInt64
+	PlanID         sql.NullInt64
+	PlanVersion    sql.NullInt64
 	CurrentVersion int64
 	ReviewState    string
 }
@@ -591,6 +593,8 @@ func (q *Queries) ListCreativesByOffer(ctx context.Context, arg ListCreativesByO
 			&i.UpdatedAt,
 			&i.OfferID,
 			&i.OfferVersion,
+			&i.PlanID,
+			&i.PlanVersion,
 			&i.CurrentVersion,
 			&i.ReviewState,
 		); err != nil {

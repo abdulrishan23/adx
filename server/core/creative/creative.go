@@ -20,17 +20,21 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/assets"
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/store"
 )
 
 type Asset struct {
-	ID         int64      `json:"id"`
-	ProjectID  *int64     `json:"projectId"`
-	Kind       string     `json:"kind"`
-	Name       string     `json:"name"`
-	Ref        assets.Ref `json:"ref"`
-	UploadedBy *int64     `json:"uploadedBy"`
-	CreatedAt  time.Time  `json:"createdAt"`
+	ID        int64      `json:"id"`
+	ProjectID *int64     `json:"projectId"`
+	Kind      string     `json:"kind"`
+	Name      string     `json:"name"`
+	Ref       assets.Ref `json:"ref"`
+	// Provenance says how the file came to be: uploaded, template_render or
+	// ai_generated. Shown next to the file.
+	Provenance string    `json:"provenance"`
+	UploadedBy *int64    `json:"uploadedBy"`
+	CreatedAt  time.Time `json:"createdAt"`
 }
 
 type BrandKitVersion struct {
@@ -50,6 +54,8 @@ type Creative struct {
 	// on, if any.
 	OfferID      *int64    `json:"offerId"`
 	OfferVersion *int64    `json:"offerVersion"`
+	PlanID       *int64    `json:"planId"`
+	PlanVersion  *int64    `json:"planVersion"`
 	CreatedAt    time.Time `json:"createdAt"`
 	UpdatedAt    time.Time `json:"updatedAt"`
 }
@@ -76,7 +82,12 @@ type Version struct {
 	// Acceptance is the content acceptance an approval produced, binding this
 	// version's exact output. It grants no delivery.
 	Acceptance *assets.ContentAcceptance `json:"acceptance"`
-	CreatedAt  time.Time                 `json:"createdAt"`
+	// Bindings is what the copy was checked against when rendered.
+	Bindings ClaimBindings `json:"bindings"`
+	// RenderError is the last render failure's safe message, if any.
+	RenderError string    `json:"renderError"`
+	RenderRunID *int64    `json:"renderRunId"`
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 type CreativeInput struct {
@@ -90,6 +101,10 @@ type CreativeInput struct {
 	// offer's current version is recorded so a later change lists this
 	// creative as affected.
 	OfferID int64 `json:"offerId"`
+	// PlanID and PlanVersion tie the creative to the plan version whose
+	// asset requirements it serves.
+	PlanID      int64 `json:"planId"`
+	PlanVersion int64 `json:"planVersion"`
 }
 
 type Config struct {
@@ -97,14 +112,22 @@ type Config struct {
 	// Brands checks that an offer belongs to the project's brand. Nil
 	// refuses offers.
 	Brands *brands.Brands
+	// Plans checks plan bindings. Nil refuses them.
+	Plans *plans.Plans
+	// Generator is an AI image generation provider. None exists; the
+	// interface is here so a future one is labelled, not mistaken for a
+	// template layout.
+	Generator assets.ImageGenerator
 }
 
 type Service struct {
-	db       *store.DB
-	store    assets.Store
-	renderer assets.Renderer
-	clock    core.Clock
-	brands   *brands.Brands
+	db        *store.DB
+	store     assets.Store
+	renderer  assets.Renderer
+	clock     core.Clock
+	brands    *brands.Brands
+	plans     *plans.Plans
+	generator assets.ImageGenerator
 }
 
 // New wires the workflow. store and renderer may be nil when assets aren't
@@ -113,7 +136,7 @@ func New(db *store.DB, st assets.Store, renderer assets.Renderer, cfg Config) *S
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	return &Service{db: db, store: st, renderer: renderer, clock: cfg.Clock, brands: cfg.Brands}
+	return &Service{db: db, store: st, renderer: renderer, clock: cfg.Clock, brands: cfg.Brands, plans: cfg.Plans, generator: cfg.Generator}
 }
 
 var allowedUploadTypes = map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true, "image/svg+xml": true, "font/ttf": true, "font/otf": true, "font/woff": true, "font/woff2": true}
@@ -152,7 +175,7 @@ func (s *Service) UploadAsset(ctx context.Context, actor core.Actor, projectID i
 		return Asset{}, core.Invalid("the file could not be stored: %s", err.Error())
 	}
 	row, err := s.db.Writer().CreateAsset(ctx, store.CreateAssetParams{WorkspaceID: actor.WorkspaceID, ProjectID: optionalID(projectID), Kind: kind, Name: name,
-		Key: ref.Key, Sha256: ref.SHA256, Size: ref.Size, ContentType: ref.ContentType, UploadedBy: optionalID(actor.UserID), CreatedAt: s.clock.Now().UTC()})
+		Key: ref.Key, Sha256: ref.SHA256, Size: ref.Size, ContentType: ref.ContentType, UploadedBy: optionalID(actor.UserID), CreatedAt: s.clock.Now().UTC(), Provenance: "uploaded"})
 	if err != nil {
 		return Asset{}, err
 	}
@@ -321,6 +344,36 @@ func (s *Service) Create(ctx context.Context, actor core.Actor, in CreativeInput
 		}
 		render = &assets.Ref{Key: row.Key, SHA256: row.Sha256, Size: row.Size, ContentType: row.ContentType}
 	}
+	if in.PlanID != 0 {
+		if s.plans == nil {
+			return Creative{}, Version{}, core.Invalid("plans are not configured")
+		}
+		pd, err := s.plans.Get(ctx, actor, in.PlanID)
+		if err != nil {
+			return Creative{}, Version{}, err
+		}
+		if in.PlanVersion == 0 {
+			in.PlanVersion = pd.Versions[len(pd.Versions)-1].Version
+		}
+		found := false
+		for _, v := range pd.Versions {
+			if v.Version == in.PlanVersion {
+				found = true
+			}
+		}
+		if !found {
+			return Creative{}, Version{}, core.NotFound("plan %d has no version %d", in.PlanID, in.PlanVersion)
+		}
+		if in.ProjectID != 0 && s.brands != nil {
+			owner, err := s.brands.BrandOfProject(ctx, actor, in.ProjectID)
+			if err != nil {
+				return Creative{}, Version{}, err
+			}
+			if owner != pd.Plan.BrandID {
+				return Creative{}, Version{}, core.Invalid("plan %d is for another brand than project %d", in.PlanID, in.ProjectID)
+			}
+		}
+	}
 	var offerVersion int64
 	if in.OfferID != 0 {
 		if s.brands == nil {
@@ -343,7 +396,7 @@ func (s *Service) Create(ctx context.Context, actor core.Actor, in CreativeInput
 	err = s.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		var err error
 		crow, err = q.CreateCreative(ctx, store.CreateCreativeParams{WorkspaceID: actor.WorkspaceID, ProjectID: optionalID(in.ProjectID), Name: in.Name, Format: string(in.Format),
-			Language: string(in.Language), OfferID: optionalID(in.OfferID), OfferVersion: optionalID(offerVersion), CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
+			Language: string(in.Language), OfferID: optionalID(in.OfferID), OfferVersion: optionalID(offerVersion), PlanID: optionalID(in.PlanID), PlanVersion: optionalID(in.PlanVersion), CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
 		if err != nil {
 			return err
 		}
@@ -454,54 +507,6 @@ func (s *Service) SaveDocument(ctx context.Context, actor core.Actor, creativeID
 		return Version{}, err
 	}
 	return s.versionFromRow(ctx, out), nil
-}
-
-// Render produces the latest version's output with the configured template
-// renderer and stores its checksum. House-rule errors block rendering; the
-// checks are returned on the version so the editor can show them.
-func (s *Service) Render(ctx context.Context, actor core.Actor, creativeID int64) (Version, error) {
-	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
-		return Version{}, core.ErrForbidden
-	}
-	if s.store == nil || s.renderer == nil {
-		return Version{}, core.Conflict("rendering is not configured on this server")
-	}
-	_, latest, err := s.latest(ctx, actor, creativeID)
-	if err != nil {
-		return Version{}, err
-	}
-	state := assets.ReviewState(latest.ReviewState)
-	if state != assets.Draft && state != assets.RenderedSt {
-		return Version{}, core.Conflict("version %d is %s; edit it to make a new draft before rendering", latest.Version, state)
-	}
-	var doc assets.Document
-	if err := json.Unmarshal([]byte(latest.Document), &doc); err != nil {
-		return Version{}, err
-	}
-	checks := assets.CheckDocument(doc, false)
-	if assets.HasErrors(checks) {
-		v := s.versionFromRow(ctx, latest)
-		return v, core.Invalid("fix the house-rule errors before rendering: %s", firstError(checks))
-	}
-	rendered, err := s.renderer.Render(ctx, s.store, doc)
-	if err != nil {
-		return Version{}, core.Conflict("rendering failed: %s", safe(err))
-	}
-	now := s.clock.Now().UTC()
-	n, err := s.db.Writer().SetCreativeVersionRendered(ctx, store.SetCreativeVersionRenderedParams{Renderer: nullString(rendered.Renderer), OutputKey: nullString(rendered.Ref.Key),
-		OutputSha256: nullString(rendered.Ref.SHA256), OutputSize: sql.NullInt64{Int64: rendered.Ref.Size, Valid: true}, OutputType: nullString(rendered.Ref.ContentType),
-		RenderedAt: sql.NullTime{Time: now, Valid: true}, ID: latest.ID})
-	if err != nil {
-		return Version{}, err
-	}
-	if n != 1 {
-		return Version{}, core.Conflict("the version changed while rendering; reload and try again")
-	}
-	row, err := s.db.Reader().GetCreativeVersion(ctx, latest.ID)
-	if err != nil {
-		return Version{}, err
-	}
-	return s.versionFromRow(ctx, row), nil
 }
 
 // Submit puts the rendered latest version in review: publishing to the
@@ -624,8 +629,15 @@ func (s *Service) latest(ctx context.Context, actor core.Actor, creativeID int64
 }
 
 func (s *Service) versionFromRow(ctx context.Context, r store.CreativeVersion) Version {
-	v := Version{ID: r.ID, CreativeID: r.CreativeID, Version: r.Version, ReviewState: assets.ReviewState(r.ReviewState), CreatedAt: r.CreatedAt.UTC(), Reviews: []Review{}}
+	v := Version{ID: r.ID, CreativeID: r.CreativeID, Version: r.Version, ReviewState: assets.ReviewState(r.ReviewState), CreatedAt: r.CreatedAt.UTC(), Reviews: []Review{}, RenderError: r.RenderError, RenderRunID: idPtrOf(r.RenderRunID), Bindings: ClaimBindings{FactIDs: []int64{}, Claims: []ClaimCheck{}}}
 	_ = json.Unmarshal([]byte(r.Document), &v.Document)
+	_ = json.Unmarshal([]byte(r.Bindings), &v.Bindings)
+	if v.Bindings.FactIDs == nil {
+		v.Bindings.FactIDs = []int64{}
+	}
+	if v.Bindings.Claims == nil {
+		v.Bindings.Claims = []ClaimCheck{}
+	}
 	v.Checks = assets.CheckDocument(v.Document, false)
 	if r.Renderer.Valid {
 		v.Renderer = &r.Renderer.String
@@ -649,8 +661,16 @@ func (s *Service) versionFromRow(ctx context.Context, r store.CreativeVersion) V
 	return v
 }
 
+func idPtrOf(n sql.NullInt64) *int64 {
+	if !n.Valid {
+		return nil
+	}
+	v := n.Int64
+	return &v
+}
+
 func assetFromRow(r store.Asset) Asset {
-	a := Asset{ID: r.ID, Kind: r.Kind, Name: r.Name, Ref: assets.Ref{Key: r.Key, SHA256: r.Sha256, Size: r.Size, ContentType: r.ContentType}, CreatedAt: r.CreatedAt.UTC()}
+	a := Asset{ID: r.ID, Kind: r.Kind, Name: r.Name, Provenance: r.Provenance, Ref: assets.Ref{Key: r.Key, SHA256: r.Sha256, Size: r.Size, ContentType: r.ContentType}, CreatedAt: r.CreatedAt.UTC()}
 	if r.ProjectID.Valid {
 		a.ProjectID = &r.ProjectID.Int64
 	}
@@ -670,6 +690,12 @@ func creativeFromRow(r store.Creative) Creative {
 	}
 	if r.OfferVersion.Valid {
 		c.OfferVersion = &r.OfferVersion.Int64
+	}
+	if r.PlanID.Valid {
+		c.PlanID = &r.PlanID.Int64
+	}
+	if r.PlanVersion.Valid {
+		c.PlanVersion = &r.PlanVersion.Int64
 	}
 	return c
 }

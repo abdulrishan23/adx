@@ -1028,13 +1028,37 @@
         "B2.4",
         "B1.6"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00019_production_assets.sql",
+        "server/store/queries/creative.sql",
+        "server/core/assets/assets.go",
+        "server/core/creative/creative.go",
+        "server/core/creative/production.go",
+        "server/api/creative.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/creative.ts",
+        "web/src/routes/creatives.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/creative/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "an old approval cannot cover a new image: editing makes an unapproved version and readiness blocks it",
+        "a render failure between file and row is recoverable: retry lands on the same key, nothing half-updated",
+        "template layout is labelled template; AI generation reported unconfigured",
+        "unapproved percentages and prices fail readiness until the fact or offer is approved"
+      ],
+      "remaining": [
+        "browser exercise of the drag canvas",
+        "pixel export (browser rasterizes SVG)"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-36."
     },
     {
       "id": "B3.2",

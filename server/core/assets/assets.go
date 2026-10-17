@@ -124,6 +124,14 @@ type Renderer interface {
 	Name() string
 }
 
+// ImageGenerator is an AI image generation provider. ADX has none wired; the
+// interface exists so that if one is ever chosen, its output carries the
+// provenance "ai_generated" and is never shown as a photo or a layout.
+type ImageGenerator interface {
+	Name() string
+	Generate(ctx context.Context, store Store, prompt string, format Format) (Ref, error)
+}
+
 // ReviewState is where a version is in review. Board publishing is the
 // transition to in_review: the version becomes visible to reviewers.
 // Approved is the end of this machine. It is content acceptance, not

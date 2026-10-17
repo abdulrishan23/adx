@@ -240,7 +240,10 @@ func run() error {
 		return err
 	}
 	brandService := brands.New(db, brands.Config{})
-	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService})
+	// No exact Excel adapter: the template has not been supplied (decisions.md).
+	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore})
+	// No AI image generator is wired; outputs are template layouts and say so.
+	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService, Plans: planService})
 	// Keyword Planner rides on the Google Ads connection; without one the
 	// keyword items of a brief fail as unconfigured.
 	var keywordProvider research.KeywordProvider
@@ -249,14 +252,12 @@ func run() error {
 			keywordProvider = kp
 		}
 	}
-	// No exact Excel adapter: the template has not been supplied (decisions.md).
-	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
-		Executors: runExecutors(leadsService, reportingService, researchService),
+		Executors: runExecutors(leadsService, reportingService, researchService, creativeService),
 		Periodic: []jobs.Periodic{
 			{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
 				started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
@@ -384,8 +385,8 @@ func configuredMailer(cfg config) (reports.Mailer, error) {
 }
 
 // runExecutors maps run kinds to the code that works them.
-func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research) map[string]jobs.Executor {
-	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs}
+func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research, c *creative.Service) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs, creative.RenderRunKind: c}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates

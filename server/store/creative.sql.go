@@ -12,9 +12,9 @@ import (
 )
 
 const createAsset = `-- name: CreateAsset :one
-INSERT INTO assets (workspace_id, project_id, kind, name, key, sha256, size, content_type, uploaded_by, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at
+INSERT INTO assets (workspace_id, project_id, kind, name, key, sha256, size, content_type, uploaded_by, created_at, provenance)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at, provenance
 `
 
 type CreateAssetParams struct {
@@ -28,6 +28,7 @@ type CreateAssetParams struct {
 	ContentType string
 	UploadedBy  sql.NullInt64
 	CreatedAt   time.Time
+	Provenance  string
 }
 
 func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) (Asset, error) {
@@ -42,6 +43,7 @@ func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) (Asset
 		arg.ContentType,
 		arg.UploadedBy,
 		arg.CreatedAt,
+		arg.Provenance,
 	)
 	var i Asset
 	err := row.Scan(
@@ -56,6 +58,7 @@ func (q *Queries) CreateAsset(ctx context.Context, arg CreateAssetParams) (Asset
 		&i.ContentType,
 		&i.UploadedBy,
 		&i.CreatedAt,
+		&i.Provenance,
 	)
 	return i, err
 }
@@ -98,9 +101,9 @@ func (q *Queries) CreateBrandKit(ctx context.Context, arg CreateBrandKitParams) 
 }
 
 const createCreative = `-- name: CreateCreative :one
-INSERT INTO creatives (workspace_id, project_id, name, format, language, offer_id, offer_version, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version
+INSERT INTO creatives (workspace_id, project_id, name, format, language, offer_id, offer_version, plan_id, plan_version, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version, plan_id, plan_version
 `
 
 type CreateCreativeParams struct {
@@ -111,6 +114,8 @@ type CreateCreativeParams struct {
 	Language     string
 	OfferID      sql.NullInt64
 	OfferVersion sql.NullInt64
+	PlanID       sql.NullInt64
+	PlanVersion  sql.NullInt64
 	CreatedBy    sql.NullInt64
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
@@ -125,6 +130,8 @@ func (q *Queries) CreateCreative(ctx context.Context, arg CreateCreativeParams) 
 		arg.Language,
 		arg.OfferID,
 		arg.OfferVersion,
+		arg.PlanID,
+		arg.PlanVersion,
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -142,6 +149,8 @@ func (q *Queries) CreateCreative(ctx context.Context, arg CreateCreativeParams) 
 		&i.UpdatedAt,
 		&i.OfferID,
 		&i.OfferVersion,
+		&i.PlanID,
+		&i.PlanVersion,
 	)
 	return i, err
 }
@@ -186,7 +195,7 @@ func (q *Queries) CreateCreativeReview(ctx context.Context, arg CreateCreativeRe
 const createCreativeVersion = `-- name: CreateCreativeVersion :one
 INSERT INTO creative_versions (creative_id, version, document, review_state, created_by, created_at)
 VALUES (?, ?, ?, 'draft', ?, ?)
-RETURNING id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at
+RETURNING id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at, render_run_id, render_error, bindings
 `
 
 type CreateCreativeVersionParams struct {
@@ -220,12 +229,15 @@ func (q *Queries) CreateCreativeVersion(ctx context.Context, arg CreateCreativeV
 		&i.RenderedAt,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.RenderRunID,
+		&i.RenderError,
+		&i.Bindings,
 	)
 	return i, err
 }
 
 const getAsset = `-- name: GetAsset :one
-SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at FROM assets WHERE id = ? AND workspace_id = ?
+SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at, provenance FROM assets WHERE id = ? AND workspace_id = ?
 `
 
 type GetAssetParams struct {
@@ -248,12 +260,13 @@ func (q *Queries) GetAsset(ctx context.Context, arg GetAssetParams) (Asset, erro
 		&i.ContentType,
 		&i.UploadedBy,
 		&i.CreatedAt,
+		&i.Provenance,
 	)
 	return i, err
 }
 
 const getAssetByKey = `-- name: GetAssetByKey :one
-SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at FROM assets WHERE workspace_id = ? AND key = ? ORDER BY id LIMIT 1
+SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at, provenance FROM assets WHERE workspace_id = ? AND key = ? ORDER BY id LIMIT 1
 `
 
 type GetAssetByKeyParams struct {
@@ -276,12 +289,13 @@ func (q *Queries) GetAssetByKey(ctx context.Context, arg GetAssetByKeyParams) (A
 		&i.ContentType,
 		&i.UploadedBy,
 		&i.CreatedAt,
+		&i.Provenance,
 	)
 	return i, err
 }
 
 const getCreative = `-- name: GetCreative :one
-SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version FROM creatives WHERE id = ? AND workspace_id = ?
+SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version, plan_id, plan_version FROM creatives WHERE id = ? AND workspace_id = ?
 `
 
 type GetCreativeParams struct {
@@ -304,12 +318,14 @@ func (q *Queries) GetCreative(ctx context.Context, arg GetCreativeParams) (Creat
 		&i.UpdatedAt,
 		&i.OfferID,
 		&i.OfferVersion,
+		&i.PlanID,
+		&i.PlanVersion,
 	)
 	return i, err
 }
 
 const getCreativeVersion = `-- name: GetCreativeVersion :one
-SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at FROM creative_versions WHERE id = ?
+SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at, render_run_id, render_error, bindings FROM creative_versions WHERE id = ?
 `
 
 func (q *Queries) GetCreativeVersion(ctx context.Context, id int64) (CreativeVersion, error) {
@@ -329,6 +345,9 @@ func (q *Queries) GetCreativeVersion(ctx context.Context, id int64) (CreativeVer
 		&i.RenderedAt,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.RenderRunID,
+		&i.RenderError,
+		&i.Bindings,
 	)
 	return i, err
 }
@@ -358,7 +377,7 @@ func (q *Queries) GetCurrentBrandKit(ctx context.Context, arg GetCurrentBrandKit
 }
 
 const getLatestCreativeVersion = `-- name: GetLatestCreativeVersion :one
-SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at FROM creative_versions WHERE creative_id = ? ORDER BY version DESC LIMIT 1
+SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at, render_run_id, render_error, bindings FROM creative_versions WHERE creative_id = ? ORDER BY version DESC LIMIT 1
 `
 
 func (q *Queries) GetLatestCreativeVersion(ctx context.Context, creativeID int64) (CreativeVersion, error) {
@@ -378,12 +397,15 @@ func (q *Queries) GetLatestCreativeVersion(ctx context.Context, creativeID int64
 		&i.RenderedAt,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.RenderRunID,
+		&i.RenderError,
+		&i.Bindings,
 	)
 	return i, err
 }
 
 const listAssets = `-- name: ListAssets :many
-SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at FROM assets
+SELECT id, workspace_id, project_id, kind, name, "key", sha256, size, content_type, uploaded_by, created_at, provenance FROM assets
 WHERE workspace_id = ?1
   AND (?2 IS NULL OR project_id = ?2)
   AND (?3 IS NULL OR kind = ?3)
@@ -423,6 +445,7 @@ func (q *Queries) ListAssets(ctx context.Context, arg ListAssetsParams) ([]Asset
 			&i.ContentType,
 			&i.UploadedBy,
 			&i.CreatedAt,
+			&i.Provenance,
 		); err != nil {
 			return nil, err
 		}
@@ -473,7 +496,7 @@ func (q *Queries) ListCreativeReviews(ctx context.Context, versionID int64) ([]C
 }
 
 const listCreativeVersions = `-- name: ListCreativeVersions :many
-SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at FROM creative_versions WHERE creative_id = ? ORDER BY version
+SELECT id, creative_id, version, document, review_state, renderer, output_key, output_sha256, output_size, output_type, rendered_at, created_by, created_at, render_run_id, render_error, bindings FROM creative_versions WHERE creative_id = ? ORDER BY version
 `
 
 func (q *Queries) ListCreativeVersions(ctx context.Context, creativeID int64) ([]CreativeVersion, error) {
@@ -499,6 +522,9 @@ func (q *Queries) ListCreativeVersions(ctx context.Context, creativeID int64) ([
 			&i.RenderedAt,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.RenderRunID,
+			&i.RenderError,
+			&i.Bindings,
 		); err != nil {
 			return nil, err
 		}
@@ -514,7 +540,7 @@ func (q *Queries) ListCreativeVersions(ctx context.Context, creativeID int64) ([
 }
 
 const listCreatives = `-- name: ListCreatives :many
-SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version FROM creatives
+SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version, plan_id, plan_version FROM creatives
 WHERE workspace_id = ?1
   AND (?2 IS NULL OR project_id = ?2)
 ORDER BY updated_at DESC, id DESC LIMIT ?3
@@ -547,6 +573,8 @@ func (q *Queries) ListCreatives(ctx context.Context, arg ListCreativesParams) ([
 			&i.UpdatedAt,
 			&i.OfferID,
 			&i.OfferVersion,
+			&i.PlanID,
+			&i.PlanVersion,
 		); err != nil {
 			return nil, err
 		}
@@ -561,9 +589,140 @@ func (q *Queries) ListCreatives(ctx context.Context, arg ListCreativesParams) ([
 	return items, nil
 }
 
+const listCreativesByPlan = `-- name: ListCreativesByPlan :many
+SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version, plan_id, plan_version FROM creatives WHERE workspace_id = ? AND plan_id = ? ORDER BY id
+`
+
+type ListCreativesByPlanParams struct {
+	WorkspaceID int64
+	PlanID      sql.NullInt64
+}
+
+func (q *Queries) ListCreativesByPlan(ctx context.Context, arg ListCreativesByPlanParams) ([]Creative, error) {
+	rows, err := q.db.QueryContext(ctx, listCreativesByPlan, arg.WorkspaceID, arg.PlanID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Creative{}
+	for rows.Next() {
+		var i Creative
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Format,
+			&i.Language,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OfferID,
+			&i.OfferVersion,
+			&i.PlanID,
+			&i.PlanVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCreativesByState = `-- name: ListCreativesByState :many
+SELECT c.id, c.workspace_id, c.project_id, c.name, c.format, c.language, c.created_by, c.created_at, c.updated_at, c.offer_id, c.offer_version, c.plan_id, c.plan_version, v.id AS version_id, v.version AS current_version, v.review_state, v.render_error
+FROM creatives c
+JOIN creative_versions v ON v.creative_id = c.id
+ AND v.version = (SELECT MAX(version) FROM creative_versions WHERE creative_id = c.id)
+WHERE c.workspace_id = ?
+ORDER BY c.updated_at DESC, c.id DESC
+`
+
+type ListCreativesByStateRow struct {
+	ID             int64
+	WorkspaceID    int64
+	ProjectID      sql.NullInt64
+	Name           string
+	Format         string
+	Language       string
+	CreatedBy      sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	OfferID        sql.NullInt64
+	OfferVersion   sql.NullInt64
+	PlanID         sql.NullInt64
+	PlanVersion    sql.NullInt64
+	VersionID      int64
+	CurrentVersion int64
+	ReviewState    string
+	RenderError    string
+}
+
+func (q *Queries) ListCreativesByState(ctx context.Context, workspaceID int64) ([]ListCreativesByStateRow, error) {
+	rows, err := q.db.QueryContext(ctx, listCreativesByState, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCreativesByStateRow{}
+	for rows.Next() {
+		var i ListCreativesByStateRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ProjectID,
+			&i.Name,
+			&i.Format,
+			&i.Language,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OfferID,
+			&i.OfferVersion,
+			&i.PlanID,
+			&i.PlanVersion,
+			&i.VersionID,
+			&i.CurrentVersion,
+			&i.ReviewState,
+			&i.RenderError,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setCreativeVersionRenderError = `-- name: SetCreativeVersionRenderError :exec
+UPDATE creative_versions SET render_error = ?, render_run_id = ? WHERE id = ?
+`
+
+type SetCreativeVersionRenderErrorParams struct {
+	RenderError string
+	RenderRunID sql.NullInt64
+	ID          int64
+}
+
+func (q *Queries) SetCreativeVersionRenderError(ctx context.Context, arg SetCreativeVersionRenderErrorParams) error {
+	_, err := q.db.ExecContext(ctx, setCreativeVersionRenderError, arg.RenderError, arg.RenderRunID, arg.ID)
+	return err
+}
+
 const setCreativeVersionRendered = `-- name: SetCreativeVersionRendered :execrows
 UPDATE creative_versions
-SET review_state = 'rendered', renderer = ?, output_key = ?, output_sha256 = ?, output_size = ?, output_type = ?, rendered_at = ?
+SET review_state = 'rendered', renderer = ?, output_key = ?, output_sha256 = ?, output_size = ?, output_type = ?, rendered_at = ?, bindings = ?, render_run_id = ?, render_error = ''
 WHERE id = ? AND review_state IN ('draft', 'rendered')
 `
 
@@ -574,6 +733,8 @@ type SetCreativeVersionRenderedParams struct {
 	OutputSize   sql.NullInt64
 	OutputType   sql.NullString
 	RenderedAt   sql.NullTime
+	Bindings     string
+	RenderRunID  sql.NullInt64
 	ID           int64
 }
 
@@ -585,6 +746,8 @@ func (q *Queries) SetCreativeVersionRendered(ctx context.Context, arg SetCreativ
 		arg.OutputSize,
 		arg.OutputType,
 		arg.RenderedAt,
+		arg.Bindings,
+		arg.RenderRunID,
 		arg.ID,
 	)
 	if err != nil {

@@ -5,10 +5,13 @@ import type {
   AssetsResponse,
   BrandKitResponse,
   CreativeInput,
+  CreativeQueueResponse,
   CreativeResponse,
   CreativesResponse,
   Document,
+  LaunchReadiness,
   ProjectOffersResponse,
+  StartRunResponse,
   Version,
 } from "./types.gen";
 
@@ -66,6 +69,11 @@ export function useCreative(id: number | null) {
     queryKey: ["creatives", id],
     queryFn: () => getJSON<CreativeResponse>(`/api/creatives/${id}`),
     enabled: id !== null,
+    // A queued render changes the version when the worker finishes.
+    refetchInterval: (q) => {
+      const v = q.state.data?.versions.at(-1);
+      return v && v.reviewState === "draft" && !v.renderError ? 4000 : false;
+    },
   });
 }
 
@@ -88,9 +96,37 @@ export function useCreateCreative() {
 export function useCreativeAction(id: number | null) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ action, body }: { action: "render" | "submit" | "review"; body?: unknown }) =>
+    mutationFn: ({ action, body }: { action: "submit" | "review"; body?: unknown }) =>
       postJSON<Version>(`/api/creatives/${id}/${action}`, body ?? {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["creatives"] }),
+  });
+}
+
+// Rendering is a durable run on servers with a worker and inline on those
+// without; the response is one or the other.
+export function useStartRender(id: number | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => postJSON<StartRunResponse | Version>(`/api/creatives/${id}/render`, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["creatives"] });
+      qc.invalidateQueries({ queryKey: ["runs"] });
+    },
+  });
+}
+
+export function useCreativeQueue() {
+  return useQuery({
+    queryKey: ["creatives", "queue"],
+    queryFn: () => getJSON<CreativeQueueResponse>("/api/creatives/queue"),
+  });
+}
+
+export function useReadiness(id: number | null) {
+  return useQuery({
+    queryKey: ["creatives", id, "readiness"],
+    queryFn: () => getJSON<LaunchReadiness>(`/api/creatives/${id}/readiness`),
+    enabled: id !== null,
   });
 }
 

@@ -281,3 +281,18 @@ make check && make test
 - Web: market events (list and record with source), a schedule per brief (create, pause, resume), "write report for last month", report tabs by period, the limited-audit banner, account figures with changes and a source link, competitor pages changed/unchanged with now/before links, keyword estimates labelled, recorded events, hypotheses as observed vs hypothetical cause with evidence links and plausible/reject/correct, and the previous report's hypotheses with their reviews. Typecheck and biome clean. Not browser-tested.
 
 Live: nothing external. The periodic job `research.run_due` runs every 6 hours in the server.
+
+## B3.1 Production asset/version and approval lifecycle
+
+Local:
+
+```
+cd server && go test ./core/creative/ ./api/   # ok
+make check && make test
+```
+
+- `core/creative`: with a renderer that writes the file and then fails once, the render run fails with a safe message (no file path), the version stays a draft with no output and the safe error recorded, a second start of the same document is not a second run, the same call requeues the failed run, the retry succeeds on the same key and clears the error, and the export verifies; two uploads of the same bytes share one key and carry provenance `uploaded`. `Capabilities` reports the `template` renderer and no AI generation with the reason; a rendered output is labelled `template` in the row and in the SVG. Readiness: a creative saying "Up to 15% off" and "from AED 1.2M" built on an unapproved offer with no price fact has two unapproved claims and an unapproved offer; approving the offer and the price fact makes the same copy ready; revising the offer makes it not ready (`offer_changed`); editing the approved version makes version 2, not ready (`content_not_approved`, and AED 1.25M unapproved); Arabic "خصم ١٥٪" is read as a percentage and the Arabic review warning appears; a viewer without a workspace is refused. Earlier tests still hold: editing approved artwork invalidates the approval; render blocks on rule errors; export verifies bytes.
+- `api`: `/api/creatives/queue`, `/api/creatives/{id}/readiness` and the render route (a run when a worker exists, inline otherwise) are wired; the existing route test passes with inline rendering.
+- Web: queue board by state with render failures shown, capability line, new creative with plan and offer binding, drag canvas with text and size editing, render as a run with refresh while queued, review board actions, side-by-side compare with reviews, readiness panel with claims. Typecheck and biome clean. Not browser-tested; the drag canvas has not been exercised by hand.
+
+Live: nothing external.

@@ -38,6 +38,11 @@ type SaveDocumentInput struct {
 	Document assets.Document `json:"document"`
 }
 
+type CreativeQueueResponse struct {
+	Items        []creative.QueueItem  `json:"items"`
+	Capabilities creative.Capabilities `json:"capabilities"`
+}
+
 type ReviewInput struct {
 	Decision string `json:"decision"`
 	Note     string `json:"note"`
@@ -247,4 +252,54 @@ func (h *handlers) creativeID(w http.ResponseWriter, r *http.Request) (int64, bo
 		return 0, false
 	}
 	return id, true
+}
+
+func (h *handlers) creativeQueue(w http.ResponseWriter, r *http.Request) {
+	items, err := h.creative.Queue(r.Context(), actorFrom(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, CreativeQueueResponse{Items: items, Capabilities: h.creative.Capabilities()})
+}
+
+// startRender queues a render run. Without a job runner it renders inline,
+// which small servers and tests use.
+func (h *handlers) startRender(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.creativeID(w, r)
+	if !ok {
+		return
+	}
+	if h.runs == nil {
+		v, err := h.creative.Render(r.Context(), actorFrom(r), id)
+		if err != nil {
+			h.fail(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, v)
+		return
+	}
+	run, created, err := h.creative.StartRender(r.Context(), actorFrom(r), h.runs, id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	status := http.StatusOK
+	if created {
+		status = http.StatusAccepted
+	}
+	writeJSON(w, status, StartRunResponse{Run: run, Created: created})
+}
+
+func (h *handlers) creativeReadiness(w http.ResponseWriter, r *http.Request) {
+	id, ok := h.creativeID(w, r)
+	if !ok {
+		return
+	}
+	rd, err := h.creative.Readiness(r.Context(), actorFrom(r), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, rd)
 }

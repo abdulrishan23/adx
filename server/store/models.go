@@ -108,6 +108,7 @@ type Asset struct {
 	ContentType string
 	UploadedBy  sql.NullInt64
 	CreatedAt   time.Time
+	Provenance  string
 }
 
 type AssistantConversation struct {
@@ -223,6 +224,8 @@ type Creative struct {
 	UpdatedAt    time.Time
 	OfferID      sql.NullInt64
 	OfferVersion sql.NullInt64
+	PlanID       sql.NullInt64
+	PlanVersion  sql.NullInt64
 }
 
 type CreativeReview struct {
@@ -249,6 +252,9 @@ type CreativeVersion struct {
 	RenderedAt   sql.NullTime
 	CreatedBy    sql.NullInt64
 	CreatedAt    time.Time
+	RenderRunID  sql.NullInt64
+	RenderError  string
+	Bindings     string
 }
 
 type Credential struct {
