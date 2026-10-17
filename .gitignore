@@ -1,0 +1,10 @@
+# Local tooling
+.claude/project-name
+
+# Server
+server/data/
+server/tmp/
+server/bin/
+
+# Local secrets
+.env

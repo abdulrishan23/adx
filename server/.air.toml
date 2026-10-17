@@ -1,0 +1,5 @@
+[build]
+cmd = "go build -o ./tmp/adx ./cmd/adx"
+entrypoint = ["./tmp/adx"]
+include_ext = ["go", "sql"]
+exclude_dir = ["tmp", "data"]

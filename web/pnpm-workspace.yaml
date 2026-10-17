@@ -1,0 +1,4 @@
+# Skip package versions published in the last day, which is when most
+# hijacked releases get caught and pulled.
+minimumReleaseAge: 1440
+savePrefix: ""

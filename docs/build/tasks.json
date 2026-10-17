@@ -1,0 +1,893 @@
+{
+  "spec_version": 1,
+  "phase_numbering": "0-6",
+  "purpose": "Implement existing ADX through all seven phases; keep production activation conditional on authority and dependencies.",
+  "tasks": [
+    {
+      "id": "B0.1",
+      "phase": 0,
+      "title": "Baseline, migration map and build ledger",
+      "depends_on": [],
+      "status": "pending",
+      "domain": "platform",
+      "implementation": [
+        "Inventory current working/deployed source and preserve unrelated edits",
+        "Map existing packages, migrations, tests, actual/mock routes and reuse sources",
+        "Create progress and decision records; inspect existing checks before adding configuration"
+      ],
+      "api": "No new public endpoint required",
+      "ui": "Reuse current application shell",
+      "acceptance": [
+        "Existing projects and GHL data survive a representative migration rehearsal",
+        "No secret values enter inventory or progress records",
+        "Existing test failures are recorded without being misrepresented as new failures"
+      ]
+    },
+    {
+      "id": "B0.2",
+      "phase": 0,
+      "title": "Deployment, persistence and recovery",
+      "depends_on": [
+        "B0.1"
+      ],
+      "status": "pending",
+      "domain": "platform",
+      "implementation": [
+        "Complete documented web/proxy/API/worker configuration using current deployment conventions",
+        "Create isolated environment configuration examples and health/readiness distinction",
+        "Provide consistent SQLite/assets/key backup and an isolated restore runbook"
+      ],
+      "api": "Extend /api/health only if needed; readiness exposes no secrets",
+      "ui": "Health/failure state in existing connections/operations surfaces",
+      "acceptance": [
+        "Missing persistent storage is a visible startup error",
+        "Restore reproduces sample records and encrypted credential usability with the separately supplied key",
+        "Failure of a build does not replace the last working deployment"
+      ]
+    },
+    {
+      "id": "B0.3",
+      "phase": 0,
+      "title": "Real session identity and workspace scope",
+      "depends_on": [
+        "B0.1"
+      ],
+      "status": "pending",
+      "domain": "identity/users",
+      "implementation": [
+        "Wire existing Authentik/user scaffolding to verified session identity; choose documented session or trusted-proxy boundary",
+        "Add Reportage workspace/membership bootstrap if absent and scope new domains",
+        "Enforce logout/expiry/disabled users; never trust client role headers"
+      ],
+      "api": "GET /api/session; login/logout callbacks using chosen identity flow",
+      "ui": "Existing sign-in/account-menu/error states",
+      "acceptance": [
+        "Unauthenticated and forged-role requests cannot access protected data",
+        "Disabled/expired membership stops protected operations",
+        "Dev admin path is impossible outside explicit development mode"
+      ]
+    },
+    {
+      "id": "B0.4",
+      "phase": 0,
+      "title": "Policy and provider capability contracts",
+      "depends_on": [
+        "B0.3"
+      ],
+      "status": "pending",
+      "domain": "connections/policies",
+      "implementation": [
+        "Keep existing credential encryption and credential/account separation",
+        "Store read/write capability state, verification time and unconfigured policy",
+        "Introduce policy evaluator for actor/workspace/account/action; external writes disabled until configured"
+      ],
+      "api": "GET /api/accounts; GET/PUT /api/policies with admin checks",
+      "ui": "Connections show connected/stale/needs-permission; policy editor shows unconfigured rules",
+      "acceptance": [
+        "A token existing does not imply permission to write",
+        "Missing scope denies operation",
+        "Credential failure never falls back to fixture accounts"
+      ]
+    },
+    {
+      "id": "B0.5",
+      "phase": 0,
+      "title": "Evidence, runs and durable operation foundation",
+      "depends_on": [
+        "B0.1",
+        "B0.3"
+      ],
+      "status": "pending",
+      "domain": "evidence/runs",
+      "implementation": [
+        "Add scoped evidence and run records with timestamps, source classification and completeness",
+        "Extend River wiring with stable occurrence keys, account leases and interrupted-run recovery",
+        "Define deterministic clock and fake provider interfaces; keep network outside transactions"
+      ],
+      "api": "GET /api/runs/{id}; scoped evidence lookup for downstream tools",
+      "ui": "Run state and freshness components",
+      "acceptance": [
+        "Duplicate occurrence is reused or explicitly rejected",
+        "Interrupted/partial reads cannot be marked complete",
+        "Core tests assert no duplicate stored evidence after repeated work"
+      ]
+    },
+    {
+      "id": "B0.6",
+      "phase": 0,
+      "title": "Reusable creative and voice integration boundaries",
+      "depends_on": [
+        "B0.1",
+        "B0.4"
+      ],
+      "status": "pending",
+      "domain": "assets/voice",
+      "implementation": [
+        "Inventory and recover supplied creative source units; record unavailable dependencies",
+        "Choose retained service or port for required creative behavior; document identity/storage contract",
+        "Separate Stafford speech provider from telecom transport and remove education-specific policy; implement fake transport contract"
+      ],
+      "api": "Define AssetStore/Renderer and Telephony/VoiceSession core-owned interfaces",
+      "ui": "Keep existing creative editor design; no replacement branding",
+      "acceptance": [
+        "Board publishing is distinguished from ad delivery",
+        "Local fake voice starts/interrupts/ends without accessing credentials",
+        "Missing external source blocks only dependent integration, not unrelated tasks"
+      ]
+    },
+    {
+      "id": "B1.1",
+      "phase": 1,
+      "title": "Google and Meta real read adapters",
+      "depends_on": [
+        "B0.4",
+        "B0.5"
+      ],
+      "status": "pending",
+      "domain": "reporting/providers",
+      "implementation": [
+        "Implement separate Google/Meta provider packages from current official schemas",
+        "Handle account hierarchy, paging, dates/currency, rate limits and permission errors",
+        "Add backfill/refresh jobs with complete/partial/stale states and scoped stable IDs"
+      ],
+      "api": "Scoped reporting reads behind /api/analytics; admin refresh returns run",
+      "ui": "Connections health and per-source freshness",
+      "acceptance": [
+        "Fake paginated provider imports every page once",
+        "Same-account/date samples reconcile when live access exists; otherwise live gate stays blocked",
+        "Google and Meta conversion claims remain separate"
+      ]
+    },
+    {
+      "id": "B1.2",
+      "phase": 1,
+      "title": "GHL mapping, identity evidence and funnel configuration",
+      "depends_on": [
+        "B0.4",
+        "B0.5"
+      ],
+      "status": "pending",
+      "domain": "leads/reporting",
+      "implementation": [
+        "Extend current lead import rather than duplicate it",
+        "Add versioned configurable status/stage and project/source mappings with unconfigured state",
+        "Preserve original observations and unknown statuses; record campaign-match confidence"
+      ],
+      "api": "Existing /api/leads; mapping configuration under /api/settings or policies",
+      "ui": "Stage/list settings and data-quality coverage",
+      "acceptance": [
+        "Missing status field preserves known state per existing behavior",
+        "Shared phone cannot auto-merge unrelated contacts",
+        "Incomplete scan does not mark missing contacts removed"
+      ]
+    },
+    {
+      "id": "B1.3",
+      "phase": 1,
+      "title": "Deterministic metrics and comparison engine",
+      "depends_on": [
+        "B1.1",
+        "B1.2"
+      ],
+      "status": "pending",
+      "domain": "reporting",
+      "implementation": [
+        "Implement reporting queries with source grain, match coverage and formula version",
+        "Use minor-unit currencies and Dubai reporting boundaries; account-timezone mapping explicit",
+        "Add custom/previous/year-over-year comparison with incomplete and missing periods"
+      ],
+      "api": "GET /api/analytics; compatible project/campaign drill-down APIs",
+      "ui": "Wire existing analytics/campaign/project screens to real typed results",
+      "acceptance": [
+        "Missing revenue produces null ROAS",
+        "Zero previous denominator has a defined non-infinite representation",
+        "Selected scope reconciles summary and detail; fixture fallback absent"
+      ]
+    },
+    {
+      "id": "B1.4",
+      "phase": 1,
+      "title": "Reports, schedules and anomaly observations",
+      "depends_on": [
+        "B1.3"
+      ],
+      "status": "pending",
+      "domain": "reports/alerts",
+      "implementation": [
+        "Store schedule/report occurrence, parameters, evidence references and delivery state",
+        "Implement River periodic jobs and configurable daily/weekly/monthly/quarterly outputs",
+        "Implement configured anomaly checks with volume/freshness eligibility and grouped repeated events"
+      ],
+      "api": "GET/POST /api/reports and schedules; GET /api/alerts",
+      "ui": "Reports and alerts show generated time, coverage, failures and next steps",
+      "acceptance": [
+        "Repeated schedule delivery does not duplicate the occurrence",
+        "Unconfigured recipients/thresholds do not silently activate",
+        "Stale ingestion is not reported as actual zero leads; no ad writes occur"
+      ]
+    },
+    {
+      "id": "B1.5",
+      "phase": 1,
+      "title": "Read-only grounded assistant",
+      "depends_on": [
+        "B1.3",
+        "B0.4"
+      ],
+      "status": "pending",
+      "domain": "assistant",
+      "implementation": [
+        "Implement configurable Model interface, fake model and at least one documented production adapter when chosen",
+        "Expose allowlisted read tools using same core actor checks",
+        "Validate structured tool inputs/output and keep numeric claims grounded in deterministic results"
+      ],
+      "api": "POST /api/assistant/conversations; POST messages; scoped result/evidence refs",
+      "ui": "Existing Ask ADX route with tool/evidence details and unavailable states",
+      "acceptance": [
+        "Question without needed data produces an explicit gap",
+        "Retrieved content cannot authorize tools",
+        "Budget-change request cannot dispatch a mutation",
+        "Model outage returns retryable state without invented response"
+      ]
+    },
+    {
+      "id": "B1.6",
+      "phase": 1,
+      "title": "Pilot creative integration and end-to-end validation",
+      "depends_on": [
+        "B0.6",
+        "B0.3",
+        "B1.3"
+      ],
+      "status": "pending",
+      "domain": "assets/platform",
+      "implementation": [
+        "Integrate chosen creative boundary for supplied renders/copy, brand kit, canvas edit, review and export",
+        "Bind review to asset version, not display-name votes alone",
+        "Reconcile real sample reports, verify permissions and release connected pilot without calling/deploying ads"
+      ],
+      "api": "GET/POST /api/assets or authenticated service contract; approval read/write scoped",
+      "ui": "Project-to-editor/review/export journey using established design",
+      "acceptance": [
+        "Editing approved artwork invalidates authorization for the new version",
+        "Long Arabic copy/format export is inspected visually",
+        "Real-data UI never labels fixtures as connected",
+        "Pilot gate records missing provider/runtime access instead of claiming verification"
+      ]
+    },
+    {
+      "id": "B2.1",
+      "phase": 2,
+      "title": "Brand, offer and approved-fact knowledge",
+      "depends_on": [
+        "B0.5",
+        "B1.6"
+      ],
+      "status": "pending",
+      "domain": "brands",
+      "implementation": [
+        "Add scoped brand/project/offer records and versioned facts/assets with effective dates",
+        "Link customer evidence and conflict records without overwriting source history",
+        "Provide approved versus inferred fact classification"
+      ],
+      "api": "GET/POST /api/brands; GET/PUT versions/offers/facts",
+      "ui": "Brand workspace, approved claims, unresolved fact conflicts",
+      "acceptance": [
+        "Contradictory price sources require review and cannot auto-authorize a claim",
+        "Changed offer identifies affected current plans/assets",
+        "Other brand evidence cannot leak into draft"
+      ]
+    },
+    {
+      "id": "B2.2",
+      "phase": 2,
+      "title": "Sourced market, competitor, SEO and customer research",
+      "depends_on": [
+        "B2.1",
+        "B1.1"
+      ],
+      "status": "pending",
+      "domain": "research",
+      "implementation": [
+        "Implement ResearchProvider interfaces and scoped retrieval with URL/network validation",
+        "Persist source/time/geography/estimate class and research-run item failures",
+        "Audit own account evidence; external competitor observations stay separate from private performance"
+      ],
+      "api": "POST /api/research/runs; GET findings/evidence",
+      "ui": "Research brief, competitors, SEO/keyword findings and source drill-down",
+      "acceptance": [
+        "Ambiguous competitor identity remains unresolved",
+        "Unavailable source does not fabricate statistics",
+        "Private-network retrieval and prompt-injection content cannot expand tool access",
+        "Competitor estimates remain labeled"
+      ]
+    },
+    {
+      "id": "B2.3",
+      "phase": 2,
+      "title": "Structured plan schema and template adapter",
+      "depends_on": [
+        "B2.1",
+        "B2.2"
+      ],
+      "status": "pending",
+      "domain": "plans",
+      "implementation": [
+        "Create immutable plan versions and typed allocation/asset/page/measurement/test requirements",
+        "Add generic structured editor and template mapping interface",
+        "Implement exact Excel adapter only when actual template is supplied; expose missing-template gate"
+      ],
+      "api": "GET/POST /api/plans; POST versions; GET export",
+      "ui": "Plan allocation editor and requirements checklist",
+      "acceptance": [
+        "Budget rows total the declared minor-unit budget/currency",
+        "Template round-trip preserves meaning when actual template exists",
+        "No supplied template means generic planning may work but exact-template capability stays blocked"
+      ]
+    },
+    {
+      "id": "B2.4",
+      "phase": 2,
+      "title": "Plan generation, validation and revision impact",
+      "depends_on": [
+        "B2.3",
+        "B1.5"
+      ],
+      "status": "pending",
+      "domain": "plans/workflows",
+      "implementation": [
+        "Compose research outputs through bounded structured model generation",
+        "Validate arithmetic, required fields, evidence, channel capabilities and assumptions in code",
+        "Add version diff, needs_input state and downstream invalidation references"
+      ],
+      "api": "POST plan draft/validate/revise; GET version/diff",
+      "ui": "Source-linked proposed plan, corrections and validation blockers",
+      "acceptance": [
+        "Model-supplied unsupported channel is rejected",
+        "A revision cannot mutate an immutable accepted plan",
+        "Content acceptance does not grant permission to spend",
+        "Missing CPC estimate remains assumption/unavailable"
+      ]
+    },
+    {
+      "id": "B2.5",
+      "phase": 2,
+      "title": "Recurring research and plan evaluation",
+      "depends_on": [
+        "B2.4",
+        "B1.4"
+      ],
+      "status": "pending",
+      "domain": "research/reports",
+      "implementation": [
+        "Schedule monthly competitor comparison and configurable market refresh",
+        "Correlate evidence without asserting unsupported causality",
+        "Add representative historical/new-brand evaluation cases and operator correction flow"
+      ],
+      "api": "POST research schedules; GET comparative research report",
+      "ui": "Trend explanations with observed versus hypothetical causes",
+      "acceptance": [
+        "Lack of account history produces limited audit",
+        "Festival/economic explanation needs cited evidence and remains hypothesis absent causal proof",
+        "Repeat run preserves prior report context"
+      ]
+    },
+    {
+      "id": "B3.1",
+      "phase": 3,
+      "title": "Production asset/version and approval lifecycle",
+      "depends_on": [
+        "B2.4",
+        "B1.6"
+      ],
+      "status": "pending",
+      "domain": "assets",
+      "implementation": [
+        "Make published outputs immutable with checksum/storage references",
+        "Add typed render jobs, supported four-format EN/AR layouts and optional AI generation provider interface",
+        "Persist authorized reviewer/target version; material edits create new version; bind plan/offer facts"
+      ],
+      "api": "POST assets/render/versions; POST approvals; GET output metadata",
+      "ui": "Creative production queue, canvas editing, side-by-side revision review",
+      "acceptance": [
+        "Old approval cannot deploy new image",
+        "Upload/render/database partial failure is recoverable",
+        "Template layout is not falsely advertised as AI image generation",
+        "Unapproved claims fail ready-for-launch validation"
+      ]
+    },
+    {
+      "id": "B3.2",
+      "phase": 3,
+      "title": "Landing page lifecycle and form path",
+      "depends_on": [
+        "B2.4",
+        "B3.1"
+      ],
+      "status": "pending",
+      "domain": "pages",
+      "implementation": [
+        "Build versioned structured landing-page document, preview and publishing adapter",
+        "Connect scoped form submissions to intended project/enquiry with validation and rate handling",
+        "Store page deployment/status and rollback reference; use approved offer facts"
+      ],
+      "api": "POST /api/pages and publish requests; public form endpoint with scoped configuration",
+      "ui": "Page editor/preview/readiness and test-submission result",
+      "acceptance": [
+        "Broken form cannot pass launch readiness",
+        "Wrong-project submission is rejected",
+        "Rollback identifies exact old version",
+        "Untrusted page content cannot execute privileged scripts in editor"
+      ]
+    },
+    {
+      "id": "B3.3",
+      "phase": 3,
+      "title": "Measurement and launch-readiness verification",
+      "depends_on": [
+        "B3.2",
+        "B1.3"
+      ],
+      "status": "pending",
+      "domain": "measurement",
+      "implementation": [
+        "Define event catalog, UTM construction, attribution fields and conversion deduplication",
+        "Implement controlled test events and verification evidence",
+        "Readiness links plan, assets/pages, account permission and measurement status"
+      ],
+      "api": "POST /api/measurement/checks; GET launch-readiness",
+      "ui": "Readiness blockers and evidence detail",
+      "acceptance": [
+        "One test submission records one intended enquiry",
+        "Unsupported tracking is explicit",
+        "External review pending is not ready/live",
+        "No customer event is fabricated to satisfy verification"
+      ]
+    },
+    {
+      "id": "B3.4",
+      "phase": 3,
+      "title": "Proposal authority, budget reservation and outbox",
+      "depends_on": [
+        "B3.3",
+        "B0.4"
+      ],
+      "status": "pending",
+      "domain": "proposals/execution",
+      "implementation": [
+        "Persist typed action proposals with before/after, exact targets/versions, policy and approval",
+        "Reserve budget/resources atomically with durable execution intent; no provider calls inside transaction",
+        "Implement idempotency and stale-target revalidation; global/account kill switches"
+      ],
+      "api": "POST /api/proposals; approve/reject; POST executions with idempotency key",
+      "ui": "Proposal review, budget impact, approval and action history",
+      "acceptance": [
+        "Two agents cannot reserve same remaining budget twice",
+        "Missing configured authority denies execution",
+        "Changing target invalidates stale approval",
+        "Read-only assistant cannot invoke executor directly"
+      ]
+    },
+    {
+      "id": "B3.5",
+      "phase": 3,
+      "title": "Google/Meta controlled deployment and reconciliation",
+      "depends_on": [
+        "B3.4"
+      ],
+      "status": "pending",
+      "domain": "execution/providers",
+      "implementation": [
+        "Implement declared supported write capabilities per provider using current documentation",
+        "Create platform-specific structures, keywords/audiences/exclusions/assets without pretending feature parity",
+        "Persist external IDs and reconcile uncertain results before retry"
+      ],
+      "api": "POST executions; GET /api/executions/{id}; retry/reconcile authorized operations",
+      "ui": "Per-platform launch timeline and partial-failure recovery",
+      "acceptance": [
+        "Timeout after actual create does not create duplicate campaign on retry",
+        "Partial success across channels stays partial",
+        "Submission is not confirmed delivery",
+        "Unauthorized live account remains disabled while fake-provider tests run"
+      ]
+    },
+    {
+      "id": "B3.6",
+      "phase": 3,
+      "title": "Pause, compensation and launch validation",
+      "depends_on": [
+        "B3.5"
+      ],
+      "status": "pending",
+      "domain": "execution/platform",
+      "implementation": [
+        "Implement supported pause/cancel/compensation with truth about reversibility",
+        "Add operator uncertain-state reconciliation and provider rejection repair",
+        "Measure plan-ready to actual-delivery milestones; run approved test-account journey only with access"
+      ],
+      "api": "POST execution cancel/pause/reconcile per capability",
+      "ui": "Launch recovery, kill-switch feedback, observed delivery milestone",
+      "acceptance": [
+        "Restart resumes safely across dispatch boundary",
+        "Kill switch prevents undispatched actions",
+        "Spent money is never described as undone",
+        "One-hour aspiration is not reported achieved without measured delivery evidence"
+      ]
+    },
+    {
+      "id": "B4.1",
+      "phase": 4,
+      "title": "Person/enquiry resolution and enrichment",
+      "depends_on": [
+        "B1.2",
+        "B2.1"
+      ],
+      "status": "pending",
+      "domain": "interactions/crm",
+      "implementation": [
+        "Separate person from multiple project enquiries; preserve external record links and match evidence",
+        "Add candidate/manual resolution and reversible corrections",
+        "Implement enrichment provider contract/cost/freshness; only relevant permitted attributes"
+      ],
+      "api": "GET/POST /api/crm/people and enquiries; enrichment runs",
+      "ui": "Lead workspace with multiple interests, uncertain matches and source evidence",
+      "acceptance": [
+        "Shared family phone is not auto-merged",
+        "Conflicting enrichment does not overwrite customer-stated fact",
+        "No exact match leaves uncertainty visible"
+      ]
+    },
+    {
+      "id": "B4.2",
+      "phase": 4,
+      "title": "Observable signals and scoring",
+      "depends_on": [
+        "B4.1",
+        "B0.5"
+      ],
+      "status": "pending",
+      "domain": "interactions/scoring",
+      "implementation": [
+        "Ingest attributable first-party and supported owned-channel events with deduplication",
+        "Implement versioned configurable fit/intent rules, decay/reassessment and stage evidence",
+        "Record event/receive time, confidence and score explanations; unknown tracking is unavailable"
+      ],
+      "api": "POST supported event/webhook adapters; GET scoring explanation; admin rule config",
+      "ui": "Interaction timeline, fit/intent and evidence-backed alerts",
+      "acceptance": [
+        "Repeated webhook scores once",
+        "Unknown cross-device identity does not become a confident lead signal",
+        "Unconfigured stage criteria do not classify leads",
+        "Corrections re-evaluate score with history"
+      ]
+    },
+    {
+      "id": "B4.3",
+      "phase": 4,
+      "title": "Nurturing, objections and CRM feedback",
+      "depends_on": [
+        "B4.2",
+        "B1.5"
+      ],
+      "status": "pending",
+      "domain": "outreach/crm",
+      "implementation": [
+        "Generate next action from enquiry context, approved facts, objections and preferences",
+        "Implement field-owned two-way GHL outbox with conflict and echo detection",
+        "Add opt-out suppression at dispatch, configurable channel adapters and message drafts"
+      ],
+      "api": "GET next-action; POST draft/approved send; CRM sync runs",
+      "ui": "Sales brief, objection evidence, next step and sync conflicts",
+      "acceptance": [
+        "External edit racing ADX becomes conflict or follows configured ownership",
+        "Provider echo creates no new intent",
+        "Suppressed person cannot be contacted by retry",
+        "Automatic messaging remains off until policy configured"
+      ]
+    },
+    {
+      "id": "B4.4",
+      "phase": 4,
+      "title": "UAE telecom integration and call lifecycle",
+      "depends_on": [
+        "B0.6",
+        "B4.1",
+        "B0.4"
+      ],
+      "status": "pending",
+      "domain": "voice/providers",
+      "implementation": [
+        "Implement verified telecom adapter separately from speech engine",
+        "Reserve calls atomically, check consent/contactability/hours/capacity before dispatch",
+        "Support recording lifecycle and callbacks per approved route; fail closed for unresolved location/policy"
+      ],
+      "api": "POST /api/voice/calls; authorized hangup/reconcile; provider callbacks",
+      "ui": "Call state and contactability reasons",
+      "acceptance": [
+        "Simultaneous requests cannot launch duplicate call",
+        "Unknown call result reconciles before repeat",
+        "No chosen/authorized telecom route blocks live calling, not local fake tests",
+        "Invalid webhook is rejected"
+      ]
+    },
+    {
+      "id": "B4.5",
+      "phase": 4,
+      "title": "Conversational qualification and corrected outcomes",
+      "depends_on": [
+        "B4.4",
+        "B4.2"
+      ],
+      "status": "pending",
+      "domain": "voice/scoring",
+      "implementation": [
+        "Adapt ElevenLabs streaming/session bridge with tested codec, interruptions, ambience and graceful end",
+        "Persist transcript evidence, structured answers, summary and confidence",
+        "Apply outcome using unique call occurrence; support human corrections and callback/live-transfer distinctions"
+      ],
+      "api": "GET call evidence; POST outcome corrections; scoped recording access",
+      "ui": "Call history/transcript/player, qualification answers and handoff",
+      "acceptance": [
+        "Interruption clears queued stale speech",
+        "Uncertain number/price transcript does not assert stage change",
+        "Repeated completion duplicates neither task nor score",
+        "Recording access/retention follows configured policy"
+      ]
+    },
+    {
+      "id": "B4.6",
+      "phase": 4,
+      "title": "User voice interface and lead-loop evaluation",
+      "depends_on": [
+        "B4.5",
+        "B1.5",
+        "B4.3"
+      ],
+      "status": "pending",
+      "domain": "assistant/platform",
+      "implementation": [
+        "Add user-to-ADX voice mode through same tools/permissions with transcript and visible action preview",
+        "Evaluate qualification accuracy, correction rate, alert quality and observed feedback",
+        "Keep lead-facing calling separate from operator speech interface"
+      ],
+      "api": "Assistant voice-session adapter; existing action approval path",
+      "ui": "Optional voice in Ask ADX; evidence review remains visible",
+      "acceptance": [
+        "Ambiguous spoken budget cannot silently execute write",
+        "Qualification quality measured against agreed labels",
+        "Predictive claims stay disabled without sufficient evaluation evidence"
+      ]
+    },
+    {
+      "id": "B5.1",
+      "phase": 5,
+      "title": "Native CRM ownership and migration",
+      "depends_on": [
+        "B4.3"
+      ],
+      "status": "pending",
+      "domain": "crm",
+      "implementation": [
+        "Implement scoped opportunities, assignment, interactions, follow-up tasks and configurable stages",
+        "Add field ownership/coexistence configuration and version conflict handling",
+        "Build preview/resumable import/export/reconciliation with stable provider mappings"
+      ],
+      "api": "/api/crm opportunities/assignments/tasks; import preview/apply",
+      "ui": "Native CRM enquiry/opportunity/owner workflows",
+      "acceptance": [
+        "Repeated import creates no duplicate opportunity",
+        "Customer corrections survive sync according to ownership",
+        "Multiple enquiries per person remain independent",
+        "Migration preview does not mutate records"
+      ]
+    },
+    {
+      "id": "B5.2",
+      "phase": 5,
+      "title": "Skill, agent and capability registry",
+      "depends_on": [
+        "B2.4",
+        "B0.4"
+      ],
+      "status": "pending",
+      "domain": "workflows/policies",
+      "implementation": [
+        "Version skill instructions, typed inputs/outputs, evidence scope and permitted tools",
+        "Create specialist and super-agent configurations without self-granted privileges",
+        "Validate model-proposed workflow drafts before activation"
+      ],
+      "api": "/api/workflows/definitions and /api/agents capabilities",
+      "ui": "Agent/workflow editor with scope and validation",
+      "acceptance": [
+        "Prompt edit cannot expand account access",
+        "Malformed output fails schema validation",
+        "Generated skill remains draft until required authority accepts it"
+      ]
+    },
+    {
+      "id": "B5.3",
+      "phase": 5,
+      "title": "Durable workflow graph and task orchestration",
+      "depends_on": [
+        "B5.2",
+        "B3.4",
+        "B5.1"
+      ],
+      "status": "pending",
+      "domain": "workflows",
+      "implementation": [
+        "Implement persistent dependency graph, leases, attempts, inputs/outputs and stale-result invalidation",
+        "Dispatch through River and existing core functions; stable operation keys",
+        "Support pause/resume/retry, approvals, bounded loops and task-level budgets"
+      ],
+      "api": "POST workflow runs; GET task graph; pause/resume/correct",
+      "ui": "Workflow progress, blocked tasks and output artifacts",
+      "acceptance": [
+        "Restart does not repeat completed external action",
+        "Dependency version change invalidates affected downstream result",
+        "Cycle/unbounded generation rejected",
+        "No tool call bypasses policy"
+      ]
+    },
+    {
+      "id": "B5.4",
+      "phase": 5,
+      "title": "Supervisor, conflict arbitration and constrained autonomy",
+      "depends_on": [
+        "B5.3"
+      ],
+      "status": "pending",
+      "domain": "policies/workflows",
+      "implementation": [
+        "Unify approval/failure/missing-evidence/uncertain-action inbox",
+        "Apply configured business objective precedence, shared budget reservations and conflict escalation",
+        "Implement recommend/approval-required/allowed modes by capability with caps and kill switches"
+      ],
+      "api": "/api/supervisor; policy mode and scope administration",
+      "ui": "One supervisor inbox with inspect/approve/reject/correct/pause/resume",
+      "acceptance": [
+        "Conflicting agent recommendations cannot both consume same allocation",
+        "Missing precedence routes conflict to operator",
+        "Changing policy cannot retroactively authorize prior forbidden action",
+        "Account kill switch applies to every entry point"
+      ]
+    },
+    {
+      "id": "B5.5",
+      "phase": 5,
+      "title": "Learning records and organizational memory",
+      "depends_on": [
+        "B5.4",
+        "B4.6"
+      ],
+      "status": "pending",
+      "domain": "evidence/reporting",
+      "implementation": [
+        "Record recommendation, adopted/modified/ignored decision, actual action and delayed outcome",
+        "Promote learning only through evidence/validation rules; retain hypotheses separately",
+        "Feed approved findings into future brand/research context with version lineage"
+      ],
+      "api": "GET learning/evaluation records; review/promote supported findings",
+      "ui": "Action-to-outcome history and reusable insight review",
+      "acceptance": [
+        "Model agreement is not factual validation",
+        "Delayed outcome attaches to correct cohort",
+        "Ignored advice is not counted as an executed intervention",
+        "Attributed improvement is not automatically causal lift"
+      ]
+    },
+    {
+      "id": "B6.1",
+      "phase": 6,
+      "title": "Full client isolation and industry configuration",
+      "depends_on": [
+        "B5.4"
+      ],
+      "status": "pending",
+      "domain": "identity/platform",
+      "implementation": [
+        "Add client onboarding and membership/account provisioning atop existing workspace scoping",
+        "Audit queries/jobs/assets/model context/caches for isolation",
+        "Version configurable industry/product/funnel/template rules without arbitrary privilege escalation"
+      ],
+      "api": "/api/workspaces and scoped settings",
+      "ui": "Client switch/onboarding and configuration validation",
+      "acceptance": [
+        "Same provider IDs/names across tenants do not leak records",
+        "Reportage history keeps original definitions after another client config changes",
+        "Cross-tenant assets/caches/jobs inaccessible"
+      ]
+    },
+    {
+      "id": "B6.2",
+      "phase": 6,
+      "title": "Selected channel extensions and native capability review",
+      "depends_on": [
+        "B6.1",
+        "B3.5"
+      ],
+      "status": "pending",
+      "domain": "connections/platform",
+      "implementation": [
+        "Implement prioritized additional adapters with explicit read/write capability matrix",
+        "Evaluate native tasks/boards/review/schedules after PRD using actual required scope",
+        "Preserve source limitations and avoid rebuilding external delivery networks or proprietary datasets"
+      ],
+      "api": "Existing connection/action contracts; optional native board APIs",
+      "ui": "Connector capabilities and selected native work surfaces",
+      "acceptance": [
+        "Connector logo never implies unsupported publishing",
+        "Disconnected optional source does not break unrelated accounts",
+        "Native-versus-integrate decisions include maintenance and user value"
+      ]
+    },
+    {
+      "id": "B6.3",
+      "phase": 6,
+      "title": "Reliability, cost and model release evaluation",
+      "depends_on": [
+        "B6.1",
+        "B5.5"
+      ],
+      "status": "pending",
+      "domain": "platform",
+      "implementation": [
+        "Test representative read/job/action/media load and interrupted recovery",
+        "Add model/provider version evaluation, cost budgets and performance visibility",
+        "Validate backup/restore/retention/deletion across state/assets/evidence; change storage only for measured need"
+      ],
+      "api": "Scoped operations/evaluation APIs as needed",
+      "ui": "Health, usage/cost and release evaluation view",
+      "acceptance": [
+        "Cost/runaway budgets enforce configured limits",
+        "Model regression prevents automatic promotion",
+        "Recovery reproduces expected linked state",
+        "No throughput claim without measured load conditions"
+      ]
+    },
+    {
+      "id": "B6.4",
+      "phase": 6,
+      "title": "Final seven-phase capability verification and handoff",
+      "depends_on": [
+        "B6.2",
+        "B6.3"
+      ],
+      "status": "pending",
+      "domain": "platform",
+      "implementation": [
+        "Run cross-phase journeys from brand to plan to reviewed asset to deployment to enquiry/outcome",
+        "Review operator effort and supported autonomy with real business users when available",
+        "Complete runbooks, capability matrix, unresolved dependencies and docs decisions"
+      ],
+      "api": "No new route required",
+      "ui": "Final user journeys and clear capability labels",
+      "acceptance": [
+        "All task evidence reconciles to code/tests",
+        "No blocked task mislabeled verified",
+        "Production credentials/approvals lacking are listed with local evidence",
+        "All required checks pass or exact remaining failures are reported honestly"
+      ]
+    }
+  ]
+}

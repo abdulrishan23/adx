@@ -1,0 +1,82 @@
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  HeadContent,
+  Link,
+  Outlet,
+  redirect,
+} from "@tanstack/react-router";
+import { PrivacyPage } from "@/routes/privacy";
+import { ProjectsPage } from "@/routes/projects";
+
+// Routes are declared in code instead of generated from files, so the whole
+// route tree is readable in one place.
+
+const rootRoute = createRootRoute({
+  component: Layout,
+  head: () => ({ meta: [{ title: "ADX" }] }),
+});
+
+function Layout() {
+  return (
+    <div className="min-h-screen">
+      <HeadContent />
+      <header className="border-b">
+        <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4">
+          <span className="font-semibold">ADX</span>
+          <Link
+            to="/projects"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Projects
+          </Link>
+        </nav>
+      </header>
+      <main className="mx-auto max-w-5xl px-6 py-8">
+        <Outlet />
+      </main>
+      <footer className="border-t">
+        <div className="mx-auto max-w-5xl px-6 py-4 text-sm text-muted-foreground">
+          <Link to="/privacy" className="underline underline-offset-4">
+            Privacy and data deletion
+          </Link>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const projectsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/projects",
+  component: ProjectsPage,
+});
+
+const privacyRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/privacy",
+  component: PrivacyPage,
+  head: () => ({ meta: [{ title: "Privacy policy | ADX" }] }),
+});
+
+const routeTree = rootRoute.addChildren([indexRoute, projectsRoute, privacyRoute]);
+
+export const router = createRouter({ routeTree });
+
+// Registering the router type makes every Link and navigate call type-checked
+// against the routes above.
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}
