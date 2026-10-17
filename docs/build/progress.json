@@ -402,13 +402,70 @@
         "B0.4",
         "B0.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00009_leads_and_funnel.sql",
+        "server/store/queries/leads.sql",
+        "server/store/queries/projects.sql (GetProjectByName)",
+        "server/core/leads/",
+        "server/core/connections/gohighlevel.go (GHLToken, currentSecrets)",
+        "server/providers/gohighlevel/contacts.go",
+        "server/api/leads.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "server/cmd/adx/connections.go",
+        "web/src/api/leads.ts",
+        "web/src/routes/leads.tsx",
+        "web/src/routes/funnel.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Missing status field preserves known state per existing behavior",
+          "result": "pass",
+          "evidence": "leads TestMissingStatusKeepsTheKnownValueAndUnmappedStaysNull"
+        },
+        {
+          "check": "Shared phone cannot auto-merge unrelated contacts",
+          "result": "pass",
+          "evidence": "leads TestSharedPhoneNeverMerges"
+        },
+        {
+          "check": "Incomplete scan does not mark missing contacts removed",
+          "result": "pass",
+          "evidence": "leads TestIncompleteScanRemovesNothingAndResumes"
+        }
+      ],
+      "remaining": [
+        "Opportunities/pipeline import (status may live in opportunity stage; add a field-location kind once the owner says where the status is)",
+        "Meta Leads API reconciliation (B1.1/B1.3 sync gap report)",
+        "Live import against the ADX Test location"
+      ],
+      "blockers": [
+        {
+          "capability": "live lead import",
+          "unblocks": "Private Integration Token for the ADX Test location saved through /api/connections/crm/connect with ADX_CONNECTION_KEY_FILE set"
+        },
+        {
+          "capability": "stage classification",
+          "unblocks": "owner (Abdul) saves the funnel mapping: which GHL field holds the status, and the status-to-stage table (Hisham's 2026-10-02 table is a proposal)"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "known status wiped by a scan missing the field",
+        "two people on one phone merged",
+        "half-finished scan removing unseen contacts",
+        "retry restarting from page one",
+        "unmapped status silently classified",
+        "search request missing location/sort or cursor not threaded",
+        "provider error body shown to users"
+      ]
     },
     {
       "id": "B1.3",

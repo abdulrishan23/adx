@@ -7,9 +7,14 @@ import (
 	"os"
 
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/providers/gohighlevel"
 	"github.com/WokeWorks/adx/server/store"
 )
+
+// ghlClient is kept so the same provider serves connection checks and lead
+// imports.
+var ghlClient *gohighlevel.Client
 
 func configuredConnections(db *store.DB, cfg config) (*connections.Connections, error) {
 	if cfg.GHLCredentialsFile == "" && cfg.ConnectionKeyFile == "" {
@@ -23,7 +28,17 @@ func configuredConnections(db *store.DB, cfg config) (*connections.Connections, 
 	if err != nil {
 		return nil, fmt.Errorf("read connection encryption key: %w", err)
 	}
+	ghlClient = provider
 	return connections.New(db, provider, connections.Config{EncryptionKey: key})
+}
+
+// ghlReader is the lead importer's CRM, or nil when connections aren't
+// configured, which makes imports fail with a clear message.
+func ghlReader(c *connections.Connections) leads.CRM {
+	if c == nil || ghlClient == nil {
+		return nil
+	}
+	return ghlClient
 }
 
 func configuredGHL(credentialsFile string) (*gohighlevel.Client, error) {

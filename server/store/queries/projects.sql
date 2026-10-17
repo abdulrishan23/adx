@@ -6,3 +6,6 @@ ORDER BY name;
 INSERT INTO projects (name, created_at)
 VALUES (?, ?)
 RETURNING *;
+
+-- name: GetProjectByName :one
+SELECT * FROM projects WHERE name = ? COLLATE NOCASE;

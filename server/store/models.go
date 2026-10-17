@@ -91,6 +91,15 @@ type Evidence struct {
 	SupersededBy   sql.NullInt64
 }
 
+type FunnelMapping struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type KillSwitch struct {
 	WorkspaceID int64
 	AccountID   int64
@@ -98,6 +107,55 @@ type KillSwitch struct {
 	Reason      string
 	SetBy       sql.NullInt64
 	SetAt       time.Time
+}
+
+type Lead struct {
+	ID                 int64
+	WorkspaceID        int64
+	AccountID          int64
+	ExternalID         string
+	FirstName          sql.NullString
+	LastName           sql.NullString
+	Email              sql.NullString
+	Phone              sql.NullString
+	PhoneE164          sql.NullString
+	DialCode           sql.NullString
+	SourceRaw          sql.NullString
+	ProjectRaw         sql.NullString
+	ProjectID          sql.NullInt64
+	StatusRaw          sql.NullString
+	StatusObservedAt   sql.NullTime
+	StatusMissingSince sql.NullTime
+	Stage              sql.NullString
+	MappingVersion     sql.NullInt64
+	ProviderAddedAt    sql.NullTime
+	ProviderUpdatedAt  sql.NullTime
+	FirstSeenAt        time.Time
+	LastSeenAt         time.Time
+	LastSeenRunID      sql.NullInt64
+	EvidenceID         sql.NullInt64
+	RemovedAt          sql.NullTime
+}
+
+type LeadAttribution struct {
+	ID                 int64
+	LeadID             int64
+	ObservedAt         time.Time
+	IsFirst            int64
+	UtmSource          sql.NullString
+	UtmMedium          sql.NullString
+	UtmCampaign        sql.NullString
+	UtmContent         sql.NullString
+	UtmTerm            sql.NullString
+	Gclid              sql.NullString
+	Fbclid             sql.NullString
+	Referrer           sql.NullString
+	LandingUrl         sql.NullString
+	MatchLevel         string
+	MatchConfidence    string
+	MatchedPlatform    sql.NullString
+	MatchedCampaignRef sql.NullString
+	PayloadHash        string
 }
 
 type Membership struct {

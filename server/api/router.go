@@ -13,6 +13,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/identity"
+	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
@@ -31,6 +32,7 @@ type Deps struct {
 	Identity *identity.Identity
 	Policies *policies.Policies
 	Runs     *runs.Runs
+	Leads    *leads.Leads
 }
 
 type handlers struct {
@@ -42,11 +44,12 @@ type handlers struct {
 	identity    *identity.Identity
 	policies    *policies.Policies
 	runs        *runs.Runs
+	leads       *leads.Leads
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
-		policies: d.Policies, runs: d.Runs}
+		policies: d.Policies, runs: d.Runs, leads: d.Leads}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -78,6 +81,13 @@ func NewRouter(d Deps) http.Handler {
 		if h.runs != nil {
 			r.Get("/api/runs", h.listRuns)
 			r.Get("/api/runs/{id}", h.getRun)
+		}
+		if h.leads != nil {
+			r.Get("/api/leads", h.listLeads)
+			r.Get("/api/leads/coverage", h.leadCoverage)
+			r.Post("/api/leads/import", h.importLeads)
+			r.Get("/api/settings/funnel", h.getFunnel)
+			r.Put("/api/settings/funnel", h.putFunnel)
 		}
 		r.Get("/api/projects", h.listProjects)
 		r.Post("/api/projects", h.createProject)

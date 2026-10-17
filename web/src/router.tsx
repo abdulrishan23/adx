@@ -10,6 +10,8 @@ import {
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
 import { ConnectionsPage } from "@/routes/connections";
+import { FunnelPage } from "@/routes/funnel";
+import { LeadsPage } from "@/routes/leads";
 import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
@@ -38,6 +40,13 @@ function Layout() {
             Projects
           </Link>
           <Link
+            to="/leads"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Leads
+          </Link>
+          <Link
             to="/connections"
             className="text-muted-foreground"
             activeProps={{ className: "text-foreground" }}
@@ -50,6 +59,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Policies
+          </Link>
+          <Link
+            to="/settings/funnel"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Funnel
           </Link>
           <Link
             to="/runs"
@@ -104,6 +120,18 @@ const policiesRoute = createRoute({
   component: PoliciesPage,
 });
 
+const leadsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/leads",
+  component: LeadsPage,
+});
+
+const funnelRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/funnel",
+  component: FunnelPage,
+});
+
 const runsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/runs",
@@ -122,6 +150,8 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   policiesRoute,
+  leadsRoute,
+  funnelRoute,
   runsRoute,
   privacyRoute,
 ]);

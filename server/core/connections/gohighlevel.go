@@ -233,46 +233,9 @@ func (c *Connections) Check(ctx context.Context, actor core.Actor, locationID st
 	}
 	c.credentials.Lock()
 	defer c.credentials.Unlock()
-	row, err := c.db.Reader().GetAccount(ctx, store.GetAccountParams{Type: Provider, ExternalID: locationID})
-	if errors.Is(err, sql.ErrNoRows) {
-		return Connection{}, core.NotFound("GoHighLevel location is not connected")
-	}
+	account, cred, secrets, err := c.currentSecrets(ctx, locationID)
 	if err != nil {
 		return Connection{}, err
-	}
-	account, cred := row.Account, row.Credential
-	var secrets tokenSecrets
-	if err := c.open(cred, &secrets); err != nil {
-		return Connection{}, err
-	}
-	if cred.Kind == kindOAuth && !cred.TokenExpiresAt.Time.After(c.now().Add(time.Minute)) {
-		tokens, err := c.ghl.Refresh(ctx, secrets.RefreshToken)
-		if err != nil {
-			return Connection{}, err
-		}
-		if err := validTokens(tokens); err != nil {
-			return Connection{}, err
-		}
-		if tokens.LocationID != locationID || tokens.CompanyID != account.ParentID.String {
-			return Connection{}, core.Invalid("refreshed credentials belong to a different account; reconnect")
-		}
-		secrets = tokenSecrets{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}
-		sealed, err := c.seal(cred.Provider, cred.Subject, secrets)
-		if err != nil {
-			return Connection{}, err
-		}
-		expiry := sql.NullTime{Time: c.now().UTC().Add(time.Duration(tokens.ExpiresIn) * time.Second), Valid: true}
-		n, err := c.db.Writer().UpdateCredentialSecret(ctx, store.UpdateCredentialSecretParams{
-			NewSecret: sealed, KeyVersion: keyVersion, Scopes: tokens.Scope, TokenExpiresAt: expiry,
-			ID: cred.ID, OldSecret: cred.EncryptedSecret,
-		})
-		if err != nil {
-			return Connection{}, err
-		}
-		if n != 1 {
-			return Connection{}, core.Conflict("connection changed; try again")
-		}
-		cred.EncryptedSecret, cred.KeyVersion, cred.Scopes, cred.TokenExpiresAt = sealed, keyVersion, tokens.Scope, expiry
 	}
 	location, err := c.ghl.Location(ctx, secrets.AccessToken, locationID)
 	if err != nil {
@@ -306,6 +269,70 @@ func (c *Connections) Check(ctx context.Context, actor core.Actor, locationID st
 		return Connection{}, core.Conflict("connection changed; try again")
 	}
 	return fromRow(account, cred), nil
+}
+
+// GHLToken hands a location's current access token to core code that reads
+// through it (core/leads). Only ADX itself or an admin may ask, the token
+// never crosses an API boundary, and an expired OAuth token is refreshed
+// first. It implements leads.Tokens.
+func (c *Connections) GHLToken(ctx context.Context, actor core.Actor, locationID string) (string, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return "", core.ErrForbidden
+	}
+	c.credentials.Lock()
+	defer c.credentials.Unlock()
+	_, _, secrets, err := c.currentSecrets(ctx, locationID)
+	if err != nil {
+		return "", err
+	}
+	return secrets.AccessToken, nil
+}
+
+// currentSecrets loads the location's credential and, for an OAuth
+// credential near expiry, rotates it. The caller holds c.credentials.
+func (c *Connections) currentSecrets(ctx context.Context, locationID string) (store.Account, store.Credential, tokenSecrets, error) {
+	row, err := c.db.Reader().GetAccount(ctx, store.GetAccountParams{Type: Provider, ExternalID: locationID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return store.Account{}, store.Credential{}, tokenSecrets{}, core.NotFound("GoHighLevel location is not connected")
+	}
+	if err != nil {
+		return store.Account{}, store.Credential{}, tokenSecrets{}, err
+	}
+	account, cred := row.Account, row.Credential
+	var secrets tokenSecrets
+	if err := c.open(cred, &secrets); err != nil {
+		return store.Account{}, store.Credential{}, tokenSecrets{}, err
+	}
+	if cred.Kind == kindOAuth && !cred.TokenExpiresAt.Time.After(c.now().Add(time.Minute)) {
+		tokens, err := c.ghl.Refresh(ctx, secrets.RefreshToken)
+		if err != nil {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, err
+		}
+		if err := validTokens(tokens); err != nil {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, err
+		}
+		if tokens.LocationID != locationID || tokens.CompanyID != account.ParentID.String {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, core.Invalid("refreshed credentials belong to a different account; reconnect")
+		}
+		secrets = tokenSecrets{AccessToken: tokens.AccessToken, RefreshToken: tokens.RefreshToken}
+		sealed, err := c.seal(cred.Provider, cred.Subject, secrets)
+		if err != nil {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, err
+		}
+		expiry := sql.NullTime{Time: c.now().UTC().Add(time.Duration(tokens.ExpiresIn) * time.Second), Valid: true}
+		n, err := c.db.Writer().UpdateCredentialSecret(ctx, store.UpdateCredentialSecretParams{
+			NewSecret: sealed, KeyVersion: keyVersion, Scopes: tokens.Scope, TokenExpiresAt: expiry,
+			ID: cred.ID, OldSecret: cred.EncryptedSecret,
+		})
+		if err != nil {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, err
+		}
+		if n != 1 {
+			return store.Account{}, store.Credential{}, tokenSecrets{}, core.Conflict("connection changed; try again")
+		}
+		cred.EncryptedSecret, cred.KeyVersion, cred.Scopes, cred.TokenExpiresAt = sealed, keyVersion, tokens.Scope, expiry
+	}
+	return account, cred, secrets, nil
 }
 
 func validTokens(t Tokens) error {

@@ -105,3 +105,19 @@ cd server && go test -race ./core/assets/ ./providers/filestore/ ./core/voice/  
 - Inventories: `docs/build/reuse-creative.md`, `docs/build/reuse-voice.md`.
 
 Live: none. No telecom route or speech credential is configured, by design.
+
+## B1.2 GHL mapping, identity evidence and funnel configuration
+
+Local:
+
+```
+cd server && go test ./core/leads/ ./providers/gohighlevel/ ./api/   # ok
+make check && make test
+```
+
+- `core/leads`: no mapping → status not located, stage null, nothing marked missing; mapping → status, stage, case-insensitive project match, source; same contact without the status field keeps "Follow Up" and records `statusMissingSince`; an unmapped status is kept raw, listed under `unmapped`, and a new mapping version re-stages it; two contacts sharing a phone stay two leads and the shared phone is counted; a two-page full import then a failed page-2 scan removes nothing and records the cursor; the retry resumes at `cursor-1`, completes, removes the vanished contact; identical content re-recorded is one evidence row; incremental import passes `since` and removes nothing; click id → high, UTM → low, repeated attribution records not duplicated; validation and role checks; unconfigured CRM fails the run with a conflict, not a panic.
+- `providers/gohighlevel` contact search against a fake server: POST /contacts/search with Bearer token, Version 2021-07-28, `locationId`, `pageLimit` 100, `sort` [dateAdded, id], no `page`; the next cursor is the last contact's `searchAfter` verbatim; a short page is the last page; lowercase names, multi-select and numeric custom fields, both attribution objects decoded; incremental adds the `dateUpdated` range filter and sort; 429 → "limit" conflict, 401 → "rejected" conflict, provider body never surfaces.
+- `api`: list, coverage and funnel readable by a viewer; funnel PUT 403 for a marketer, 201 for an admin, 400 for an unknown stage; import 403 for a viewer, 404 for an unconnected account.
+- Web: `/leads` (coverage, filter by stage, raw status next to stage, "field missing on last scan", bucket-not-a-source marker, import button for marketers) and `/settings/funnel` (field locations, observed statuses with counts, stage per status, unmapped banner, save as new version). Typecheck and biome clean. Not browser-tested.
+
+Live: not verified. Needs the ADX Test location's Private Integration Token (docs/gohighlevel-development.md) and the owner's answer on which field holds the status. Three API details are marked unconfirmed in BD-20 and will be checked on the first live import.

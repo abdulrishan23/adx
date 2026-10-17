@@ -31,6 +31,9 @@ export interface AddInput {
     role: Role;
 }
 
+// From voice/voice.go
+export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progress" | "no_answer" | "queued" | "ringing";
+
 // From connections/accounts.go
 export interface Capability {
     name: string;
@@ -53,7 +56,7 @@ export interface CheckResult {
 export type Class = "estimated" | "inferred" | "observed";
 
 // From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -73,6 +76,27 @@ export interface ConnectionsResponse {
     connections: Connection[];
 }
 
+// From assets/assets.go
+export interface ContentAcceptance {
+    versionId: number;
+    ref: Ref;
+    acceptedBy: number;
+    acceptedAt: string;
+}
+
+// From leads/leads.go
+export interface Coverage {
+    total: number;
+    withStatus: number;
+    withStage: number;
+    withProject: number;
+    withPhone: number;
+    statusMissingOnLastScan: number;
+    sharedPhones: number;
+    matchLevels: Record<string, number> | null;
+    funnelConfigured: boolean;
+}
+
 // From projects/projects.go
 export interface CreateInput {
     name: string;
@@ -80,6 +104,18 @@ export interface CreateInput {
 
 // From core/core.go
 export const DefaultWorkspace = 1;
+
+// From assets/assets.go
+export interface Document {
+    version: number;
+    format: Format;
+    language: Language;
+    width: number;
+    height: number;
+    background: string;
+    image: Image | null;
+    layers: Layer[];
+}
 
 // From api/respond.go
 export interface ErrorResponse {
@@ -106,8 +142,75 @@ export interface Evidence {
     supersededById: number | null;
 }
 
+// From leads/funnel.go
+export interface FieldLocation {
+    kind: string;
+    ref: string;
+}
+
+// From assets/assets.go
+export type Format = "1.91:1" | "1:1" | "4:5" | "9:16";
+
+// From leads/funnel.go
+export interface FunnelDocument {
+    statusField: FieldLocation;
+    projectField: FieldLocation;
+    statuses: Record<string, Stage> | null;
+    blankStatusStage: Stage | null;
+    sources: Record<string, string> | null;
+    note: string;
+}
+
+// From leads/funnel.go
+export interface FunnelMapping {
+    version: number;
+    document: FunnelDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From leads/funnel.go
+export interface FunnelState {
+    configured: boolean;
+    current: FunnelMapping | null;
+    stages: Stage[];
+    observedStatuses: ObservedValue[];
+    unmapped: string[];
+}
+
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
+
+// From assets/assets.go
+export interface Image {
+    ref: Ref;
+    fx: number;
+    fy: number;
+    zoom: number;
+}
+
+// From api/leads.go
+export interface ImportLeadsInput {
+    accountId: number;
+    mode: string;
+    since: string | null;
+}
+
+// From leads/leads.go
+export interface ImportParams {
+    accountId: number;
+    locationId: string;
+    mode: string;
+    since: string | null;
+}
+
+// From leads/leads.go
+export interface ImportProgress {
+    cursor: string;
+    pages: number;
+    contacts: number;
+    total: number | null;
+}
 
 // From policies/policies.go
 export interface KillSwitch {
@@ -128,8 +231,71 @@ export interface KillSwitchInput {
 // From core/core.go
 export type Kind = 4 | 2 | 1 | 3 | 5;
 
+// From assets/assets.go
+export type Language = "ar" | "en";
+
+// From assets/assets.go
+export interface Layer {
+    id: string;
+    kind: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    text?: string;
+    fontFamily?: string;
+    fontSize?: number;
+    fontStyle?: string;
+    fill?: string;
+    align?: string;
+    lineHeight?: number;
+    letterSpacing?: number;
+    uppercase?: boolean;
+    rtl?: boolean;
+    src?: Ref | null;
+    opacity?: number;
+}
+
+// From leads/leads.go
+export interface Lead {
+    id: number;
+    accountId: number;
+    externalId: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    phone: string | null;
+    dialCode: string | null;
+    sourceRaw: string | null;
+    source: string | null;
+    projectRaw: string | null;
+    projectId: number | null;
+    statusRaw: string | null;
+    statusObservedAt: string | null;
+    statusMissingSince: string | null;
+    stage: Stage | null;
+    providerAddedAt: string | null;
+    providerUpdatedAt: string | null;
+    firstSeenAt: string;
+    lastSeenAt: string;
+    evidenceId: number | null;
+}
+
+// From api/leads.go
+export interface LeadsResponse {
+    leads: Lead[];
+    nextAfterId: number | null;
+}
+
 // From runs/runs.go
 export const MaxAutoAttempts = 3;
+
+// From leads/funnel.go
+export interface ObservedValue {
+    raw: string | null;
+    stage: Stage | null;
+    count: number;
+}
 
 // From policies/policies.go
 export interface Policy {
@@ -197,6 +363,11 @@ export interface ProjectsResponse {
 // From connections/gohighlevel.go
 export const Provider = "gohighlevel";
 
+// From api/leads.go
+export interface PutFunnelInput {
+    document: FunnelDocument;
+}
+
 // From api/policies.go
 export interface PutPolicyInput {
     document: PolicyDocument;
@@ -245,6 +416,17 @@ export const ReasonUnknownAction = "unknown_action";
 // From policies/policies.go
 export const ReasonWorkspaceMismatch = "workspace_mismatch";
 
+// From assets/assets.go
+export interface Ref {
+    key: string;
+    sha256: string;
+    size: number;
+    contentType: string;
+}
+
+// From assets/assets.go
+export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
+
 // From core/core.go
 export type Role = "admin" | "marketer" | "viewer";
 
@@ -268,9 +450,20 @@ export interface Run {
     observedThrough: string | null;
 }
 
+// From leads/leads.go
+export const RunKind = "ghl.import";
+
 // From api/runs.go
 export interface RunsResponse {
     runs: Run[];
+}
+
+// From voice/voice.go
+export interface Segment {
+    speaker: string;
+    text: string;
+    startMs: number;
+    endMs: number;
 }
 
 // From identity/identity.go
@@ -292,10 +485,22 @@ export interface SessionResponse {
     dev: boolean;
 }
 
+// From voice/voice.go
+export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
+
+// From leads/funnel.go
+export type Stage = "attempted" | "dead" | "disqualified" | "engaged" | "excluded" | "meeting" | "offer" | "open" | "won";
+
 // From connections/gohighlevel.go
 export interface StartResult {
     authorizationUrl: string;
     expiresAt: string;
+}
+
+// From api/leads.go
+export interface StartRunResponse {
+    run: Run;
+    created: boolean;
 }
 
 // From runs/runs.go
@@ -303,6 +508,12 @@ export type State = "failed" | "interrupted" | "partial" | "queued" | "running" 
 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
+
+// From voice/voice.go
+export interface Transcript {
+    segments: Segment[];
+    duration: number;
+}
 
 // From users/users.go
 export interface User {

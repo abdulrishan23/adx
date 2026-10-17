@@ -23,7 +23,9 @@ import (
 
 	"github.com/WokeWorks/adx/server/api"
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
+	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
@@ -155,7 +157,13 @@ func run() error {
 	// after the client exists because each needs the other.
 	queue := &jobs.Queue{}
 	runsService := runs.New(db, queue, runs.Config{})
-	worker, err := jobs.New(db, log, jobs.Deps{Runs: runsService, Executors: runExecutors()})
+	evidenceStore := evidence.New(db, core.SystemClock{})
+	var tokens leads.Tokens
+	if connections != nil {
+		tokens = connections
+	}
+	leadsService := leads.New(db, ghlReader(connections), tokens, evidenceStore, leads.Config{})
+	worker, err := jobs.New(db, log, jobs.Deps{Runs: runsService, Executors: runExecutors(leadsService)})
 	if err != nil {
 		return err
 	}
@@ -183,6 +191,7 @@ func run() error {
 			Identity:    sessions,
 			Policies:    policies.New(db),
 			Runs:        runsService,
+			Leads:       leadsService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -206,10 +215,9 @@ func run() error {
 	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Client.Stop(shutdownCtx))
 }
 
-// runExecutors maps run kinds to the code that works them. Phase 1 adds the
-// imports and refreshes; phase 0 has none.
-func runExecutors() map[string]jobs.Executor {
-	return map[string]jobs.Executor{}
+// runExecutors maps run kinds to the code that works them.
+func runExecutors(l *leads.Leads) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates
