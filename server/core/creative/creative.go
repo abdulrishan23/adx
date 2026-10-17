@@ -19,6 +19,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/assets"
+	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/store"
 )
 
@@ -45,8 +46,12 @@ type Creative struct {
 	Name      string          `json:"name"`
 	Format    assets.Format   `json:"format"`
 	Language  assets.Language `json:"language"`
-	CreatedAt time.Time       `json:"createdAt"`
-	UpdatedAt time.Time       `json:"updatedAt"`
+	// OfferID and OfferVersion name the offer version this creative was built
+	// on, if any.
+	OfferID      *int64    `json:"offerId"`
+	OfferVersion *int64    `json:"offerVersion"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
 }
 
 type Review struct {
@@ -81,15 +86,25 @@ type CreativeInput struct {
 	Language      assets.Language `json:"language"`
 	Copy          assets.Copy     `json:"copy"`
 	RenderAssetID int64           `json:"renderAssetId"`
+	// OfferID builds the creative on an offer of the project's brand. The
+	// offer's current version is recorded so a later change lists this
+	// creative as affected.
+	OfferID int64 `json:"offerId"`
 }
 
-type Config struct{ Clock core.Clock }
+type Config struct {
+	Clock core.Clock
+	// Brands checks that an offer belongs to the project's brand. Nil
+	// refuses offers.
+	Brands *brands.Brands
+}
 
 type Service struct {
 	db       *store.DB
 	store    assets.Store
 	renderer assets.Renderer
 	clock    core.Clock
+	brands   *brands.Brands
 }
 
 // New wires the workflow. store and renderer may be nil when assets aren't
@@ -98,7 +113,7 @@ func New(db *store.DB, st assets.Store, renderer assets.Renderer, cfg Config) *S
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	return &Service{db: db, store: st, renderer: renderer, clock: cfg.Clock}
+	return &Service{db: db, store: st, renderer: renderer, clock: cfg.Clock, brands: cfg.Brands}
 }
 
 var allowedUploadTypes = map[string]bool{"image/jpeg": true, "image/png": true, "image/webp": true, "image/svg+xml": true, "font/ttf": true, "font/otf": true, "font/woff": true, "font/woff2": true}
@@ -299,7 +314,23 @@ func (s *Service) Create(ctx context.Context, actor core.Actor, in CreativeInput
 		if err != nil {
 			return Creative{}, Version{}, err
 		}
+		// A render uploaded for one project stays with it; a render with no
+		// project is shared across the workspace.
+		if row.ProjectID.Valid && row.ProjectID.Int64 != in.ProjectID {
+			return Creative{}, Version{}, core.Invalid("render asset %d belongs to another project", in.RenderAssetID)
+		}
 		render = &assets.Ref{Key: row.Key, SHA256: row.Sha256, Size: row.Size, ContentType: row.ContentType}
+	}
+	var offerVersion int64
+	if in.OfferID != 0 {
+		if s.brands == nil {
+			return Creative{}, Version{}, core.Invalid("offers are not configured")
+		}
+		v, err := s.brands.OfferForProject(ctx, actor, in.OfferID, in.ProjectID)
+		if err != nil {
+			return Creative{}, Version{}, err
+		}
+		offerVersion = v
 	}
 	doc, err := assets.Layout(in.Format, in.Language, in.Copy, render, kit)
 	if err != nil {
@@ -312,7 +343,7 @@ func (s *Service) Create(ctx context.Context, actor core.Actor, in CreativeInput
 	err = s.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		var err error
 		crow, err = q.CreateCreative(ctx, store.CreateCreativeParams{WorkspaceID: actor.WorkspaceID, ProjectID: optionalID(in.ProjectID), Name: in.Name, Format: string(in.Format),
-			Language: string(in.Language), CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
+			Language: string(in.Language), OfferID: optionalID(in.OfferID), OfferVersion: optionalID(offerVersion), CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
 		if err != nil {
 			return err
 		}
@@ -633,6 +664,12 @@ func creativeFromRow(r store.Creative) Creative {
 	c := Creative{ID: r.ID, Name: r.Name, Format: assets.Format(r.Format), Language: assets.Language(r.Language), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
 	if r.ProjectID.Valid {
 		c.ProjectID = &r.ProjectID.Int64
+	}
+	if r.OfferID.Valid {
+		c.OfferID = &r.OfferID.Int64
+	}
+	if r.OfferVersion.Valid {
+		c.OfferVersion = &r.OfferVersion.Int64
 	}
 	return c
 }

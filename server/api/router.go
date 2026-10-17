@@ -13,6 +13,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
+	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/identity"
@@ -44,6 +45,7 @@ type Deps struct {
 	Alerts    *alerts.Alerts
 	Assistant *assistant.Assistant
 	Creative  *creative.Service
+	Brands    *brands.Brands
 }
 
 type handlers struct {
@@ -61,12 +63,13 @@ type handlers struct {
 	alerts      *alerts.Alerts
 	assistant   *assistant.Assistant
 	creative    *creative.Service
+	brands      *brands.Brands
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative}
+		creative: d.Creative, brands: d.Brands}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -155,8 +158,8 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/assets", h.listAssets)
 			r.Post("/api/assets", h.uploadAsset)
 			r.Get("/api/assets/files/{key}", h.serveAsset)
-			r.Get("/api/brands/{projectID}/kit", h.getBrandKit)
-			r.Put("/api/brands/{projectID}/kit", h.putBrandKit)
+			r.Get("/api/projects/{projectID}/brand-kit", h.getBrandKit)
+			r.Put("/api/projects/{projectID}/brand-kit", h.putBrandKit)
 			r.Get("/api/creatives", h.listCreatives)
 			r.Post("/api/creatives", h.createCreative)
 			r.Get("/api/creatives/{id}", h.getCreative)
@@ -169,6 +172,23 @@ func NewRouter(d Deps) http.Handler {
 			}))
 			r.Post("/api/creatives/{id}/review", h.reviewCreative)
 			r.Get("/api/creatives/{id}/export/{version}", h.exportCreative)
+		}
+		if h.brands != nil {
+			r.Get("/api/brands", h.listBrands)
+			r.Post("/api/brands", h.createBrand)
+			r.Put("/api/brands/projects", h.assignProjectBrand)
+			r.Get("/api/brands/{id}", h.getBrand)
+			r.Post("/api/brands/{id}/offers", h.createOffer)
+			r.Get("/api/brands/{id}/facts", h.listFacts)
+			r.Post("/api/brands/{id}/facts", h.addFact)
+			r.Get("/api/brands/{id}/claims", h.claims)
+			r.Get("/api/projects/{projectID}/offers", h.projectOffers)
+			r.Get("/api/offers/{id}", h.getOffer)
+			r.Post("/api/offers/{id}/versions", h.reviseOffer)
+			r.Post("/api/offers/{id}/state", h.setOfferState)
+			r.Post("/api/facts/{id}/approve", h.approveFact)
+			r.Post("/api/facts/{id}/retire", h.retireFact)
+			r.Post("/api/fact-conflicts/{id}/resolve", h.resolveConflict)
 		}
 	})
 

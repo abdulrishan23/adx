@@ -203,3 +203,18 @@ make check && make test
 - Web: `/creatives` with a list, a new-creative form (project, format, language, copy, render upload), the rendered preview, checks, a text-layer editor, render/submit/approve/send back buttons by role and state, export link and version history. Typecheck and biome clean. Not browser-tested; long Arabic copy not inspected visually (see `pilot-gate.md`).
 
 Live: nothing to verify against a provider. The pilot gate is recorded in `docs/build/pilot-gate.md`.
+
+## B2.1 Brand, offer and approved-fact knowledge
+
+Local:
+
+```
+cd server && go test ./core/brands/ ./core/creative/ ./api/   # ok
+make check && make test
+```
+
+- `core/brands`: two sources for `price.from` with the same value agree; a third with a different value opens two conflicts; neither conflicting fact can be approved (conflict error); claims list the key as pending with no value; a marketer can't resolve; an admin's resolution retires the loser with the reason, closes the other conflict with the same loser, and approves nothing; approval then makes the claim with currency; no claim before the effective date; history keeps all three rows; a superseding correction retires the old row with the note and is itself unapproved. A person can't record an inferred fact; the job actor can, with an evidence id; it is pending, not a claim, until an admin approves it and the evidence link survives. A competitor's approved facts never appear in Reportage's claims; a project fact wins over a brand-wide one for the same key; claims for a project under another brand are refused; a competitor's offer can't be attached to a Wadi draft and Reportage's can, recording the offer version; the project's offer list holds only its brand's offers. Revising an approved offer makes a draft version 2, lists the rendered and the draft creative built on version 1 as affected, leaves both pointing at version 1 and the version 1 approval in place, and a creative built afterwards is not affected. Validation: bad key shape, non-integer minor units, money without currency, percent over 100, non-ISO date, end before start, unknown source; roles.
+- `api`: a marketer can't create a brand or approve a fact; a conflicting approval is 409; resolve then approve is 200; claims with a bad date is 400; the brand list carries the project count; offer approval is admin-only; a revision returns version 2 and an empty affected list.
+- Web: `/brands` with the brand list and open-conflict counts, new brand (admin), projects under no brand with "Add to selected brand", the disagree panel with keep-first/keep-second and a reason, approved claims per project or brand-wide with pending keys, the facts table with class, scope, source and approve/retire, record-a-fact form, offers with approve/withdraw, change-as-new-version, affected creatives and version history. The creative form picks an offer from the project's brand. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external. Which facts Reportage considers true and which source wins when they disagree are the owner's inputs; the table in `decisions.md` keeps "source precedence" unconfigured.

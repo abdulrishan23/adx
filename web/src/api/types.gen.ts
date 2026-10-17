@@ -38,6 +38,16 @@ export interface AddInput {
     role: Role;
 }
 
+// From brands/brands.go
+export interface AffectedCreative {
+    id: number;
+    name: string;
+    format: string;
+    language: string;
+    offerVersion: number;
+    reviewState: string;
+}
+
 // From alerts/alerts.go
 export interface Alert {
     id: number;
@@ -111,11 +121,46 @@ export interface AssetsResponse {
     assets: Asset[];
 }
 
+// From api/brands.go
+export interface AssignProjectInput {
+    projectId: number;
+    brandId: number;
+}
+
 // From api/analytics.go
 export interface AssignProjectsResponse {
     assigned: number;
     unresolved: string[];
 }
+
+// From brands/brands.go
+export interface Brand {
+    id: number;
+    name: string;
+    kind: BrandKind;
+    notes: string;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From brands/brands.go
+export interface BrandDetail {
+    brand: Brand;
+    projects: BrandProject[];
+    offers: Offer[];
+    facts: Fact[];
+    conflicts: Conflict[];
+}
+
+// From brands/brands.go
+export interface BrandInput {
+    name: string;
+    kind: BrandKind;
+    notes: string;
+}
+
+// From brands/brands.go
+export type BrandKind = "competitor" | "own";
 
 // From assets/brand.go
 export interface BrandKit {
@@ -138,6 +183,24 @@ export interface BrandKitVersion {
     projectId: number;
     kit: BrandKit;
     createdAt: string;
+}
+
+// From brands/brands.go
+export interface BrandProject {
+    id: number;
+    name: string;
+}
+
+// From brands/brands.go
+export interface BrandSummary extends Brand {
+    projectCount: number;
+    openConflicts: number;
+}
+
+// From api/brands.go
+export interface BrandsResponse {
+    brands: BrandSummary[];
+    unassigned: BrandProject[];
 }
 
 // From reports/reports.go
@@ -183,11 +246,35 @@ export const CheckStaleIngestion = "stale_ingestion";
 // From alerts/alerts.go
 export const CheckZeroLeads = "zero_leads";
 
+// From brands/facts.go
+export interface ClaimSet {
+    brandId: number;
+    projectId: number | null;
+    at: string;
+    claims: Fact[];
+    pending: string[];
+}
+
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From runs/runs.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+
+// From brands/facts.go
+export interface Conflict {
+    id: number;
+    brandId: number;
+    key: string;
+    factA: Fact;
+    factB: Fact;
+    state: string;
+    openedAt: string;
+    resolvedBy: number | null;
+    resolvedAt: string | null;
+    winnerId: number | null;
+    resolution: string;
+}
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -270,6 +357,8 @@ export interface Creative {
     name: string;
     format: Format;
     language: Language;
+    offerId: number | null;
+    offerVersion: number | null;
     createdAt: string;
     updatedAt: string;
 }
@@ -282,6 +371,7 @@ export interface CreativeInput {
     language: Language;
     copy: Copy;
     renderAssetId: number;
+    offerId: number;
 }
 
 // From api/creative.go
@@ -348,6 +438,68 @@ export interface EvidenceRef {
     kind: string;
     ref: string;
     detail?: string;
+}
+
+// From brands/facts.go
+export interface Fact {
+    id: number;
+    brandId: number;
+    projectId: number | null;
+    key: string;
+    kind: FactKind;
+    value: string;
+    currency: string | null;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    class: FactClass;
+    sourceKind: FactSource;
+    sourceRef: string;
+    evidenceId: number | null;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
+    approvedBy: number | null;
+    approvedAt: string | null;
+    retiredAt: string | null;
+    retiredReason: string;
+    supersedesId: number | null;
+    inConflict: boolean;
+}
+
+// From brands/facts.go
+export interface FactChange {
+    fact: Fact;
+    conflicts: Conflict[];
+}
+
+// From brands/facts.go
+export type FactClass = "approved" | "inferred" | "needs_review" | "retired";
+
+// From brands/facts.go
+export interface FactInput {
+    projectId: number;
+    key: string;
+    kind: FactKind;
+    value: string;
+    currency: string;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    sourceKind: FactSource;
+    sourceRef: string;
+    evidenceId: number;
+    note: string;
+    supersedesId: number;
+}
+
+// From brands/facts.go
+export type FactKind = "date" | "money" | "number" | "percent" | "text";
+
+// From brands/facts.go
+export type FactSource = "document" | "evidence" | "manual";
+
+// From api/brands.go
+export interface FactsResponse {
+    facts: Fact[];
 }
 
 // From leads/funnel.go
@@ -547,6 +699,76 @@ export interface ObservedValue {
     count: number;
 }
 
+// From brands/brands.go
+export interface Offer {
+    id: number;
+    brandId: number;
+    projectId: number | null;
+    name: string;
+    current: OfferVersion;
+    createdAt: string;
+}
+
+// From brands/brands.go
+export interface OfferChange {
+    offer: Offer;
+    affected: AffectedCreative[];
+}
+
+// From brands/brands.go
+export interface OfferDocument {
+    headline: string;
+    headlineAr: string;
+    terms: string;
+    termsAr: string;
+    discountPct: number | null;
+    priceFrom: Price | null;
+    paymentPlan: string;
+    conditions: string[];
+    extra: Record<string, string> | null;
+}
+
+// From api/brands.go
+export interface OfferHistoryResponse {
+    offer: Offer;
+    versions: OfferVersion[];
+    affected: AffectedCreative[];
+}
+
+// From brands/brands.go
+export interface OfferInput {
+    projectId: number;
+    name: string;
+    document: OfferDocument;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    note: string;
+}
+
+// From brands/brands.go
+export type OfferState = "approved" | "draft" | "withdrawn";
+
+// From api/brands.go
+export interface OfferStateInput {
+    state: OfferState;
+}
+
+// From brands/brands.go
+export interface OfferVersion {
+    id: number;
+    offerId: number;
+    version: number;
+    document: OfferDocument;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+    state: OfferState;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
+    approvedBy: number | null;
+    approvedAt: string | null;
+}
+
 // From policies/policies.go
 export interface Policy {
     version: number;
@@ -598,11 +820,23 @@ export interface PolicyState {
     suggested: PolicyDocument;
 }
 
+// From brands/brands.go
+export interface Price {
+    minor: number;
+    currency: string;
+}
+
 // From projects/projects.go
 export interface Project {
     id: number;
     name: string;
     createdAt: string;
+}
+
+// From api/brands.go
+export interface ProjectOffersResponse {
+    brandId: number;
+    offers: Offer[];
 }
 
 // From api/projects.go
@@ -863,12 +1097,23 @@ export interface ReportsResponse {
     reports: Report[];
 }
 
+// From api/brands.go
+export interface ResolveConflictInput {
+    winnerId: number;
+    resolution: string;
+}
+
 // From reporting/metrics.go
 export interface ResultFreshness {
     lastSuccessAt: string | null;
     observedThrough: Day | null;
     partial: boolean;
     missingPeriods: string[];
+}
+
+// From api/brands.go
+export interface RetireFactInput {
+    reason: string;
 }
 
 // From creative/creative.go

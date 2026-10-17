@@ -25,6 +25,7 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/alerts"
 	"github.com/WokeWorks/adx/server/core/assistant"
+	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/identity"
@@ -235,7 +236,8 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{})
+	brandService := brands.New(db, brands.Config{})
+	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
@@ -301,6 +303,7 @@ func run() error {
 			Alerts:      alertsService,
 			Assistant:   assistantService,
 			Creative:    creativeService,
+			Brands:      brandService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

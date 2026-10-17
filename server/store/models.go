@@ -148,6 +148,16 @@ type AuditLog struct {
 	Detail       string
 }
 
+type Brand struct {
+	ID          int64
+	WorkspaceID int64
+	Name        string
+	Kind        string
+	Notes       string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type BrandKit struct {
 	ID          int64
 	WorkspaceID int64
@@ -202,15 +212,17 @@ type ConversionAction struct {
 }
 
 type Creative struct {
-	ID          int64
-	WorkspaceID int64
-	ProjectID   sql.NullInt64
-	Name        string
-	Format      string
-	Language    string
-	CreatedBy   sql.NullInt64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           int64
+	WorkspaceID  int64
+	ProjectID    sql.NullInt64
+	Name         string
+	Format       string
+	Language     string
+	CreatedBy    sql.NullInt64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+	OfferID      sql.NullInt64
+	OfferVersion sql.NullInt64
 }
 
 type CreativeReview struct {
@@ -270,6 +282,46 @@ type Evidence struct {
 	Completeness   string
 	RetainUntil    sql.NullTime
 	SupersededBy   sql.NullInt64
+}
+
+type Fact struct {
+	ID            int64
+	WorkspaceID   int64
+	BrandID       int64
+	ProjectID     sql.NullInt64
+	Key           string
+	Kind          string
+	Value         string
+	Currency      sql.NullString
+	EffectiveFrom time.Time
+	EffectiveTo   sql.NullTime
+	Class         string
+	SourceKind    string
+	SourceRef     string
+	EvidenceID    sql.NullInt64
+	Note          string
+	CreatedBy     sql.NullInt64
+	CreatedAt     time.Time
+	ApprovedBy    sql.NullInt64
+	ApprovedAt    sql.NullTime
+	RetiredAt     sql.NullTime
+	RetiredReason string
+	SupersedesID  sql.NullInt64
+}
+
+type FactConflict struct {
+	ID          int64
+	WorkspaceID int64
+	BrandID     int64
+	Key         string
+	FactAID     int64
+	FactBID     int64
+	State       string
+	OpenedAt    time.Time
+	ResolvedBy  sql.NullInt64
+	ResolvedAt  sql.NullTime
+	WinnerID    sql.NullInt64
+	Resolution  string
 }
 
 type FunnelMapping struct {
@@ -348,6 +400,31 @@ type Membership struct {
 	CreatedAt   time.Time
 }
 
+type Offer struct {
+	ID          int64
+	WorkspaceID int64
+	BrandID     int64
+	ProjectID   sql.NullInt64
+	Name        string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
+type OfferVersion struct {
+	ID            int64
+	OfferID       int64
+	Version       int64
+	Document      string
+	EffectiveFrom time.Time
+	EffectiveTo   sql.NullTime
+	State         string
+	Note          string
+	CreatedBy     sql.NullInt64
+	CreatedAt     time.Time
+	ApprovedBy    sql.NullInt64
+	ApprovedAt    sql.NullTime
+}
+
 type Policy struct {
 	ID          int64
 	WorkspaceID int64
@@ -361,6 +438,7 @@ type Project struct {
 	ID        int64
 	Name      string
 	CreatedAt time.Time
+	BrandID   sql.NullInt64
 }
 
 type Report struct {

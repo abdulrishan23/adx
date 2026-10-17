@@ -98,20 +98,22 @@ func (q *Queries) CreateBrandKit(ctx context.Context, arg CreateBrandKitParams) 
 }
 
 const createCreative = `-- name: CreateCreative :one
-INSERT INTO creatives (workspace_id, project_id, name, format, language, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at
+INSERT INTO creatives (workspace_id, project_id, name, format, language, offer_id, offer_version, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version
 `
 
 type CreateCreativeParams struct {
-	WorkspaceID int64
-	ProjectID   sql.NullInt64
-	Name        string
-	Format      string
-	Language    string
-	CreatedBy   sql.NullInt64
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	WorkspaceID  int64
+	ProjectID    sql.NullInt64
+	Name         string
+	Format       string
+	Language     string
+	OfferID      sql.NullInt64
+	OfferVersion sql.NullInt64
+	CreatedBy    sql.NullInt64
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 func (q *Queries) CreateCreative(ctx context.Context, arg CreateCreativeParams) (Creative, error) {
@@ -121,6 +123,8 @@ func (q *Queries) CreateCreative(ctx context.Context, arg CreateCreativeParams) 
 		arg.Name,
 		arg.Format,
 		arg.Language,
+		arg.OfferID,
+		arg.OfferVersion,
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
@@ -136,6 +140,8 @@ func (q *Queries) CreateCreative(ctx context.Context, arg CreateCreativeParams) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OfferID,
+		&i.OfferVersion,
 	)
 	return i, err
 }
@@ -275,7 +281,7 @@ func (q *Queries) GetAssetByKey(ctx context.Context, arg GetAssetByKeyParams) (A
 }
 
 const getCreative = `-- name: GetCreative :one
-SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at FROM creatives WHERE id = ? AND workspace_id = ?
+SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version FROM creatives WHERE id = ? AND workspace_id = ?
 `
 
 type GetCreativeParams struct {
@@ -296,6 +302,8 @@ func (q *Queries) GetCreative(ctx context.Context, arg GetCreativeParams) (Creat
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OfferID,
+		&i.OfferVersion,
 	)
 	return i, err
 }
@@ -506,7 +514,7 @@ func (q *Queries) ListCreativeVersions(ctx context.Context, creativeID int64) ([
 }
 
 const listCreatives = `-- name: ListCreatives :many
-SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at FROM creatives
+SELECT id, workspace_id, project_id, name, format, language, created_by, created_at, updated_at, offer_id, offer_version FROM creatives
 WHERE workspace_id = ?1
   AND (?2 IS NULL OR project_id = ?2)
 ORDER BY updated_at DESC, id DESC LIMIT ?3
@@ -537,6 +545,8 @@ func (q *Queries) ListCreatives(ctx context.Context, arg ListCreativesParams) ([
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OfferID,
+			&i.OfferVersion,
 		); err != nil {
 			return nil, err
 		}

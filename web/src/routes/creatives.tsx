@@ -5,6 +5,7 @@ import {
   useCreative,
   useCreativeAction,
   useCreatives,
+  useProjectOffers,
   useSaveDocument,
   useUploadAsset,
 } from "@/api/creative";
@@ -72,12 +73,15 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
   const renders = useAssets("render");
   const upload = useUploadAsset();
   const create = useCreateCreative();
+  const [projectId, setProjectId] = useState(0);
+  const offers = useProjectOffers(projectId);
   const [form, setForm] = useState({
     projectId: 0,
     name: "",
     format: "9:16",
     language: "en",
     renderAssetId: 0,
+    offerId: 0,
     eyebrow: "",
     title: "",
     text: "",
@@ -94,6 +98,7 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
         format: form.format as "9:16" | "4:5" | "1:1" | "1.91:1",
         language: form.language as "en" | "ar",
         renderAssetId: form.renderAssetId,
+        offerId: form.offerId,
         copy: {
           eyebrow: form.eyebrow,
           title: form.title,
@@ -112,7 +117,10 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={form.projectId}
-        onChange={(e) => setForm({ ...form, projectId: Number(e.target.value) })}
+        onChange={(e) => {
+          setProjectId(Number(e.target.value));
+          setForm({ ...form, projectId: Number(e.target.value), offerId: 0 });
+        }}
       >
         <option value={0}>No project</option>
         {projects.data?.projects.map((p) => (
@@ -189,6 +197,25 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
           </option>
         ))}
       </select>
+      {projectId > 0 && (
+        <select
+          className="w-full rounded-md border bg-background px-2 py-1"
+          value={form.offerId}
+          onChange={(e) => setForm({ ...form, offerId: Number(e.target.value) })}
+        >
+          <option value={0}>No offer</option>
+          {offers.data?.offers.map((o) => (
+            <option key={o.id} value={o.id}>
+              {o.name} (v{o.current.version}, {o.current.state})
+            </option>
+          ))}
+        </select>
+      )}
+      {projectId > 0 && offers.data?.brandId === 0 && (
+        <p className="text-muted-foreground">
+          This project is under no brand, so it has no offers or claims.
+        </p>
+      )}
       <label className="block text-muted-foreground">
         Upload a render
         <input

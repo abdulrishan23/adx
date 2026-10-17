@@ -25,8 +25,8 @@ VALUES (?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: CreateCreative :one
-INSERT INTO creatives (workspace_id, project_id, name, format, language, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO creatives (workspace_id, project_id, name, format, language, offer_id, offer_version, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetCreative :one

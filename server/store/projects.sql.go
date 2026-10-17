@@ -13,7 +13,7 @@ import (
 const createProject = `-- name: CreateProject :one
 INSERT INTO projects (name, created_at)
 VALUES (?, ?)
-RETURNING id, name, created_at
+RETURNING id, name, created_at, brand_id
 `
 
 type CreateProjectParams struct {
@@ -24,34 +24,49 @@ type CreateProjectParams struct {
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
 	row := q.db.QueryRowContext(ctx, createProject, arg.Name, arg.CreatedAt)
 	var i Project
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.BrandID,
+	)
 	return i, err
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, created_at FROM projects WHERE id = ?
+SELECT id, name, created_at, brand_id FROM projects WHERE id = ?
 `
 
 func (q *Queries) GetProject(ctx context.Context, id int64) (Project, error) {
 	row := q.db.QueryRowContext(ctx, getProject, id)
 	var i Project
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.BrandID,
+	)
 	return i, err
 }
 
 const getProjectByName = `-- name: GetProjectByName :one
-SELECT id, name, created_at FROM projects WHERE name = ? COLLATE NOCASE
+SELECT id, name, created_at, brand_id FROM projects WHERE name = ? COLLATE NOCASE
 `
 
 func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, error) {
 	row := q.db.QueryRowContext(ctx, getProjectByName, name)
 	var i Project
-	err := row.Scan(&i.ID, &i.Name, &i.CreatedAt)
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.BrandID,
+	)
 	return i, err
 }
 
 const listProjects = `-- name: ListProjects :many
-SELECT id, name, created_at FROM projects
+SELECT id, name, created_at, brand_id FROM projects
 ORDER BY name
 `
 
@@ -64,7 +79,12 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 	items := []Project{}
 	for rows.Next() {
 		var i Project
-		if err := rows.Scan(&i.ID, &i.Name, &i.CreatedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.BrandID,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -801,13 +801,42 @@
         "B0.5",
         "B1.6"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00015_brands_offers_facts.sql",
+        "server/store/queries/brands.sql",
+        "server/core/brands/",
+        "server/core/creative/creative.go",
+        "server/api/brands.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/brands.ts",
+        "web/src/routes/brands.tsx",
+        "web/src/routes/creatives.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/brands/ ./core/creative/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "contradictory price sources open a conflict and cannot be approved until an admin resolves it; resolving approves nothing",
+        "a changed offer lists the creatives built on older versions and changes none of them",
+        "a competitor's facts never appear in Reportage's claims; a competitor's offer can't be attached to a Reportage draft"
+      ],
+      "remaining": [
+        "inferred facts are produced by B2.2 research; only the recording path exists",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "decision",
+          "what": "source precedence for price/inventory facts",
+          "unblocks": "nothing in code; conflicts are resolved by an admin by design until Abdul names a precedence"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-31."
     },
     {
       "id": "B2.2",

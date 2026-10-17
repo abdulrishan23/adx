@@ -8,6 +8,7 @@ import type {
   CreativeResponse,
   CreativesResponse,
   Document,
+  ProjectOffersResponse,
   Version,
 } from "./types.gen";
 
@@ -45,6 +46,14 @@ export function useUploadAsset() {
   });
 }
 
+export function useProjectOffers(projectId: number) {
+  return useQuery({
+    queryKey: ["project-offers", projectId],
+    queryFn: () => getJSON<ProjectOffersResponse>(`/api/projects/${projectId}/offers`),
+    enabled: projectId > 0,
+  });
+}
+
 export function useCreatives() {
   return useQuery({
     queryKey: ["creatives"],
@@ -63,7 +72,7 @@ export function useCreative(id: number | null) {
 export function useBrandKit(projectId: number) {
   return useQuery({
     queryKey: ["brand", projectId],
-    queryFn: () => getJSON<BrandKitResponse>(`/api/brands/${projectId}/kit`),
+    queryFn: () => getJSON<BrandKitResponse>(`/api/projects/${projectId}/brand-kit`),
     enabled: projectId > 0,
   });
 }
