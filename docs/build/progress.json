@@ -1617,13 +1617,37 @@
       "depends_on": [
         "B4.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00030_pipeline.sql",
+        "server/store/queries/pipeline.sql",
+        "server/core/pipeline/pipeline.go",
+        "server/core/pipeline/pipeline_test.go",
+        "server/api/pipeline.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/pipeline.ts",
+        "web/src/routes/pipeline.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/pipeline/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a repeated or resumed import creates no duplicate opportunity",
+        "a person's stage survives sync when ADX owns the stage; the CRM wins when it owns it",
+        "two enquiries of one person are two independent opportunities",
+        "a preview changes no record; stale versions do not overwrite"
+      ],
+      "remaining": [
+        "mapping qualification outcomes to pipeline stages once Reportage names them",
+        "browser inspection"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-48."
     },
     {
       "id": "B5.2",

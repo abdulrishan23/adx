@@ -23,6 +23,7 @@ import { LeadsPage } from "@/routes/leads";
 import { OutreachPage } from "@/routes/outreach";
 import { PagesPage } from "@/routes/pages";
 import { PeoplePage } from "@/routes/people";
+import { PipelinePage } from "@/routes/pipeline";
 import { PlansPage } from "@/routes/plans";
 import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
@@ -138,6 +139,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             People
+          </Link>
+          <Link
+            to="/pipeline"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Pipeline
           </Link>
           <Link
             to="/calls"
@@ -338,6 +346,12 @@ const peopleRoute = createRoute({
   component: PeoplePage,
 });
 
+const pipelineRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/pipeline",
+  component: PipelinePage,
+});
+
 const callsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/calls",
@@ -389,6 +403,7 @@ const routeTree = rootRoute.addChildren([
   reportsRoute,
   alertsRoute,
   peopleRoute,
+  pipelineRoute,
   callsRoute,
   leadsRoute,
   funnelRoute,

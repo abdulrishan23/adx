@@ -26,6 +26,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/outreach"
 	"github.com/WokeWorks/adx/server/core/pages"
+	"github.com/WokeWorks/adx/server/core/pipeline"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
@@ -70,6 +71,7 @@ type Deps struct {
 	Calls         *calls.Calls
 	Qualification *qualification.Qualification
 	Evaluation    *evaluation.Evaluation
+	Pipeline      *pipeline.Pipeline
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -103,13 +105,14 @@ type handlers struct {
 	calls         *calls.Calls
 	qualification *qualification.Qualification
 	evaluation    *evaluation.Evaluation
+	pipeline      *pipeline.Pipeline
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -382,6 +385,25 @@ func NewRouter(d Deps) http.Handler {
 		if h.evaluation != nil {
 			r.Get("/api/evaluation", h.evaluationReport)
 			r.Post("/api/evaluation/labels", h.labelCall)
+		}
+		if h.pipeline != nil {
+			r.Get("/api/crm/pipeline/config", h.getPipelineConfig)
+			r.Put("/api/crm/pipeline/config", h.putPipelineConfig)
+			r.Get("/api/crm/opportunities", h.listOpportunities)
+			r.Post("/api/crm/opportunities", h.openOpportunity)
+			r.Get("/api/crm/opportunities/{id}", h.getOpportunity)
+			r.Post("/api/crm/opportunities/{id}/stage", h.setOpportunityStage)
+			r.Post("/api/crm/opportunities/{id}/value", h.setOpportunityValue)
+			r.Post("/api/crm/opportunities/{id}/assign", h.assignOpportunity)
+			r.Post("/api/crm/interactions", h.recordInteraction)
+			r.Get("/api/crm/tasks", h.listTasks)
+			r.Post("/api/crm/tasks", h.createTask)
+			r.Post("/api/crm/tasks/{id}/complete", h.completeTask)
+			r.Get("/api/crm/imports", h.listImports)
+			r.Post("/api/crm/imports/preview", h.previewImport)
+			r.Get("/api/crm/imports/{id}", h.getImport)
+			r.Post("/api/crm/imports/{id}/apply", h.applyImport)
+			r.Get("/api/crm/export", h.exportPipeline)
 		}
 	})
 

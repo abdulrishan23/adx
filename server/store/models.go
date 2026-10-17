@@ -427,6 +427,36 @@ type CrmFieldOutbox struct {
 	ConfirmedAt    sql.NullTime
 }
 
+type CrmImportBatch struct {
+	ID            int64
+	WorkspaceID   int64
+	Source        string
+	State         string
+	ConfigVersion int64
+	Cursor        int64
+	Total         int64
+	CreatedN      int64
+	UpdatedN      int64
+	SkippedN      int64
+	ConflictN     int64
+	Error         string
+	CreatedBy     sql.NullInt64
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	AppliedAt     sql.NullTime
+}
+
+type CrmImportRow struct {
+	ID        int64
+	BatchID   int64
+	Position  int64
+	EnquiryID int64
+	LeadID    sql.NullInt64
+	Action    string
+	Detail    string
+	AppliedAt sql.NullTime
+}
+
 type Enquiry struct {
 	ID             int64
 	WorkspaceID    int64
@@ -531,6 +561,22 @@ type FactConflict struct {
 	Resolution  string
 }
 
+type FollowUpTask struct {
+	ID             int64
+	WorkspaceID    int64
+	OpportunityID  sql.NullInt64
+	PersonID       int64
+	Title          string
+	DueAt          sql.NullTime
+	State          string
+	AssigneeUserID sql.NullInt64
+	OccurrenceKey  string
+	CreatedBy      sql.NullInt64
+	CreatedAt      time.Time
+	DoneAt         sql.NullTime
+	DoneBy         sql.NullInt64
+}
+
 type FormSubmission struct {
 	ID          int64
 	WorkspaceID int64
@@ -555,6 +601,19 @@ type FunnelMapping struct {
 	Document    string
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
+}
+
+type Interaction struct {
+	ID            int64
+	WorkspaceID   int64
+	PersonID      int64
+	OpportunityID sql.NullInt64
+	Kind          string
+	Summary       string
+	OccurredAt    time.Time
+	RecordedBy    sql.NullInt64
+	EvidenceID    sql.NullInt64
+	CreatedAt     time.Time
 }
 
 type InteractionEvent struct {
@@ -751,6 +810,35 @@ type OfferVersion struct {
 	ApprovedAt    sql.NullTime
 }
 
+type Opportunity struct {
+	ID          int64
+	WorkspaceID int64
+	EnquiryID   int64
+	PersonID    int64
+	ProjectID   sql.NullInt64
+	Stage       string
+	StageSetBy  string
+	State       string
+	ValueMinor  sql.NullInt64
+	Currency    sql.NullString
+	OwnerUserID sql.NullInt64
+	Version     int64
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ClosedAt    sql.NullTime
+}
+
+type OpportunityAssignment struct {
+	ID            int64
+	OpportunityID int64
+	UserID        int64
+	AssignedBy    sql.NullInt64
+	Reason        string
+	AssignedAt    time.Time
+	EndedAt       sql.NullTime
+}
+
 type OutreachConfig struct {
 	ID          int64
 	WorkspaceID int64
@@ -855,6 +943,15 @@ type PersonLink struct {
 	ReversalReason string
 }
 
+type PipelineConfig struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type Plan struct {
 	ID          int64
 	WorkspaceID int64
@@ -921,6 +1018,16 @@ type Proposal struct {
 	ProposedVia     string
 	CreatedAt       time.Time
 	UpdatedAt       time.Time
+}
+
+type ProviderMapping struct {
+	ID          int64
+	WorkspaceID int64
+	Provider    string
+	Kind        string
+	LocalID     int64
+	ExternalID  string
+	CreatedAt   time.Time
 }
 
 type QualificationLabel struct {

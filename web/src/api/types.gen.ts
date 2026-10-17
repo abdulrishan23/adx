@@ -218,6 +218,12 @@ export interface AssetsResponse {
     assets: Asset[];
 }
 
+// From api/pipeline.go
+export interface AssignInput {
+    userId: number;
+    reason: string;
+}
+
 // From api/brands.go
 export interface AssignProjectInput {
     projectId: number;
@@ -228,6 +234,17 @@ export interface AssignProjectInput {
 export interface AssignProjectsResponse {
     assigned: number;
     unresolved: string[];
+}
+
+// From pipeline/pipeline.go
+export interface Assignment {
+    id: number;
+    opportunityId: number;
+    userId: number;
+    assignedBy: number | null;
+    reason: string;
+    assignedAt: string;
+    endedAt: string | null;
 }
 
 // From plans/plans.go
@@ -678,8 +695,13 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From api/pipeline.go
+export interface CompleteTaskInput {
+    canceled: boolean;
+}
+
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From brands/facts.go
 export interface Conflict {
@@ -1051,6 +1073,17 @@ export interface ExecutionsResponse {
     executions: Intent[];
 }
 
+// From api/pipeline.go
+export interface ExportResponse {
+    rows: ExportRow[];
+}
+
+// From pipeline/pipeline.go
+export interface ExportRow {
+    opportunity: Opportunity;
+    mappings: ProviderMapping[];
+}
+
 // From pages/pages.go
 export interface ExternalPublishingState {
     available: boolean;
@@ -1214,6 +1247,22 @@ export interface FitRule {
     values: Record<string, number> | null;
     present: number;
     statedOnly: boolean;
+}
+
+// From pipeline/pipeline.go
+export interface FollowUpTask {
+    id: number;
+    opportunityId: number | null;
+    personId: number;
+    title: string;
+    dueAt: string | null;
+    state: string;
+    assigneeUserId: number | null;
+    occurrenceKey: string;
+    createdBy: number | null;
+    createdAt: string;
+    doneAt: string | null;
+    doneBy: number | null;
 }
 
 // From assets/brand.go
@@ -1380,6 +1429,25 @@ export interface Image {
     zoom: number;
 }
 
+// From pipeline/pipeline.go
+export interface ImportBatch {
+    id: number;
+    source: string;
+    state: string;
+    configVersion: number;
+    cursor: number;
+    total: number;
+    created: number;
+    updated: number;
+    skipped: number;
+    conflicts: number;
+    error: string;
+    createdBy: number | null;
+    createdAt: string;
+    appliedAt: string | null;
+    rows: ImportRow[];
+}
+
 // From api/leads.go
 export interface ImportLeadsInput {
     accountId: number;
@@ -1401,6 +1469,23 @@ export interface ImportProgress {
     pages: number;
     contacts: number;
     total: number | null;
+}
+
+// From pipeline/pipeline.go
+export interface ImportRow {
+    id: number;
+    position: number;
+    enquiryId: number;
+    leadId: number | null;
+    action: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    detail: string;
+    appliedAt: string | null;
+}
+
+// From api/pipeline.go
+export interface ImportsResponse {
+    imports: ImportBatch[];
 }
 
 // From proposals/proposals.go
@@ -1444,6 +1529,27 @@ export interface IntentRule {
 export interface IntentWithEvents {
     intent: Intent;
     events: Event[];
+}
+
+// From pipeline/pipeline.go
+export interface Interaction {
+    id: number;
+    personId: number;
+    opportunityId: number | null;
+    kind: string;
+    summary: string;
+    occurredAt: string;
+    recordedBy: number | null;
+    evidenceId: number | null;
+}
+
+// From pipeline/pipeline.go
+export interface InteractionInput {
+    personId: number;
+    opportunityId: number;
+    kind: string;
+    summary: string;
+    occurredAt: string;
 }
 
 // From plans/diff.go
@@ -1930,6 +2036,43 @@ export interface OpenEnvelopesInput {
     accountByPlatform: Record<string, number> | null;
 }
 
+// From api/pipeline.go
+export interface OpenOpportunityInput {
+    enquiryId: number;
+}
+
+// From api/pipeline.go
+export interface OpportunitiesResponse {
+    opportunities: Opportunity[];
+}
+
+// From pipeline/pipeline.go
+export interface Opportunity {
+    id: number;
+    enquiryId: number;
+    personId: number;
+    projectId: number | null;
+    stage: string;
+    stageSetBy: string;
+    state: string;
+    valueMinor: number | null;
+    currency: string | null;
+    ownerUserId: number | null;
+    version: number;
+    createdBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    closedAt: string | null;
+}
+
+// From pipeline/pipeline.go
+export interface OpportunityDetail {
+    opportunity: Opportunity;
+    assignments: Assignment[];
+    tasks: FollowUpTask[];
+    interactions: Interaction[];
+}
+
 // From outreach/outreach.go
 export interface OutreachConfig {
     version: number;
@@ -1955,6 +2098,9 @@ export interface OutreachState {
     fieldWrites: FieldWriteState;
     suggested: OutreachDocument;
 }
+
+// From pipeline/pipeline.go
+export type Owner = "adx" | "crm";
 
 // From pages/pages.go
 export interface Page {
@@ -2114,6 +2260,29 @@ export interface PersonSummary extends Person {
     enquiries: number;
     openCandidates: number;
     uncertain: boolean;
+}
+
+// From pipeline/pipeline.go
+export interface PipelineConfig {
+    version: number;
+    document: PipelineDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From pipeline/pipeline.go
+export interface PipelineDocument {
+    stages: StageDef[];
+    stageOwner: Owner;
+    leadStageMap: Record<string, string> | null;
+    note: string;
+}
+
+// From pipeline/pipeline.go
+export interface PipelineState {
+    configured: boolean;
+    current: PipelineConfig | null;
+    suggested: PipelineDocument;
 }
 
 // From plans/plans.go
@@ -2317,6 +2486,11 @@ export interface Preferences {
     doNotContact: boolean;
 }
 
+// From api/pipeline.go
+export interface PreviewImportInput {
+    source: string;
+}
+
 // From brands/brands.go
 export interface Price {
     minor: number;
@@ -2423,6 +2597,14 @@ export const Provider = "gohighlevel";
 
 // From connections/ads.go
 export const ProviderGoogleAds = "google_ads";
+
+// From pipeline/pipeline.go
+export interface ProviderMapping {
+    provider: string;
+    kind: string;
+    localId: number;
+    externalId: string;
+}
 
 // From connections/ads.go
 export const ProviderMeta = "meta";
@@ -2899,8 +3081,8 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From core/core.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+// From assistant/model.go
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From calls/calls.go
 export interface Route {
@@ -3107,6 +3289,20 @@ export interface SessionResponse {
     dev: boolean;
 }
 
+// From api/pipeline.go
+export interface SetStageInput {
+    stage: string;
+    version: number;
+    reason: string;
+}
+
+// From api/pipeline.go
+export interface SetValueInput {
+    valueMinor: number;
+    currency: string;
+    version: number;
+}
+
 // From signals/signals.go
 export interface SignalCorrection {
     id: number;
@@ -3193,6 +3389,13 @@ export interface StageCriteria {
     warm: number;
 }
 
+// From pipeline/pipeline.go
+export interface StageDef {
+    key: string;
+    label: string;
+    kind: string;
+}
+
 // From alerts/alerts.go
 export interface StaleIngestionConfig {
     maxAgeHours: number | null;
@@ -3267,6 +3470,21 @@ export interface Suppression {
 // From api/crm.go
 export interface SyncResponse {
     linked: number;
+}
+
+// From pipeline/pipeline.go
+export interface TaskInput {
+    opportunityId: number;
+    personId: number;
+    title: string;
+    dueAt: string | null;
+    assigneeUserId: number;
+    occurrenceKey: string;
+}
+
+// From api/pipeline.go
+export interface TasksResponse {
+    tasks: FollowUpTask[];
 }
 
 // From plans/plans.go

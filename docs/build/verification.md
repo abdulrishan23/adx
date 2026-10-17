@@ -470,3 +470,18 @@ make check && make test
 - Web: a Speak button on Ask ADX shows the transcript and its preview with send, edit and discard; spoken turns and previews are labelled in the conversation; `/evaluation` shows the gate, qualification, alert and feedback figures with "Not available" for empty rates; the call evidence panel has an agreed-label control. Typecheck and biome clean. Not browser-tested.
 
 Live: no spoken session or labelled call exists; the figures are empty by construction.
+
+## B5.1 Native CRM ownership and migration
+
+Local:
+
+```
+cd server && go test ./core/pipeline/   # ok
+make check && make test
+```
+
+- `core/pipeline`: three linked leads preview as three creates with no opportunity written; an apply configured to stop after two rows fails at cursor 2 with two opportunities; a resume applies the third and marks all rows; an applied batch refuses a second apply; a fresh preview is three skips and its apply adds nothing; the export shows one stable contact mapping per opportunity. With ADX owning the stage, an imported `engaged` corrected by a person to `meeting` (version 2) is skipped by the next preview with "a person set it" and stays `meeting` after apply; with the CRM owning it, the preview plans `update_stage` and the apply moves it to `attempted` as `import`; a configuration change between preview and apply is refused. One person with two enquiries opens two opportunities (a repeat open returns the same one); winning one leaves the other open; assignments are per opportunity with the owner following the latest; a repeated "call back Tuesday" is one task; done twice is refused; an interaction with an unknown kind is refused and a meeting attaches to one opportunity only. Without stages, opening is a 409; a marketer can't save config; an unmapped lead stage is rejected; a preview changes no counts in eight tables; a stale version does not overwrite a newer stage; value is stored in minor units with the currency upper-cased; an unknown stage is refused; applying an old create plan after the opportunity exists creates nothing.
+- `api`: pipeline config, opportunities (list/open/get/stage/value/assign), interactions, tasks, imports (preview/apply/get/list) and export.
+- Web: `/pipeline` with stage filters, opportunity panels (stage moves with the record's version, assignments, interactions, follow-ups), open tasks, import preview/apply/resume and the stage editor. Typecheck and biome clean. Not browser-tested.
+
+Live: none needed; this is ADX's own data.
