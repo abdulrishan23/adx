@@ -5,11 +5,14 @@ go 1.26.0
 require (
 	github.com/caarlos0/env/v11 v11.4.1
 	github.com/coder/guts v1.7.1
+	github.com/coreos/go-oidc/v3 v3.21.0
 	github.com/go-chi/chi/v5 v5.3.2
+	github.com/go-jose/go-jose/v4 v4.1.6
 	github.com/pressly/goose/v3 v3.28.0
 	github.com/riverqueue/river v0.49.0
 	github.com/riverqueue/river/riverdriver/riversqlite v0.49.0
 	github.com/stretchr/testify v1.12.1
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/tools v0.50.0
 	modernc.org/sqlite v1.60.1
 )

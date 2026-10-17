@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/projects"
 )
@@ -23,17 +24,22 @@ type Deps struct {
 	Connections *connections.Connections
 	// Ops answers /api/ready. Nil leaves the route out, which tests do.
 	Ops *ops.Ops
+	// Identity resolves session cookies and runs sign-in. Nil means no
+	// sessions at all: dev gets the dev admin, production refuses everything.
+	Identity *identity.Identity
 }
 
 type handlers struct {
 	log         *slog.Logger
+	dev         bool
 	projects    *projects.Projects
 	connections *connections.Connections
 	ops         *ops.Ops
+	identity    *identity.Identity
 }
 
 func NewRouter(d Deps) http.Handler {
-	h := &handlers{log: d.Log, projects: d.Projects, connections: d.Connections, ops: d.Ops}
+	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -48,8 +54,14 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/api/ready", h.ready)
 	}
 
+	// Sign-in happens before there is a session.
+	r.Get("/api/auth/login", h.login)
+	r.Get("/api/auth/callback", h.authCallback)
+	r.Post("/api/auth/logout", h.logout)
+
 	r.Group(func(r chi.Router) {
-		r.Use(withActor(d.Dev))
+		r.Use(withActor(d.Dev, d.Identity))
+		r.Get("/api/session", h.session)
 		r.Get("/api/projects", h.listProjects)
 		r.Post("/api/projects", h.createProject)
 		r.Get("/api/connections/crm", h.listConnections)

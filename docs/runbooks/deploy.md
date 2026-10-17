@@ -38,7 +38,7 @@ One Linux host (D-21: WokeWorks' Hostinger server), Caddy in front, the Go serve
 
 | Group | Variables | Notes |
 |---|---|---|
-| Identity | `ADX_AUTHENTIK_ISSUER`, `ADX_AUTHENTIK_API_TOKEN`, `ADX_AUTHENTIK_GROUP_ID`, `ADX_AUTHENTIK_EMAIL_STAGE_ID`, `ADX_BOOTSTRAP_ADMIN` | all required outside dev |
+| Identity | `ADX_AUTHENTIK_ISSUER`, `ADX_AUTHENTIK_API_TOKEN`, `ADX_AUTHENTIK_GROUP_ID`, `ADX_AUTHENTIK_EMAIL_STAGE_ID`, `ADX_BOOTSTRAP_ADMIN`, `ADX_PUBLIC_URL`, `ADX_OIDC_CLIENT_ID`, `ADX_OIDC_CLIENT_SECRET`, `ADX_AUTHENTIK_GROUP_NAME` | all required outside dev; discovery against the issuer must succeed at startup |
 | Storage | `ADX_DB_PATH`, `ADX_ASSETS_DIR`, `ADX_CONNECTION_KEY_FILE` | directories must exist in production |
 | Provider | `ADX_GHL_CREDENTIALS_FILE` (optional) | Google and Meta arrive in phase 1 |
 | Deployment | `ADX_ADDR`, `ADX_ENV` | Caddy owns the public domain |

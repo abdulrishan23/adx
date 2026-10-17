@@ -55,3 +55,15 @@ Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. D
 
 ### BD-07. Backups hold sealed credentials, the key travels separately
 2026-10-17. `adx backup DIR` copies the database (SQLite `VACUUM INTO`) and the assets tree. The encryption key is never copied. The restore runbook rehearses in an isolated directory first. This is also the stance for every later secret: a copy of the data alone must be useless.
+
+### BD-08. Web sign-in is OpenID Connect against authentik, sessions live in SQLite
+2026-10-17. Implements D-24 for the web. `core/identity` owns sign-in attempts (hashed state, PKCE verifier, hashed nonce, 10-minute life, single use) and sessions (hashed random ID, 7 days idle, 30 days absolute, looked up on every request). `providers/authentik/oidc.go` does discovery, the code exchange with PKCE and client secret, RS256 verification and the nonce check, and reads `groups` from the ID token or userinfo. The `groups` claim must contain the configured group name (`ADX_AUTHENTIK_GROUP_NAME`, default `adx-users`) or `users.SignIn` refuses.
+
+- **Why.** D-24 already chose authentik and database-backed sessions. A trusted-proxy header boundary was the alternative; it was rejected because the API and the web build are deployed separately and a header can be set by anyone who reaches the Go port.
+- **Cost.** The authentik `adx-auth` provider needs the groups scope mapping enabled and the exact redirect URI `ADX_PUBLIC_URL/api/auth/callback`. Live sign-in is unverified until the provider's client ID and secret exist (see verification.md).
+- **Not done.** MCP sign-in (ADX as an OAuth server for Claude, D-24) is not part of B0.3 and stays pending.
+
+### BD-09. Actor carries a workspace; phase 0 has one
+2026-10-17. `core.Actor` gains `WorkspaceID`, filled from the session's membership, never from the client. Migration 00006 creates workspace 1 "Reportage" (`core.DefaultWorkspace`) and a membership per existing user. While there is one workspace, `memberships.role` and `enabled` mirror `users.role` and `users.status`; `core/users` writes both in one transaction and ends the person's sessions when disabling them. New domains from B0.4 on scope their rows by `workspace_id` and refuse an actor whose workspace doesn't match. Existing tables (`projects`, `accounts`, `credentials`) stay unscoped until B6.1 migrates them.
+
+- **Cost.** Two columns say the same thing until B6.1 drops the mirror. Recorded so the duplication is removed, not extended.

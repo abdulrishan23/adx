@@ -23,6 +23,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/api"
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/users"
@@ -53,6 +54,15 @@ type config struct {
 	AuthentikAPIToken     string `env:"ADX_AUTHENTIK_API_TOKEN"`
 	AuthentikGroupID      string `env:"ADX_AUTHENTIK_GROUP_ID"`
 	AuthentikEmailStageID string `env:"ADX_AUTHENTIK_EMAIL_STAGE_ID"`
+
+	// Sign-in (D-24, B0.3). PublicURL is where browsers reach ADX, so the
+	// OIDC callback is PublicURL + /api/auth/callback. The group name is the
+	// one authentik puts in the groups claim; GroupID above is the same group
+	// by UUID for the users API. All required outside dev.
+	PublicURL          string `env:"ADX_PUBLIC_URL"`
+	OIDCClientID       string `env:"ADX_OIDC_CLIENT_ID"`
+	OIDCClientSecret   string `env:"ADX_OIDC_CLIENT_SECRET"`
+	AuthentikGroupName string `env:"ADX_AUTHENTIK_GROUP_NAME" envDefault:"adx-users"`
 }
 
 func main() {
@@ -101,6 +111,12 @@ func run() error {
 		return err
 	}
 	people := users.New(db, accounts)
+
+	oidc, err := configuredOIDC(ctx, cfg, dev)
+	if err != nil {
+		return err
+	}
+	sessions := identity.New(db, people, oidc, identity.Config{AllowedGroup: cfg.AuthentikGroupName})
 
 	connections, err := configuredConnections(db, cfg)
 	if err != nil {
@@ -157,6 +173,7 @@ func run() error {
 			Projects:    projects.New(db),
 			Connections: connections,
 			Ops:         readiness,
+			Identity:    sessions,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -254,6 +271,46 @@ func authentikAccounts(cfg config, dev bool) (users.Accounts, error) {
 		GroupID:      cfg.AuthentikGroupID,
 		EmailStageID: cfg.AuthentikEmailStageID,
 	}), nil
+}
+
+// configuredOIDC prepares sign-in. Outside dev every setting is required and
+// discovery must succeed at startup. In dev, missing settings return a nil
+// provider: existing sessions still resolve, StartSignIn says what's missing,
+// and requests without a cookie get the dev admin.
+func configuredOIDC(ctx context.Context, cfg config, dev bool) (identity.OIDC, error) {
+	missing := []string{}
+	for name, v := range map[string]string{
+		"ADX_AUTHENTIK_ISSUER": cfg.AuthentikIssuer, "ADX_PUBLIC_URL": cfg.PublicURL,
+		"ADX_OIDC_CLIENT_ID": cfg.OIDCClientID, "ADX_OIDC_CLIENT_SECRET": cfg.OIDCClientSecret,
+	} {
+		if v == "" {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		slices.Sort(missing)
+		msg := "sign-in isn't configured, so set " + strings.Join(missing, ", ")
+		if !dev {
+			return nil, errors.New(msg)
+		}
+		slog.Warn(msg + "; dev requests without a session get the dev admin")
+		return nil, nil
+	}
+	public, err := url.Parse(cfg.PublicURL)
+	if err != nil || public.Scheme == "" || public.Host == "" || public.RawQuery != "" || public.Fragment != "" {
+		return nil, fmt.Errorf("ADX_PUBLIC_URL %q isn't an origin URL", cfg.PublicURL)
+	}
+	if public.Scheme != "https" && !dev {
+		return nil, fmt.Errorf("ADX_PUBLIC_URL %q must use https", cfg.PublicURL)
+	}
+	provider, err := authentik.NewOIDC(ctx, authentik.OIDCConfig{
+		Issuer: cfg.AuthentikIssuer, ClientID: cfg.OIDCClientID, ClientSecret: cfg.OIDCClientSecret,
+		RedirectURL: strings.TrimRight(cfg.PublicURL, "/") + "/api/auth/callback",
+	})
+	if err != nil {
+		return nil, err
+	}
+	return provider, nil
 }
 
 type unconfigured struct{ err error }

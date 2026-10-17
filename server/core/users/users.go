@@ -172,6 +172,11 @@ func (u *Users) SetRole(ctx context.Context, actor core.Actor, id int64, role co
 		if err := q.SetUserRole(ctx, store.SetUserRoleParams{Role: string(role), ID: id}); err != nil {
 			return err
 		}
+		if err := q.SetMembershipRole(ctx, store.SetMembershipRoleParams{
+			Role: string(role), WorkspaceID: core.DefaultWorkspace, UserID: id,
+		}); err != nil {
+			return err
+		}
 		return audit.Record(ctx, q, actor, audit.Entry{
 			Action:       audit.UserRoleChanged,
 			TargetUserID: id,
@@ -194,6 +199,18 @@ func (u *Users) Disable(ctx context.Context, actor core.Actor, id int64) (User, 
 			return nil
 		}
 		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(StatusDisabled), ID: id}); err != nil {
+			return err
+		}
+		if err := q.SetMembershipEnabled(ctx, store.SetMembershipEnabledParams{
+			Enabled: 0, WorkspaceID: core.DefaultWorkspace, UserID: id,
+		}); err != nil {
+			return err
+		}
+		// Their open web sessions end in the same transaction, so the next
+		// request they make is refused.
+		if err := q.EndUserSessions(ctx, store.EndUserSessionsParams{
+			EndedAt: sql.NullTime{Time: time.Now().UTC(), Valid: true}, UserID: id,
+		}); err != nil {
 			return err
 		}
 		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserDisabled, TargetUserID: id})
@@ -230,6 +247,11 @@ func (u *Users) Enable(ctx context.Context, actor core.Actor, id int64) (User, e
 			status = StatusActive
 		}
 		if err := q.SetUserStatus(ctx, store.SetUserStatusParams{Status: string(status), ID: id}); err != nil {
+			return err
+		}
+		if err := q.SetMembershipEnabled(ctx, store.SetMembershipEnabledParams{
+			Enabled: 1, WorkspaceID: core.DefaultWorkspace, UserID: id,
+		}); err != nil {
 			return err
 		}
 		return audit.Record(ctx, q, actor, audit.Entry{Action: audit.UserEnabled, TargetUserID: id})
@@ -380,6 +402,11 @@ func (u *Users) add(ctx context.Context, actor core.Actor, in AddInput, linkUUID
 			return core.Conflict("someone was just added with %s or the same authentik account, so check the list", email)
 		}
 		if err != nil {
+			return err
+		}
+		if err := q.CreateMembership(ctx, store.CreateMembershipParams{
+			WorkspaceID: core.DefaultWorkspace, UserID: row.ID, Role: string(in.Role), Enabled: 1, CreatedAt: row.CreatedAt,
+		}); err != nil {
 			return err
 		}
 		return audit.Record(ctx, q, actor, audit.Entry{

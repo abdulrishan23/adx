@@ -131,13 +131,63 @@
       "depends_on": [
         "B0.1"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00006_workspaces_and_sessions.sql",
+        "server/store/queries/identity.sql",
+        "server/core/core.go (WorkspaceID, DefaultWorkspace, SystemIn)",
+        "server/core/identity/",
+        "server/core/users/users.go (memberships, end sessions on disable)",
+        "server/providers/authentik/oidc.go",
+        "server/api/actor.go",
+        "server/api/auth.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go (configuredOIDC)",
+        "web/src/api/session.ts",
+        "web/src/components/account-menu.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Unauthenticated and forged-role requests cannot access protected data",
+          "result": "pass",
+          "evidence": "api TestUnauthenticatedAndForgedRequestsAreRefused, TestSessionCarriesMembershipAndEndsOnDisable"
+        },
+        {
+          "check": "Disabled/expired membership stops protected operations",
+          "result": "pass",
+          "evidence": "identity TestSessionsFollowTheUserAndExpire; api disable \u2192 401"
+        },
+        {
+          "check": "Dev admin path is impossible outside explicit development mode",
+          "result": "pass",
+          "evidence": "api TestDevAdminOnlyWithoutASession; TestOutsideDevEverythingIsRefused"
+        }
+      ],
+      "remaining": [
+        "MCP OAuth server for Claude (D-24) not started",
+        "Live sign-in against WokeWorks authentik unverified"
+      ],
+      "blockers": [
+        {
+          "capability": "live sign-in",
+          "unblocks": "adx-auth provider client ID/secret, redirect URI registration and groups scope mapping from the authentik admin (WokeWorks)"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "role or user taken from a client header",
+        "session surviving disable or expiry",
+        "replayed or forged callback starting a session",
+        "ID token with another browser's nonce or another key accepted",
+        "dev admin reachable in production"
+      ]
     },
     {
       "id": "B0.4",

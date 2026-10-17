@@ -48,3 +48,36 @@ func TestDevOnlyListensLocally(t *testing.T) {
 		assert.Error(t, devAddrIsLocal(addr), addr)
 	}
 }
+
+// Catches: a deployed server starting without sign-in settings, a callback
+// behind plain http, or dev refusing to start without authentik.
+func TestOIDCConfig(t *testing.T) {
+	full := config{
+		AuthentikIssuer: "https://authentik.example/application/o/adx-auth/", PublicURL: "https://adx.example",
+		OIDCClientID: "adx", OIDCClientSecret: "secret",
+	}
+	_, err := configuredOIDC(t.Context(), config{AuthentikIssuer: full.AuthentikIssuer}, false)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "ADX_OIDC_CLIENT_ID, ADX_OIDC_CLIENT_SECRET, ADX_PUBLIC_URL")
+
+	plain := full
+	plain.PublicURL = "http://adx.example"
+	_, err = configuredOIDC(t.Context(), plain, false)
+	assert.ErrorContains(t, err, "must use https")
+
+	bad := full
+	bad.PublicURL = "adx.example/?x=1"
+	_, err = configuredOIDC(t.Context(), bad, false)
+	assert.ErrorContains(t, err, "origin URL")
+
+	provider, err := configuredOIDC(t.Context(), config{}, true)
+	require.NoError(t, err, "dev starts without sign-in")
+	assert.Nil(t, provider)
+
+	// With everything set, discovery must reach the issuer; an unreachable one fails loudly.
+	unreachable := full
+	unreachable.AuthentikIssuer = "https://127.0.0.1:1/application/o/adx-auth/"
+	_, err = configuredOIDC(t.Context(), unreachable, false)
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "discovery")
+}

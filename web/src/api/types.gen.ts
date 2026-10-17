@@ -38,6 +38,9 @@ export interface CreateInput {
     name: string;
 }
 
+// From core/core.go
+export const DefaultWorkspace = 1;
+
 // From api/respond.go
 export interface ErrorResponse {
     error: string;
@@ -70,6 +73,25 @@ export interface Readiness {
 
 // From core/core.go
 export type Role = "admin" | "marketer" | "viewer";
+
+// From identity/identity.go
+export interface Session {
+    user: User;
+    role: Role;
+    workspaceId: number;
+    workspace: string;
+    expiresAt: string;
+}
+
+// From api/auth.go
+export interface SessionResponse {
+    user: User | null;
+    role: Role;
+    workspaceId: number;
+    workspace: string;
+    expiresAt: string | null;
+    dev: boolean;
+}
 
 // From connections/gohighlevel.go
 export interface StartResult {

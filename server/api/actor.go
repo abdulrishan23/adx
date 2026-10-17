@@ -2,25 +2,50 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/identity"
 )
 
 type actorKey struct{}
+type sessionKey struct{}
 
-// withActor puts the acting user on the request. Until auth is designed it
-// hands every request a dev admin, and only in dev. Outside dev it refuses
-// everything, so a deployed server can't run with a fake admin. Real login
-// replaces this function and nothing else.
-func withActor(dev bool) func(http.Handler) http.Handler {
+// sessionCookie carries the random session ID. It's HttpOnly, SameSite=Lax
+// and Secure outside dev, where Caddy terminates TLS.
+const sessionCookie = "adx_session"
+
+// withActor puts the acting user on the request. A session cookie is looked
+// up in core/identity on every request, so a disabled person or a changed
+// role applies at once. Nothing the client sends besides the cookie is
+// consulted: a role header is ignored. Without a cookie, dev mode hands out
+// an admin in the default workspace, and only dev mode. Outside dev every
+// request without a live session is 401.
+func withActor(dev bool, id *identity.Identity) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !dev {
-				writeError(w, http.StatusUnauthorized, "sign-in is not set up yet")
+			if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" && id != nil {
+				actor, session, err := id.Resolve(r.Context(), core.ViaWeb, cookie.Value)
+				switch {
+				case errors.Is(err, identity.ErrNoSession):
+					clearSessionCookie(w, dev)
+					writeError(w, http.StatusUnauthorized, "your session has ended, sign in again")
+					return
+				case err != nil:
+					writeError(w, http.StatusInternalServerError, "something went wrong")
+					return
+				}
+				ctx := context.WithValue(r.Context(), actorKey{}, actor)
+				ctx = context.WithValue(ctx, sessionKey{}, session)
+				next.ServeHTTP(w, r.WithContext(ctx))
 				return
 			}
-			actor := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb}
+			if !dev {
+				writeError(w, http.StatusUnauthorized, "sign in to continue")
+				return
+			}
+			actor := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), actorKey{}, actor)))
 		})
 	}
@@ -29,4 +54,26 @@ func withActor(dev bool) func(http.Handler) http.Handler {
 func actorFrom(r *http.Request) core.Actor {
 	actor, _ := r.Context().Value(actorKey{}).(core.Actor)
 	return actor
+}
+
+// sessionFrom returns the session behind the request, if a real one exists.
+func sessionFrom(r *http.Request) (identity.Session, bool) {
+	s, ok := r.Context().Value(sessionKey{}).(identity.Session)
+	return s, ok
+}
+
+func setSessionCookie(w http.ResponseWriter, token string, dev bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: token, Path: "/", HttpOnly: true,
+		SameSite: http.SameSiteLaxMode, Secure: !dev,
+		// Session cookie: no Max-Age, so the browser drops it when closed and
+		// the server's own expiry is the real limit.
+	})
+}
+
+func clearSessionCookie(w http.ResponseWriter, dev bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name: sessionCookie, Value: "", Path: "/", HttpOnly: true,
+		SameSite: http.SameSiteLaxMode, Secure: !dev, MaxAge: -1,
+	})
 }

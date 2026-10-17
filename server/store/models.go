@@ -54,10 +54,38 @@ type Credential struct {
 	ConnectedAt     time.Time
 }
 
+type Membership struct {
+	ID          int64
+	WorkspaceID int64
+	UserID      int64
+	Role        string
+	Enabled     int64
+	CreatedAt   time.Time
+}
+
 type Project struct {
 	ID        int64
 	Name      string
 	CreatedAt time.Time
+}
+
+type Session struct {
+	IDHash      string
+	UserID      int64
+	WorkspaceID int64
+	Via         string
+	CreatedAt   time.Time
+	LastSeenAt  time.Time
+	ExpiresAt   time.Time
+	EndedAt     sql.NullTime
+}
+
+type SignInAttempt struct {
+	StateHash    string
+	NonceHash    string
+	CodeVerifier string
+	ReturnTo     string
+	ExpiresAt    time.Time
 }
 
 type User struct {
@@ -70,4 +98,11 @@ type User struct {
 	AuthentikUuid string
 	CreatedAt     time.Time
 	LastSignInAt  sql.NullTime
+}
+
+type Workspace struct {
+	ID        int64
+	Slug      string
+	Name      string
+	CreatedAt time.Time
 }

@@ -25,19 +25,39 @@ const (
 	ViaStartup Via = "startup"
 )
 
+// DefaultWorkspace is Reportage, the one workspace phase 0 bootstraps
+// (migration 00006). Multi-client provisioning in phase 6 makes this a
+// per-request value everywhere; until then rows that need a workspace use it.
+const DefaultWorkspace int64 = 1
+
 // Actor is who is calling a core function. Every core function takes one, so
 // web sessions, MCP tokens and jobs all go through the same checks. Core never
 // reads cookies or tokens itself. UserID 0 means ADX itself, such as a job or
-// startup, rather than a person.
+// startup, rather than a person. WorkspaceID is the workspace the actor is
+// acting in; it comes from the session's membership, never from the client.
+// 0 means no workspace, and workspace-owned data refuses it.
 type Actor struct {
-	UserID int64
-	Role   Role
-	Via    Via
+	UserID      int64
+	Role        Role
+	Via         Via
+	WorkspaceID int64
 }
 
-// System is ADX acting on its own behalf. It may do anything an admin may.
+// System is ADX acting on its own behalf, in the default workspace. It may
+// do anything an admin may.
 func System(via Via) Actor {
-	return Actor{UserID: 0, Role: RoleAdmin, Via: via}
+	return Actor{UserID: 0, Role: RoleAdmin, Via: via, WorkspaceID: DefaultWorkspace}
+}
+
+// SystemIn is System acting in a specific workspace, for jobs that run per
+// workspace.
+func SystemIn(via Via, workspaceID int64) Actor {
+	return Actor{UserID: 0, Role: RoleAdmin, Via: via, WorkspaceID: workspaceID}
+}
+
+// InWorkspace reports whether the actor may touch rows of workspace id.
+func (a Actor) InWorkspace(id int64) bool {
+	return a.WorkspaceID != 0 && a.WorkspaceID == id
 }
 
 // Valid reports whether r is one of the roles above.

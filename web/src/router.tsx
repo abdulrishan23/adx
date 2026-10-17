@@ -7,6 +7,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
@@ -33,6 +34,9 @@ function Layout() {
           >
             Projects
           </Link>
+          <div className="ml-auto">
+            <AccountMenu />
+          </div>
         </nav>
       </header>
       <main className="mx-auto max-w-5xl px-6 py-8">

@@ -41,3 +41,20 @@ make check && make test                                        # 0 issues, all p
 - Web: `pnpm check`, `pnpm typecheck` clean; the footer shows Checking / Server ready / Server not ready: &lt;checks&gt; / Server unreachable. Not browser-tested yet (no dev server run in this task).
 
 Live: `deploy/release.sh`, the systemd units and the Caddyfile were written, not executed. No host access in this session.
+
+## B0.3 Real session identity and workspace scope
+
+Local:
+
+```
+cd server && go test ./core/identity/ ./providers/authentik/ ./api/ ./cmd/adx/ ./core/users/   # ok
+make check && make test
+```
+
+- `core/identity`: scoped session with membership role and workspace; cookie value never stored; callback single-use, expired, forged, provider-refused, outside-group and unknown-subject all refused; role change applies on next request; disable ends the session; 7-day idle and 30-day absolute expiry; sign-out; open-redirect `return_to` values collapse to `/`; provider failure starts no session.
+- `providers/authentik` OIDC against an in-process issuer (discovery, JWKS, token, userinfo): authorize URL has state, nonce, S256 challenge and the groups scope and never the verifier; the exchange sends code, verifier and redirect URI; groups come from the ID token or userinfo; wrong nonce, wrong signing key and a bad code are refused; unreachable issuer fails startup.
+- `api`: outside dev, no cookie, forged role/user headers and an invented cookie are all 401 and the dead cookie is cleared; a viewer's session stays viewer whatever header is sent; disabling the user makes the next request 401; logout ends only that session and a cross-site POST can't log out; dev admin exists only in dev and only without a session.
+- `cmd/adx`: production requires issuer, public URL, client ID and secret, https public URL, and reachable discovery; dev starts without them.
+- Web: `pnpm check`, `pnpm typecheck` clean. Header shows checking / Sign in / Dev admin (no sign-in) / name · role · workspace with Sign out.
+
+Live: not verified. Needs the `adx-auth` provider's client ID and secret, its redirect URI set to `ADX_PUBLIC_URL/api/auth/callback`, and the groups scope mapping. Owner of the authentik instance: WokeWorks (D-24).
