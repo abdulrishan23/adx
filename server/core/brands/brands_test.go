@@ -45,11 +45,11 @@ func setup(t *testing.T) *env {
 	c, err := e.brands.Create(ctx, coretest.Admin, brands.BrandInput{Name: "Rival Developments", Kind: brands.Competitor})
 	require.NoError(t, err)
 	e.rival = c.ID
-	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.wadi = p.ID
 	require.NoError(t, e.brands.AssignProject(ctx, coretest.Admin, e.wadi, e.reportage))
-	rp, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "Rival Towers", CreatedAt: e.clock.Now()})
+	rp, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "Rival Towers", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.rivalProj = rp.ID
 	require.NoError(t, e.brands.AssignProject(ctx, coretest.Admin, e.rivalProj, e.rival))

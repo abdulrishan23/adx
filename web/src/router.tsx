@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { AgentsPage } from "@/routes/agents";
 import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
@@ -37,6 +38,7 @@ import { RunsPage } from "@/routes/runs";
 import { ScoringPage } from "@/routes/scoring";
 import { SupervisorPage } from "@/routes/supervisor";
 import { WorkflowsPage } from "@/routes/workflows";
+import { WorkspacesPage } from "@/routes/workspaces";
 
 // Routes are declared in code instead of generated from files, so the whole
 // route tree is readable in one place.
@@ -236,6 +238,13 @@ function Layout() {
             Funnel
           </Link>
           <Link
+            to="/settings/workspaces"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Workspaces
+          </Link>
+          <Link
             to="/runs"
             className="text-muted-foreground"
             activeProps={{ className: "text-foreground" }}
@@ -243,6 +252,7 @@ function Layout() {
             Runs
           </Link>
           <div className="ml-auto">
+            <WorkspaceSwitcher />
             <AccountMenu />
           </div>
         </nav>
@@ -286,6 +296,12 @@ const outreachRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/outreach",
   component: OutreachPage,
+});
+
+const workspacesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/workspaces",
+  component: WorkspacesPage,
 });
 
 const learningRoute = createRoute({
@@ -445,6 +461,7 @@ const routeTree = rootRoute.addChildren([
   connectionsRoute,
   outreachRoute,
   learningRoute,
+  workspacesRoute,
   supervisorRoute,
   workflowsRoute,
   agentsRoute,

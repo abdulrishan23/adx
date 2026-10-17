@@ -52,7 +52,7 @@ func setup(t *testing.T, withRoute bool) *env {
 		cfg.Telephony = e.tel
 	}
 	e.calls = calls.New(e.db, cfg)
-	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.project = p.ID
 	return e

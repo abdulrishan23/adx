@@ -41,6 +41,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/signals"
 	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/workflows"
+	"github.com/WokeWorks/adx/server/core/workspaces"
 )
 
 type Deps struct {
@@ -80,6 +81,7 @@ type Deps struct {
 	Workflows     *workflows.Workflows
 	Supervisor    *supervisor.Supervisor
 	Learning      *learning.Learning
+	Workspaces    *workspaces.Workspaces
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -118,13 +120,14 @@ type handlers struct {
 	workflows     *workflows.Workflows
 	supervisor    *supervisor.Supervisor
 	learning      *learning.Learning
+	workspaces    *workspaces.Workspaces
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -163,6 +166,15 @@ func NewRouter(d Deps) http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(withActor(d.Dev, d.Identity))
 		r.Get("/api/session", h.session)
+		r.Post("/api/session/switch", h.switchWorkspace)
+		r.Get("/api/workspaces", h.listWorkspaces)
+		r.Post("/api/workspaces", h.createWorkspace)
+		r.Get("/api/workspaces/members", h.listMembers)
+		r.Post("/api/workspaces/members", h.addMember)
+		r.Delete("/api/workspaces/members/{id}", h.removeMember)
+		r.Get("/api/settings/industry", h.getIndustry)
+		r.Put("/api/settings/industry", h.putIndustry)
+		r.Get("/api/settings/industry/versions/{version}", h.getIndustryVersion)
 		r.Get("/api/accounts", h.listAccounts)
 		if h.policies != nil {
 			r.Get("/api/policies", h.getPolicies)

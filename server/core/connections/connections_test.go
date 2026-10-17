@@ -26,8 +26,8 @@ import (
 )
 
 var (
-	admin   = core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb}
-	viewer  = core.Actor{UserID: 2, Role: core.RoleViewer, Via: core.ViaWeb}
+	admin   = core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
+	viewer  = core.Actor{UserID: 2, Role: core.RoleViewer, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
 	binding = strings.Repeat("browser", 8)
 )
 
@@ -646,4 +646,38 @@ func TestAdsConnectDiscoversAccountsAndRefreshesTokens(t *testing.T) {
 	_, err = f.service.FinishAds(t.Context(), admin, connections.ProviderGoogleAds, connections.FinishInput{State: u.Query().Get("state"), BrowserBinding: binding, Code: "code"})
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindInvalid, ce.Kind)
+}
+
+// Catches: a location connected by one client being connected again by
+// another, and one client reading another's connection or token.
+func TestALocationBelongsToOneClient(t *testing.T) {
+	f := newFixture(t)
+	first := f.connect(t)
+	acme, err := f.db.Writer().CreateWorkspace(t.Context(), store.CreateWorkspaceParams{Slug: "acme", Name: "Acme", CreatedAt: f.now})
+	require.NoError(t, err)
+	acmeAdmin := core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: acme.ID}
+
+	f.provider.tokens = validTokens("location-1", "stolen")
+	start, err := f.service.Start(t.Context(), acmeAdmin, binding)
+	require.NoError(t, err)
+	u, err := url.Parse(start.AuthorizationURL)
+	require.NoError(t, err)
+	_, err = f.service.Finish(t.Context(), acmeAdmin, connections.FinishInput{State: u.Query().Get("state"), BrowserBinding: binding, Code: "one-time-code"})
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindConflict, ce.Kind)
+
+	list, err := f.service.List(t.Context(), acmeAdmin)
+	require.NoError(t, err)
+	assert.Empty(t, list, "Reportage's location is not in Acme's list")
+	_, err = f.service.Check(t.Context(), acmeAdmin, first.LocationID)
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindNotFound, ce.Kind)
+	_, err = f.service.GHLToken(t.Context(), acmeAdmin, first.LocationID)
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindNotFound, ce.Kind)
+	still, err := f.service.Check(t.Context(), admin, first.LocationID)
+	require.NoError(t, err)
+	assert.Equal(t, "access-original", f.provider.lastAccess, "the stolen tokens never replaced Reportage's")
+	assert.Equal(t, first.LocationID, still.LocationID)
 }

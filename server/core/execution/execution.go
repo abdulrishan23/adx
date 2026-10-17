@@ -258,6 +258,9 @@ func (d *Dispatcher) prepare(ctx context.Context, row store.ExecutionIntent) (ta
 		return target{}, "", err
 	}
 	t := target{proposal: prop, account: acct, platform: acct.Account.Type}
+	if acct.Account.WorkspaceID != row.WorkspaceID {
+		return t, "held: the account belongs to another workspace; nothing was sent", nil
+	}
 	decision, err := d.policies.Evaluate(ctx, actor, policies.PolicyRequest{AccountID: row.AccountID, Action: policies.WriteAction(prop.Action), WriteCapability: capabilityFor(policies.WriteAction(prop.Action))})
 	if err != nil {
 		return t, "", err

@@ -38,10 +38,10 @@ func setup(t *testing.T, failAfter int) *env {
 	e.pipe = pipeline.New(e.db, ev, pipeline.Config{Clock: e.clock, FailAfter: failAfter})
 	cred, err := e.db.Writer().UpsertCredential(ctx, store.UpsertCredentialParams{Provider: "gohighlevel", Kind: "private_token", Subject: "loc", EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
+	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.acct = acct.ID
-	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.project = p.ID
 	return e
@@ -199,7 +199,7 @@ func TestMultipleEnquiriesPerPersonStayIndependent(t *testing.T) {
 	e.configure(t, pipeline.OwnerADX)
 	d, err := e.crm.Create(ctx, coretest.Marketer, crm.PersonInput{DisplayName: "Amal Haddad", Phone: "0501111111"})
 	require.NoError(t, err)
-	oceana, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "Oceana", CreatedAt: e.clock.Now()})
+	oceana, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "Oceana", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e1, err := e.db.Writer().CreateEnquiry(ctx, store.CreateEnquiryParams{WorkspaceID: 1, PersonID: d.Person.ID, ProjectID: sql.NullInt64{Int64: e.project, Valid: true}, SourceKind: "manual", SourceRef: "a", FirstContactAt: e.clock.Now(), LastActivityAt: e.clock.Now(), CreatedAt: e.clock.Now()})
 	require.NoError(t, err)

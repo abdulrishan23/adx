@@ -42,7 +42,7 @@ func TestMigrationsKeepExistingData(t *testing.T) {
 	require.NoError(t, db.Migrate(ctx))
 
 	q := db.Reader()
-	projects, err := q.ListProjects(ctx)
+	projects, err := q.ListProjects(ctx, 1)
 	require.NoError(t, err)
 	require.Len(t, projects, 2)
 	assert.Equal(t, "Oceana", projects[0].Name)
@@ -77,7 +77,7 @@ func TestBackupToCopiesEveryCommittedRow(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { db.Close() })
 	require.NoError(t, db.Migrate(ctx))
-	_, err = db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "Verdana", CreatedAt: time.Now().UTC()})
+	_, err = db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: 1, Name: "Verdana", CreatedAt: time.Now().UTC()})
 	require.NoError(t, err)
 
 	target := filepath.Join(dir, "backup", "adx.db")
@@ -91,7 +91,7 @@ func TestBackupToCopiesEveryCommittedRow(t *testing.T) {
 	pending, err := copied.Pending(ctx)
 	require.NoError(t, err)
 	assert.False(t, pending)
-	projects, err := copied.Reader().ListProjects(ctx)
+	projects, err := copied.Reader().ListProjects(ctx, 1)
 	require.NoError(t, err)
 	require.Len(t, projects, 1)
 	assert.Equal(t, "Verdana", projects[0].Name)

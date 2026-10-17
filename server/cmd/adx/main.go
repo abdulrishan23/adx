@@ -57,6 +57,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/voice"
 	"github.com/WokeWorks/adx/server/core/workflows"
+	"github.com/WokeWorks/adx/server/core/workspaces"
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
@@ -561,6 +562,7 @@ func run() error {
 			Workflows:     workflowService,
 			Supervisor:    supervisorService,
 			Learning:      learningService,
+			Workspaces:    workspaces.New(db, nil),
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

@@ -31,10 +31,10 @@ func New(db *store.DB) *Projects {
 }
 
 func (p *Projects) List(ctx context.Context, actor core.Actor) ([]Project, error) {
-	if !actor.AtLeast(core.RoleViewer) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return nil, core.ErrForbidden
 	}
-	rows, err := p.db.Reader().ListProjects(ctx)
+	rows, err := p.db.Reader().ListProjects(ctx, actor.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (p *Projects) List(ctx context.Context, actor core.Actor) ([]Project, error
 }
 
 func (p *Projects) Create(ctx context.Context, actor core.Actor, in CreateInput) (Project, error) {
-	if !actor.AtLeast(core.RoleAdmin) {
+	if !actor.AtLeast(core.RoleAdmin) || actor.WorkspaceID == 0 {
 		return Project{}, core.ErrForbidden
 	}
 	name := strings.TrimSpace(in.Name)
@@ -57,8 +57,9 @@ func (p *Projects) Create(ctx context.Context, actor core.Actor, in CreateInput)
 		return Project{}, core.Invalid("name must be 100 characters or fewer")
 	}
 	row, err := p.db.Writer().CreateProject(ctx, store.CreateProjectParams{
-		Name:      name,
-		CreatedAt: time.Now().UTC(),
+		WorkspaceID: actor.WorkspaceID,
+		Name:        name,
+		CreatedAt:   time.Now().UTC(),
 	})
 	if store.IsUniqueViolation(err) {
 		return Project{}, core.Conflict("a project named %q already exists", name)

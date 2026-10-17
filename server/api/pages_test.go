@@ -44,7 +44,7 @@ func TestPublicPagesAndForms(t *testing.T) {
 	admin := core.Actor{UserID: 1, Role: core.RoleAdmin, WorkspaceID: 1}
 	b, err := br.Create(t.Context(), admin, brands.BrandInput{Name: "Reportage", Kind: brands.Own})
 	require.NoError(t, err)
-	p, err := db.Writer().CreateProject(t.Context(), store.CreateProjectParams{Name: "The Wadi"})
+	p, err := db.Writer().CreateProject(t.Context(), store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi"})
 	require.NoError(t, err)
 	require.NoError(t, br.AssignProject(t.Context(), admin, p.ID, b.ID))
 

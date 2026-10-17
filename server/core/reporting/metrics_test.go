@@ -20,7 +20,7 @@ import (
 func seed(t *testing.T, e *env) (googleCampaign, metaCampaign store.AdCampaign) {
 	t.Helper()
 	ctx := t.Context()
-	project, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	project, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	now := e.clock.Now()
 	googleCampaign, err = e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.googleAcc, Platform: "google_ads", ExternalID: "g1",

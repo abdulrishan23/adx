@@ -164,8 +164,12 @@ func (c *Connections) FinishAds(ctx context.Context, actor core.Actor, provider 
 				// of the accounts that do.
 				continue
 			}
+			if err := claim(ctx, q, actor.WorkspaceID, provider, a.ExternalID); err != nil {
+				return err
+			}
 			acct, err := q.UpsertAccount(ctx, store.UpsertAccountParams{
-				Type: provider, ExternalID: a.ExternalID, CredentialID: cred.ID, ParentID: nullString(a.ParentID), Name: nullString(a.Name),
+				WorkspaceID: actor.WorkspaceID,
+				Type:        provider, ExternalID: a.ExternalID, CredentialID: cred.ID, ParentID: nullString(a.ParentID), Name: nullString(a.Name),
 				Currency: nullString(a.Currency), TimeZone: nullString(a.TimeZone), Details: fmt.Sprintf(`{"status":%q}`, a.Status),
 				ConnectedAt: now, VerifiedAt: now,
 			})
@@ -204,7 +208,7 @@ func (c *Connections) ProviderToken(ctx context.Context, actor core.Actor, accou
 	c.credentials.Lock()
 	defer c.credentials.Unlock()
 	row, err := c.db.Reader().GetAccountByID(ctx, accountID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && actor.WorkspaceID != 0 && row.Account.WorkspaceID != actor.WorkspaceID) {
 		return "", core.NotFound("account %d is not connected", accountID)
 	}
 	if err != nil {

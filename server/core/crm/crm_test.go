@@ -52,13 +52,13 @@ func setup(t *testing.T) *env {
 	e.crm = crm.New(e.db, evidence.New(e.db, e.clock), crm.Config{Clock: e.clock, Enricher: e.enricher})
 	cred, err := e.db.Writer().UpsertCredential(ctx, store.UpsertCredentialParams{Provider: "gohighlevel", Kind: "private_token", Subject: "loc", EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
+	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.acct = acct.ID
-	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.wadi = p.ID
-	o, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "Oceana", CreatedAt: e.clock.Now()})
+	o, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "Oceana", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.oceana = o.ID
 	return e

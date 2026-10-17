@@ -40,7 +40,7 @@ func setup(t *testing.T, limits assistant.Limits) *env {
 	// One campaign with 1234.56 AED spent on 2026-10-16.
 	cred, err := e.db.Writer().UpsertCredential(t.Context(), store.UpsertCredentialParams{Provider: "google_ads", Kind: "oauth", Subject: "u", EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{Type: "google_ads", ExternalID: "1", CredentialID: cred.ID, Currency: sql.NullString{String: "AED", Valid: true},
+	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "google_ads", ExternalID: "1", CredentialID: cred.ID, Currency: sql.NullString{String: "AED", Valid: true},
 		TimeZone: sql.NullString{String: "Asia/Dubai", Valid: true}, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	c, err := e.db.Writer().UpsertAdCampaign(t.Context(), store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: acct.ID, Platform: "google_ads", ExternalID: "g1", Name: "Wadi Search", Status: "ENABLED",

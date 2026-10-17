@@ -93,6 +93,15 @@ var ErrNoAccess = &core.Error{
 
 var errLastAdmin = core.Conflict("ADX needs at least one admin who isn't disabled")
 
+// membershipWorkspace is the workspace whose membership a people change
+// touches: the actor's, or Reportage for a system actor without one.
+func membershipWorkspace(actor core.Actor) int64 {
+	if actor.WorkspaceID != 0 {
+		return actor.WorkspaceID
+	}
+	return core.DefaultWorkspace
+}
+
 type Users struct {
 	db       *store.DB
 	accounts Accounts
@@ -173,7 +182,7 @@ func (u *Users) SetRole(ctx context.Context, actor core.Actor, id int64, role co
 			return err
 		}
 		if err := q.SetMembershipRole(ctx, store.SetMembershipRoleParams{
-			Role: string(role), WorkspaceID: core.DefaultWorkspace, UserID: id,
+			Role: string(role), WorkspaceID: membershipWorkspace(actor), UserID: id,
 		}); err != nil {
 			return err
 		}
@@ -202,7 +211,7 @@ func (u *Users) Disable(ctx context.Context, actor core.Actor, id int64) (User, 
 			return err
 		}
 		if err := q.SetMembershipEnabled(ctx, store.SetMembershipEnabledParams{
-			Enabled: 0, WorkspaceID: core.DefaultWorkspace, UserID: id,
+			Enabled: 0, WorkspaceID: membershipWorkspace(actor), UserID: id,
 		}); err != nil {
 			return err
 		}
@@ -250,7 +259,7 @@ func (u *Users) Enable(ctx context.Context, actor core.Actor, id int64) (User, e
 			return err
 		}
 		if err := q.SetMembershipEnabled(ctx, store.SetMembershipEnabledParams{
-			Enabled: 1, WorkspaceID: core.DefaultWorkspace, UserID: id,
+			Enabled: 1, WorkspaceID: membershipWorkspace(actor), UserID: id,
 		}); err != nil {
 			return err
 		}
@@ -405,7 +414,7 @@ func (u *Users) add(ctx context.Context, actor core.Actor, in AddInput, linkUUID
 			return err
 		}
 		if err := q.CreateMembership(ctx, store.CreateMembershipParams{
-			WorkspaceID: core.DefaultWorkspace, UserID: row.ID, Role: string(in.Role), Enabled: 1, CreatedAt: row.CreatedAt,
+			WorkspaceID: membershipWorkspace(actor), UserID: row.ID, Role: string(in.Role), Enabled: 1, CreatedAt: row.CreatedAt,
 		}); err != nil {
 			return err
 		}

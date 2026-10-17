@@ -747,7 +747,7 @@ export interface CompleteTaskInput {
     canceled: boolean;
 }
 
-// From runs/runs.go
+// From evidence/evidence.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -1570,6 +1570,29 @@ export interface InboxResponse {
     items: InboxItem[];
 }
 
+// From workspaces/workspaces.go
+export interface IndustryConfig {
+    version: number;
+    document: IndustryDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From workspaces/workspaces.go
+export interface IndustryDocument {
+    industry: string;
+    vocabulary: Record<string, string> | null;
+    stages: string[];
+    qualifiers: string[];
+    notes: string;
+}
+
+// From workspaces/workspaces.go
+export interface IndustryState {
+    current: IndustryConfig | null;
+    versions: number[];
+}
+
 // From api/learning.go
 export interface InsightsResponse {
     insights: MemoryInsight[];
@@ -2026,6 +2049,26 @@ export interface MeasurementRequirement {
     name: string;
     required: boolean;
     note: string;
+}
+
+// From workspaces/workspaces.go
+export interface Member {
+    userId: number;
+    email: string;
+    name: string | null;
+    role: Role;
+    enabled: boolean;
+}
+
+// From workspaces/workspaces.go
+export interface MemberInput {
+    email: string;
+    role: Role;
+}
+
+// From api/workspaces.go
+export interface MembersResponse {
+    members: Member[];
 }
 
 // From learning/learning.go
@@ -3374,7 +3417,7 @@ export interface ReviseInsightInput {
 }
 
 // From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From calls/calls.go
 export interface Route {
@@ -3823,6 +3866,11 @@ export interface Suppression {
     liftReason: string;
 }
 
+// From api/workspaces.go
+export interface SwitchWorkspaceInput {
+    workspaceId: number;
+}
+
 // From api/crm.go
 export interface SyncResponse {
     linked: number;
@@ -4113,6 +4161,28 @@ export interface WorkflowTask {
     createdAt: string;
     startedAt: string | null;
     finishedAt: string | null;
+}
+
+// From workspaces/workspaces.go
+export interface Workspace {
+    id: number;
+    slug: string;
+    name: string;
+    role: Role;
+    current: boolean;
+    createdAt: string;
+}
+
+// From workspaces/workspaces.go
+export interface WorkspaceInput {
+    slug: string;
+    name: string;
+    industry: string;
+}
+
+// From api/workspaces.go
+export interface WorkspacesResponse {
+    workspaces: Workspace[];
 }
 
 // From policies/policies.go

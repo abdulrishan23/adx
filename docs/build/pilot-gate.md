@@ -79,3 +79,17 @@ Taken on 2026-10-17. Every phase 4 task is implemented locally with its pass con
 | Operator speech as a previewed read-only transcript; evaluation against labels; predictive claims gated | `core/assistant/assistant_test.go`, `core/evaluation/evaluation_test.go` | no labelled calls |
 
 What live use still needs, in the owner's hands: Reportage's written reversal of "not open to automated calls" and a chosen, authorized UAE telecom route; a messaging policy and provider; `ADX_WEBHOOK_SECRET` with a GoHighLevel webhook; `ADX_LIVE_WRITES=1` with `ghl.lead_fields.set` allowed for the location; ElevenLabs credentials with a `ulaw_8000` agent.
+
+## Phase 5 gate: native AI CRM and coordinated agents
+
+Taken on 2026-10-17. Every phase 5 task is implemented locally with its pass conditions as tests. Nothing in phase 5 reaches an outside system except through a proposal under policy, and no agent definition goes live without an admin where it widens access.
+
+| Capability | Where it is proven | Live state |
+|---|---|---|
+| Native pipeline: one opportunity per enquiry, owned stages, versioned edits, follow-ups, previewed resumable import | `core/pipeline/pipeline_test.go` | ADX's own data; no provider call |
+| Registry: immutable skill, agent and workflow versions, admin-gated widening, schema-checked outputs, bounded graphs | `core/registry/registry_test.go` | none needed |
+| Workflow engine: leases, once-only external steps, downstream invalidation, bounded loops, budgets, policy-routed proposals | `core/workflows/workflows_test.go` | no model-run workflow has executed (`ADX_MODEL_API_KEY` unset) |
+| Supervisor: unified inbox, autonomy modes with caps, arbitration or escalation, non-retroactive policy, kill switch everywhere | `core/supervisor/supervisor_test.go` | none needed |
+| Learning: decisions, cohort-attached outcomes, evidence-gated insights, memory into plans and research | `core/learning/learning_test.go` | none needed |
+
+What live use still needs: a model key for the workflow runner; Reportage's objective names and autonomy modes; and the phase 3 and 4 blockers for anything a workflow proposes to actually execute.

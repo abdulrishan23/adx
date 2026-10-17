@@ -11,6 +11,7 @@ import (
 
 type Account struct {
 	ID           int64
+	WorkspaceID  int64
 	Type         string
 	ExternalID   string
 	CredentialID int64
@@ -603,6 +604,15 @@ type FunnelMapping struct {
 	CreatedAt   time.Time
 }
 
+type IndustryConfig struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+}
+
 type Insight struct {
 	ID                int64
 	WorkspaceID       int64
@@ -1041,10 +1051,11 @@ type Policy struct {
 }
 
 type Project struct {
-	ID        int64
-	Name      string
-	CreatedAt time.Time
-	BrandID   sql.NullInt64
+	ID          int64
+	WorkspaceID int64
+	Name        string
+	CreatedAt   time.Time
+	BrandID     sql.NullInt64
 }
 
 type Proposal struct {

@@ -546,3 +546,20 @@ make check && make test
 - Web: `/learning` with the report line, records with decisions and outcomes, an outcome entry, insights with promotion (control evidence id for validation), revision and proposal. Typecheck and biome clean. Not browser-tested.
 
 Live: none needed.
+
+## B6.1 Full client isolation and industry configuration
+
+Local:
+
+```
+cd server && go test ./core/workspaces/ ./core/identity/ ./core/connections/ ./core/projects/ ./core/policies/   # ok
+make check && make test
+```
+
+- `core/workspaces`: a marketer, the assistant and an admin of a second client cannot provision workspaces; a bad slug is invalid and a repeated slug a conflict; the creator is the new workspace's admin and the marketer belongs only to Reportage. The Wadi exists in both clients, "The Wadi" twice in one is a conflict, Acme's viewer lists one project; Google Ads "123" is upserted in both workspaces and Acme's list shows one row; Acme's kill switch cannot name Reportage's account (not found) and a policy decision about it is denied as not connected; the same phone in two clients is two people and Acme cannot read Reportage's. Reportage's industry configuration is version 1 (real estate, stage "viewing") before and after Acme saves version 2; Acme's version 1 is empty; duplicate stages and a viewer's write are refused; Acme's version 1 still reads as written after version 2 exists; a document with `permissions` is refused. Members: unknown email not found, a marketer manages nobody, a marketer cannot grant admin, Sara's Reportage membership is unchanged by her Acme one, the last admin cannot be removed, removal disables rather than deletes.
+- `core/identity`: a switch to a workspace without membership is refused and leaves the session where it was; with a viewer membership the switch issues a new token, the role is viewer, the old cookie opens nothing; a person whose Reportage membership is disabled signs in straight into Acme.
+- `core/connections`: Acme finishing OAuth for Reportage's location is a conflict; Reportage's location is absent from Acme's list, check and token read; Reportage's tokens are untouched.
+- Migration 00035 rebuilds `accounts` and `projects` under `PRAGMA foreign_keys = OFF`; the full suite (every package opening a temporary database) migrates through it.
+- `api`: `/api/workspaces` (mine, create), `/api/workspaces/members` (list, add, remove), `/api/session/switch`, `/api/settings/industry` (current, versions, put with permission-key refusal). Web: `/settings/workspaces` (clients, members, versioned industry document) and a header switcher that reloads after switching so nothing of the previous client stays in memory. Typecheck and biome clean. Not browser-tested.
+
+Live: none needed. Sign-in through authentik with two memberships is unverified until ADX_AUTHENTIK_* is configured.

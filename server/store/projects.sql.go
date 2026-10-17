@@ -11,21 +11,23 @@ import (
 )
 
 const createProject = `-- name: CreateProject :one
-INSERT INTO projects (name, created_at)
-VALUES (?, ?)
-RETURNING id, name, created_at, brand_id
+INSERT INTO projects (workspace_id, name, created_at)
+VALUES (?, ?, ?)
+RETURNING id, workspace_id, name, created_at, brand_id
 `
 
 type CreateProjectParams struct {
-	Name      string
-	CreatedAt time.Time
+	WorkspaceID int64
+	Name        string
+	CreatedAt   time.Time
 }
 
 func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error) {
-	row := q.db.QueryRowContext(ctx, createProject, arg.Name, arg.CreatedAt)
+	row := q.db.QueryRowContext(ctx, createProject, arg.WorkspaceID, arg.Name, arg.CreatedAt)
 	var i Project
 	err := row.Scan(
 		&i.ID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.BrandID,
@@ -34,14 +36,20 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, name, created_at, brand_id FROM projects WHERE id = ?
+SELECT id, workspace_id, name, created_at, brand_id FROM projects WHERE id = ? AND workspace_id = ?
 `
 
-func (q *Queries) GetProject(ctx context.Context, id int64) (Project, error) {
-	row := q.db.QueryRowContext(ctx, getProject, id)
+type GetProjectParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) GetProject(ctx context.Context, arg GetProjectParams) (Project, error) {
+	row := q.db.QueryRowContext(ctx, getProject, arg.ID, arg.WorkspaceID)
 	var i Project
 	err := row.Scan(
 		&i.ID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.BrandID,
@@ -50,14 +58,20 @@ func (q *Queries) GetProject(ctx context.Context, id int64) (Project, error) {
 }
 
 const getProjectByName = `-- name: GetProjectByName :one
-SELECT id, name, created_at, brand_id FROM projects WHERE name = ? COLLATE NOCASE
+SELECT id, workspace_id, name, created_at, brand_id FROM projects WHERE workspace_id = ? AND name = ? COLLATE NOCASE
 `
 
-func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, error) {
-	row := q.db.QueryRowContext(ctx, getProjectByName, name)
+type GetProjectByNameParams struct {
+	WorkspaceID int64
+	Name        string
+}
+
+func (q *Queries) GetProjectByName(ctx context.Context, arg GetProjectByNameParams) (Project, error) {
+	row := q.db.QueryRowContext(ctx, getProjectByName, arg.WorkspaceID, arg.Name)
 	var i Project
 	err := row.Scan(
 		&i.ID,
+		&i.WorkspaceID,
 		&i.Name,
 		&i.CreatedAt,
 		&i.BrandID,
@@ -65,13 +79,12 @@ func (q *Queries) GetProjectByName(ctx context.Context, name string) (Project, e
 	return i, err
 }
 
-const listProjects = `-- name: ListProjects :many
-SELECT id, name, created_at, brand_id FROM projects
-ORDER BY name
+const listAllProjects = `-- name: ListAllProjects :many
+SELECT id, workspace_id, name, created_at, brand_id FROM projects ORDER BY workspace_id, name
 `
 
-func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
-	rows, err := q.db.QueryContext(ctx, listProjects)
+func (q *Queries) ListAllProjects(ctx context.Context) ([]Project, error) {
+	rows, err := q.db.QueryContext(ctx, listAllProjects)
 	if err != nil {
 		return nil, err
 	}
@@ -81,6 +94,42 @@ func (q *Queries) ListProjects(ctx context.Context) ([]Project, error) {
 		var i Project
 		if err := rows.Scan(
 			&i.ID,
+			&i.WorkspaceID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.BrandID,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjects = `-- name: ListProjects :many
+SELECT id, workspace_id, name, created_at, brand_id FROM projects
+WHERE workspace_id = ?
+ORDER BY name
+`
+
+func (q *Queries) ListProjects(ctx context.Context, workspaceID int64) ([]Project, error) {
+	rows, err := q.db.QueryContext(ctx, listProjects, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Project{}
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.BrandID,

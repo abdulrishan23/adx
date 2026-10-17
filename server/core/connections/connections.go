@@ -89,6 +89,9 @@ func (c *Connections) save(ctx context.Context, actor core.Actor,
 			return err
 		}
 		account.CredentialID = savedCred.ID
+		if err := claim(ctx, q, account.WorkspaceID, account.Type, account.ExternalID); err != nil {
+			return err
+		}
 		savedAccount, err = q.UpsertAccount(ctx, account)
 		return err
 	})
@@ -139,4 +142,25 @@ func hash(s string) string {
 
 func nullString(s string) sql.NullString {
 	return sql.NullString{String: s, Valid: s != ""}
+}
+
+// claim refuses to connect a provider account that another workspace already
+// holds. A location or ad account belongs to one client; two clients sharing
+// one would see each other's figures through it, so the second connection is
+// a conflict, not a quiet second copy.
+func claim(ctx context.Context, q *store.Queries, workspaceID int64, kind, externalID string) error {
+	row, err := q.GetAccount(ctx, store.GetAccountParams{Type: kind, ExternalID: externalID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if workspaceID == 0 {
+		workspaceID = core.DefaultWorkspace
+	}
+	if row.Account.WorkspaceID != workspaceID {
+		return core.Conflict("%s account %s is connected to another client", kind, externalID)
+	}
+	return nil
 }

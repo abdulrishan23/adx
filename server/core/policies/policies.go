@@ -272,7 +272,7 @@ func (p *Policies) SetKillSwitch(ctx context.Context, actor core.Actor, accountI
 		return KillSwitch{}, core.Invalid("reason must be 500 characters or fewer")
 	}
 	if accountID != 0 {
-		if _, err := p.db.Reader().GetAccountByID(ctx, accountID); errors.Is(err, sql.ErrNoRows) {
+		if acct, err := p.db.Reader().GetAccountByID(ctx, accountID); errors.Is(err, sql.ErrNoRows) || (err == nil && acct.Account.WorkspaceID != actor.WorkspaceID) {
 			return KillSwitch{}, core.NotFound("account %d is not connected", accountID)
 		} else if err != nil {
 			return KillSwitch{}, err
@@ -340,7 +340,9 @@ func (p *Policies) Evaluate(ctx context.Context, actor core.Actor, req PolicyReq
 			return d, nil
 		}
 	}
-	if _, err := p.db.Reader().GetAccountByID(ctx, req.AccountID); errors.Is(err, sql.ErrNoRows) {
+	// An account connected by another client is "not connected" here: the
+	// decision never admits that it exists.
+	if acct, err := p.db.Reader().GetAccountByID(ctx, req.AccountID); errors.Is(err, sql.ErrNoRows) || (err == nil && acct.Account.WorkspaceID != actor.WorkspaceID) {
 		d.Reason = ReasonAccountNotConnected
 		return d, nil
 	} else if err != nil {

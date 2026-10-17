@@ -556,7 +556,7 @@ func (o *Outreach) NextAction(ctx context.Context, actor core.Actor, enquiryID i
 		b.Preferences.Language = "en"
 	}
 	if enq.ProjectID != nil {
-		if p, err := o.db.Reader().GetProject(ctx, *enq.ProjectID); err == nil {
+		if p, err := o.db.Reader().GetProject(ctx, store.GetProjectParams{ID: *enq.ProjectID, WorkspaceID: actor.WorkspaceID}); err == nil {
 			b.ProjectName = p.Name
 		}
 		if o.cfg.Brands != nil {
@@ -891,7 +891,7 @@ func (o *Outreach) Send(ctx context.Context, actor core.Actor, draftID int64) (M
 	if quiet(cur.Document, now) {
 		return hold("held", "quiet hours in Dubai; try again in the morning")
 	}
-	to, err := o.address(ctx, row.PersonID, row.Channel)
+	to, err := o.address(ctx, row.WorkspaceID, row.PersonID, row.Channel)
 	if err != nil {
 		return hold("held", err.Error())
 	}
@@ -927,8 +927,8 @@ func quiet(doc OutreachDocument, now time.Time) bool {
 	return h >= doc.QuietStart || h < doc.QuietEnd
 }
 
-func (o *Outreach) address(ctx context.Context, personID int64, channel string) (string, error) {
-	p, err := o.db.Reader().GetPerson(ctx, store.GetPersonParams{ID: personID, WorkspaceID: core.DefaultWorkspace})
+func (o *Outreach) address(ctx context.Context, workspaceID, personID int64, channel string) (string, error) {
+	p, err := o.db.Reader().GetPerson(ctx, store.GetPersonParams{ID: personID, WorkspaceID: workspaceID})
 	if err != nil {
 		return "", err
 	}

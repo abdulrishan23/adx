@@ -317,3 +317,5 @@ func pathID(w http.ResponseWriter, r *http.Request, param, what string) (int64, 
 	}
 	return id, true
 }
+
+func formatID(id int64) string { return strconv.FormatInt(id, 10) }

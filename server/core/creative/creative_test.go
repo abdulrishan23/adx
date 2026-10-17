@@ -33,7 +33,7 @@ func setup(t *testing.T) *env {
 	st, err := filestore.New(t.TempDir())
 	require.NoError(t, err)
 	e.svc = creative.New(e.db, st, svgrender.New(), creative.Config{Clock: e.clock})
-	p, err := e.db.Writer().CreateProject(t.Context(), store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(t.Context(), store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.project = p.ID
 	return e

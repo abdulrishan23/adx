@@ -66,10 +66,10 @@ type Account struct {
 // one needs permission, stale if the last verification is older than a day,
 // else connected. No account is ever invented: an empty list is empty.
 func (c *Connections) ListAccounts(ctx context.Context, actor core.Actor) ([]Account, error) {
-	if !actor.AtLeast(core.RoleViewer) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return nil, core.ErrForbidden
 	}
-	rows, err := c.db.Reader().ListAllAccounts(ctx)
+	rows, err := c.db.Reader().ListAccountsInWorkspace(ctx, actor.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,4 +167,32 @@ func nullStr(s sql.NullString) *string {
 		return nil
 	}
 	return &s.String
+}
+
+// AccountForLocation returns the connected GoHighLevel account for a location
+// id, for the webhook edge which has no actor yet: the location is what tells
+// it whose event arrived. An unknown location is not found.
+func (c *Connections) AccountForLocation(ctx context.Context, locationID string) (store.Account, error) {
+	row, err := c.db.Reader().GetAccount(ctx, store.GetAccountParams{Type: Provider, ExternalID: locationID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return store.Account{}, core.NotFound("no connected GoHighLevel location %q", locationID)
+	}
+	if err != nil {
+		return store.Account{}, err
+	}
+	return row.Account, nil
+}
+
+// WorkspaceIDs lists every workspace, for edges that must decide whether a
+// client is implied.
+func (c *Connections) WorkspaceIDs(ctx context.Context) ([]int64, error) {
+	rows, err := c.db.Reader().ListWorkspaces(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int64, 0, len(rows))
+	for _, w := range rows {
+		out = append(out, w.ID)
+	}
+	return out, nil
 }

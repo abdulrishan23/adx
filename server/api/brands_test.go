@@ -37,7 +37,7 @@ func TestBrandRoutes(t *testing.T) {
 	marketer := e.signIn(t)
 	e.addAndPoint(t, "cmo@reportage.ae", core.RoleAdmin)
 	admin := e.signIn(t)
-	p, err := db.Writer().CreateProject(t.Context(), store.CreateProjectParams{Name: "The Wadi"})
+	p, err := db.Writer().CreateProject(t.Context(), store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi"})
 	require.NoError(t, err)
 
 	post := func(cookie *http.Cookie, method, path, json string) (int, string) {

@@ -177,22 +177,19 @@ func (i *Identity) FinishSignIn(ctx context.Context, via core.Via, in FinishInpu
 	if err != nil {
 		return Finished{}, err
 	}
-	token, session, err := i.begin(ctx, user, via)
+	token, session, err := i.begin(ctx, user, via, 0)
 	if err != nil {
 		return Finished{}, err
 	}
 	return Finished{Token: token, Session: session, ReturnTo: attempt.ReturnTo}, nil
 }
 
-func (i *Identity) begin(ctx context.Context, user users.User, via core.Via) (string, Session, error) {
-	member, err := i.db.Reader().GetMembership(ctx, store.GetMembershipParams{WorkspaceID: core.DefaultWorkspace, UserID: user.ID})
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && member.Enabled == 0) {
-		return "", Session{}, users.ErrNoAccess
-	}
+func (i *Identity) begin(ctx context.Context, user users.User, via core.Via, workspaceID int64) (string, Session, error) {
+	member, err := i.membership(ctx, user.ID, workspaceID)
 	if err != nil {
 		return "", Session{}, err
 	}
-	workspace, err := i.db.Reader().GetWorkspace(ctx, core.DefaultWorkspace)
+	workspace, err := i.db.Reader().GetWorkspace(ctx, member.WorkspaceID)
 	if err != nil {
 		return "", Session{}, err
 	}
@@ -210,6 +207,57 @@ func (i *Identity) begin(ctx context.Context, user users.User, via core.Via) (st
 		User: user, Role: core.Role(member.Role), WorkspaceID: workspace.ID, Workspace: workspace.Name,
 		ExpiresAt: i.sessionEnd(now, expires),
 	}, nil
+}
+
+// membership picks the enabled membership a session runs under. With a
+// workspace named it must be that one; otherwise Reportage when the person
+// belongs to it, else the first workspace they do belong to. Someone with no
+// enabled membership anywhere has no access.
+func (i *Identity) membership(ctx context.Context, userID, workspaceID int64) (store.Membership, error) {
+	if workspaceID != 0 {
+		member, err := i.db.Reader().GetMembership(ctx, store.GetMembershipParams{WorkspaceID: workspaceID, UserID: userID})
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && member.Enabled == 0) {
+			return store.Membership{}, users.ErrNoAccess
+		}
+		return member, err
+	}
+	rows, err := i.db.Reader().ListMembershipsForUser(ctx, userID)
+	if err != nil {
+		return store.Membership{}, err
+	}
+	if len(rows) == 0 {
+		return store.Membership{}, users.ErrNoAccess
+	}
+	pick := rows[0]
+	for _, r := range rows {
+		if r.WorkspaceID == core.DefaultWorkspace {
+			pick = r
+		}
+	}
+	return store.Membership{ID: pick.ID, WorkspaceID: pick.WorkspaceID, UserID: pick.UserID, Role: pick.Role, Enabled: pick.Enabled, CreatedAt: pick.CreatedAt}, nil
+}
+
+// Switch moves a live session to another workspace the person belongs to.
+// The old session ends and a new token is issued, so a cookie copied before
+// the switch opens nothing: every request still resolves its workspace from
+// the session row, never from the client. The role is the membership's role
+// in the new workspace.
+func (i *Identity) Switch(ctx context.Context, via core.Via, token string, workspaceID int64) (string, Session, error) {
+	_, current, err := i.Resolve(ctx, via, token)
+	if err != nil {
+		return "", Session{}, err
+	}
+	if workspaceID == current.WorkspaceID {
+		return token, current, nil
+	}
+	newToken, session, err := i.begin(ctx, current.User, via, workspaceID)
+	if err != nil {
+		return "", Session{}, err
+	}
+	if err := i.SignOut(ctx, token); err != nil {
+		return "", Session{}, err
+	}
+	return newToken, session, nil
 }
 
 // Resolve turns a cookie value into the actor for this request. It refuses

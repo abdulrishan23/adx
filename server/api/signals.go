@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
@@ -149,13 +150,44 @@ func (h *handlers) ghlWebhook(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusAccepted, WebhookResponse{Ignored: ignored})
 		return
 	}
-	actor := core.SystemIn(core.ViaJob, core.DefaultWorkspace)
+	workspaceID, err := h.webhookWorkspace(r.Context(), body)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	actor := core.SystemIn(core.ViaJob, workspaceID)
 	out, err := h.signals.Ingest(r.Context(), actor, in)
 	if err != nil {
 		h.fail(w, r, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, WebhookResponse{Accepted: true, Duplicate: out.Duplicate, EventID: out.Event.ID})
+}
+
+// webhookWorkspace finds the client a GoHighLevel event belongs to from its
+// location. An event that names a location nobody connected is refused, so a
+// stray event never lands in another client's records. Without a location,
+// the event is accepted only while one workspace exists.
+func (h *handlers) webhookWorkspace(ctx context.Context, body []byte) (int64, error) {
+	var b struct {
+		LocationID string `json:"locationId"`
+	}
+	_ = json.Unmarshal(body, &b)
+	if b.LocationID != "" {
+		acct, err := h.connections.AccountForLocation(ctx, b.LocationID)
+		if err != nil {
+			return 0, err
+		}
+		return acct.WorkspaceID, nil
+	}
+	ids, err := h.connections.WorkspaceIDs(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if len(ids) != 1 {
+		return 0, core.Invalid("the event names no locationId, and ADX serves more than one client")
+	}
+	return ids[0], nil
 }
 
 type ghlWebhookBody struct {

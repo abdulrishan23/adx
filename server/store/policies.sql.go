@@ -46,7 +46,7 @@ func (q *Queries) CreatePolicy(ctx context.Context, arg CreatePolicyParams) (Pol
 }
 
 const getAccountByID = `-- name: GetAccountByID :one
-SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.id = ?
@@ -62,6 +62,7 @@ func (q *Queries) GetAccountByID(ctx context.Context, id int64) (GetAccountByIDR
 	var i GetAccountByIDRow
 	err := row.Scan(
 		&i.Account.ID,
+		&i.Account.WorkspaceID,
 		&i.Account.Type,
 		&i.Account.ExternalID,
 		&i.Account.CredentialID,
@@ -187,7 +188,7 @@ func (q *Queries) ListAccountCapabilities(ctx context.Context) ([]AccountCapabil
 }
 
 const listAllAccounts = `-- name: ListAllAccounts :many
-SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 ORDER BY accounts.type, accounts.external_id
@@ -209,6 +210,7 @@ func (q *Queries) ListAllAccounts(ctx context.Context) ([]ListAllAccountsRow, er
 		var i ListAllAccountsRow
 		if err := rows.Scan(
 			&i.Account.ID,
+			&i.Account.WorkspaceID,
 			&i.Account.Type,
 			&i.Account.ExternalID,
 			&i.Account.CredentialID,

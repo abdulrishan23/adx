@@ -26,9 +26,9 @@ RETURNING *;
 
 -- name: UpsertAccount :one
 INSERT INTO accounts
-    (type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (type, external_id) DO UPDATE SET
+    (workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (workspace_id, type, external_id) DO UPDATE SET
     credential_id = excluded.credential_id,
     parent_id = excluded.parent_id,
     name = excluded.name,
@@ -50,6 +50,20 @@ FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.type = ?
 ORDER BY accounts.external_id;
+
+-- name: ListAccountsOfType :many
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.workspace_id = ? AND accounts.type = ?
+ORDER BY accounts.external_id;
+
+-- name: ListAccountsInWorkspace :many
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.workspace_id = ?
+ORDER BY accounts.type, accounts.external_id;
 
 -- Updates only if nobody replaced the secret since it was read.
 -- name: UpdateCredentialSecret :execrows

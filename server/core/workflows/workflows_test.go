@@ -66,7 +66,7 @@ func setup(t *testing.T) *env {
 	e.wf = workflows.New(e.db, workflows.Config{Clock: e.clock, Registry: e.reg, Runner: e.runner, Dispatch: e.dispatch, External: e.dispatch, Lease: time.Minute, MaxAttempts: 2})
 	cred, err := e.db.Writer().UpsertCredential(ctx, store.UpsertCredentialParams{Provider: "google_ads", Kind: "oauth", Subject: "u", EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{Type: "google_ads", ExternalID: "1234567890", CredentialID: cred.ID, Currency: sql.NullString{String: "AED", Valid: true}, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
+	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "google_ads", ExternalID: "1234567890", CredentialID: cred.ID, Currency: sql.NullString{String: "AED", Valid: true}, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.acct = acct.ID
 	// Skills: a read skill and a proposing skill.

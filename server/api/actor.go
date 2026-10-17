@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/identity"
@@ -45,7 +46,7 @@ func withActor(dev bool, id *identity.Identity) func(http.Handler) http.Handler 
 				writeError(w, http.StatusUnauthorized, "sign in to continue")
 				return
 			}
-			actor := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
+			actor := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: devWorkspace(r)}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), actorKey{}, actor)))
 		})
 	}
@@ -77,3 +78,17 @@ func clearSessionCookie(w http.ResponseWriter, dev bool) {
 		SameSite: http.SameSiteLaxMode, Secure: !dev, MaxAge: -1,
 	})
 }
+
+// devWorkspace is the workspace the dev admin acts in: the adx_workspace
+// cookie the dev switch endpoint sets, else Reportage. Only the dev actor
+// reads it; a real session's workspace comes from its row.
+func devWorkspace(r *http.Request) int64 {
+	if c, err := r.Cookie(devWorkspaceCookie); err == nil {
+		if id, err := strconv.ParseInt(c.Value, 10, 64); err == nil && id > 0 {
+			return id
+		}
+	}
+	return core.DefaultWorkspace
+}
+
+const devWorkspaceCookie = "adx_workspace"

@@ -955,7 +955,7 @@ func (q *Queries) ListOpenConflictsForFact(ctx context.Context, factID int64) ([
 }
 
 const listProjectsByBrand = `-- name: ListProjectsByBrand :many
-SELECT id, name, created_at, brand_id FROM projects WHERE brand_id = ? ORDER BY name
+SELECT id, workspace_id, name, created_at, brand_id FROM projects WHERE brand_id = ? ORDER BY name
 `
 
 func (q *Queries) ListProjectsByBrand(ctx context.Context, brandID sql.NullInt64) ([]Project, error) {
@@ -969,6 +969,7 @@ func (q *Queries) ListProjectsByBrand(ctx context.Context, brandID sql.NullInt64
 		var i Project
 		if err := rows.Scan(
 			&i.ID,
+			&i.WorkspaceID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.BrandID,
@@ -987,7 +988,7 @@ func (q *Queries) ListProjectsByBrand(ctx context.Context, brandID sql.NullInt64
 }
 
 const listUnassignedProjects = `-- name: ListUnassignedProjects :many
-SELECT id, name, created_at, brand_id FROM projects WHERE brand_id IS NULL ORDER BY name
+SELECT id, workspace_id, name, created_at, brand_id FROM projects WHERE brand_id IS NULL ORDER BY name
 `
 
 func (q *Queries) ListUnassignedProjects(ctx context.Context) ([]Project, error) {
@@ -1001,6 +1002,7 @@ func (q *Queries) ListUnassignedProjects(ctx context.Context) ([]Project, error)
 		var i Project
 		if err := rows.Scan(
 			&i.ID,
+			&i.WorkspaceID,
 			&i.Name,
 			&i.CreatedAt,
 			&i.BrandID,

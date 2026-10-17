@@ -78,11 +78,11 @@ func setup(t *testing.T) *env {
 	cred, err := e.db.Writer().UpsertCredential(t.Context(), store.UpsertCredentialParams{Provider: "gohighlevel", Kind: "private_token", Subject: "loc-1",
 		EncryptedSecret: []byte("sealed"), KeyVersion: 1, Scopes: "", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID,
+	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID,
 		Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.account = acct.ID
-	_, err = e.db.Writer().CreateProject(t.Context(), store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	_, err = e.db.Writer().CreateProject(t.Context(), store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	return e
 }

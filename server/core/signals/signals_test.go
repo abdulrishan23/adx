@@ -252,7 +252,7 @@ func TestDeriveFromLinkedRecordsIsIdempotent(t *testing.T) {
 	configured(t, e, nil)
 	cred, err := e.db.Writer().UpsertCredential(ctx, store.UpsertCredentialParams{Provider: "gohighlevel", Kind: "private_token", Subject: "loc", EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
+	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "gohighlevel", ExternalID: "loc-1", CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	lead, err := e.db.Writer().UpsertLead(ctx, store.UpsertLeadParams{WorkspaceID: 1, AccountID: acct.ID, ExternalID: "c1", FirstName: ns("Amal"), LastName: ns("Haddad"), Phone: ns("+971501234567"), PhoneE164: ns("+971501234567"), StatusRaw: ns("New"), StatusObservedAt: sql.NullTime{Time: e.clock.Now(), Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
 	require.NoError(t, err)

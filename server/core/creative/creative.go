@@ -164,7 +164,7 @@ func (s *Service) UploadAsset(ctx context.Context, actor core.Actor, projectID i
 		return Asset{}, core.Invalid("content type %q is not an image or font ADX accepts", contentType)
 	}
 	if projectID != 0 {
-		if _, err := s.db.Reader().GetProject(ctx, projectID); errors.Is(err, sql.ErrNoRows) {
+		if _, err := s.db.Reader().GetProject(ctx, store.GetProjectParams{ID: projectID, WorkspaceID: actor.WorkspaceID}); errors.Is(err, sql.ErrNoRows) {
 			return Asset{}, core.NotFound("project %d not found", projectID)
 		} else if err != nil {
 			return Asset{}, err
@@ -255,7 +255,7 @@ func (s *Service) PutBrandKit(ctx context.Context, actor core.Actor, projectID i
 	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
 		return BrandKitVersion{}, core.ErrForbidden
 	}
-	if _, err := s.db.Reader().GetProject(ctx, projectID); errors.Is(err, sql.ErrNoRows) {
+	if _, err := s.db.Reader().GetProject(ctx, store.GetProjectParams{ID: projectID, WorkspaceID: actor.WorkspaceID}); errors.Is(err, sql.ErrNoRows) {
 		return BrandKitVersion{}, core.NotFound("project %d not found", projectID)
 	} else if err != nil {
 		return BrandKitVersion{}, err

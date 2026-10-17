@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	admin  = core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb}
-	viewer = core.Actor{UserID: 2, Role: core.RoleViewer, Via: core.ViaWeb}
+	admin  = core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
+	viewer = core.Actor{UserID: 2, Role: core.RoleViewer, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
 )
 
 func TestCreateAndList(t *testing.T) {

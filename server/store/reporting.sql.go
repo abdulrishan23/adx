@@ -109,7 +109,7 @@ func (q *Queries) ListAccountFreshness(ctx context.Context, workspaceID int64) (
 }
 
 const listAdAccounts = `-- name: ListAdAccounts :many
-SELECT accounts.id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.type IN ('google_ads', 'meta')
 ORDER BY accounts.type, accounts.external_id
@@ -131,6 +131,7 @@ func (q *Queries) ListAdAccounts(ctx context.Context) ([]ListAdAccountsRow, erro
 		var i ListAdAccountsRow
 		if err := rows.Scan(
 			&i.Account.ID,
+			&i.Account.WorkspaceID,
 			&i.Account.Type,
 			&i.Account.ExternalID,
 			&i.Account.CredentialID,

@@ -63,7 +63,7 @@ func setup(t *testing.T, writers map[string]execution.Writer) *env {
 	b, err := br.Create(ctx, coretest.Admin, brands.BrandInput{Name: "Reportage", Kind: brands.Own})
 	require.NoError(t, err)
 	e.reportage = b.ID
-	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: e.clock.Now()})
+	p, err := e.db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: e.clock.Now()})
 	require.NoError(t, err)
 	e.wadi = p.ID
 	require.NoError(t, br.AssignProject(ctx, coretest.Admin, e.wadi, e.reportage))
@@ -99,7 +99,7 @@ func (e *env) account(t *testing.T, typ, external string) int64 {
 	t.Helper()
 	cred, err := e.db.Writer().UpsertCredential(t.Context(), store.UpsertCredentialParams{Provider: typ, Kind: "oauth", Subject: "u-" + typ, EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{Type: typ, ExternalID: external, CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
+	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: typ, ExternalID: external, CredentialID: cred.ID, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	return acct.ID
 }

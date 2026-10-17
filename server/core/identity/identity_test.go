@@ -248,3 +248,40 @@ func requireKind(t *testing.T, err error, kind core.Kind) {
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, kind, ce.Kind)
 }
+
+// Catches: a session landing in a workspace the person doesn't belong to, a
+// switch to one they don't belong to, the old cookie surviving a switch, and
+// the role not following the membership in the new workspace.
+func TestSwitchFollowsMemberships(t *testing.T) {
+	e := setup(t)
+	sara := e.add(t, "sara@reportage.ae", core.RoleMarketer)
+	acme, err := e.db.Writer().CreateWorkspace(t.Context(), store.CreateWorkspaceParams{Slug: "acme", Name: "Acme Homes", CreatedAt: e.now})
+	require.NoError(t, err)
+	done := e.signIn(t)
+
+	_, _, err = e.identity.Switch(t.Context(), core.ViaWeb, done.Token, acme.ID)
+	require.ErrorIs(t, err, users.ErrNoAccess, "no membership, no switch")
+	actor, _, err := e.identity.Resolve(t.Context(), core.ViaWeb, done.Token)
+	require.NoError(t, err)
+	assert.Equal(t, core.DefaultWorkspace, actor.WorkspaceID, "a refused switch leaves the session where it was")
+
+	require.NoError(t, e.db.Writer().CreateMembership(t.Context(), store.CreateMembershipParams{
+		WorkspaceID: acme.ID, UserID: sara.ID, Role: string(core.RoleViewer), Enabled: 1, CreatedAt: e.now,
+	}))
+	token, session, err := e.identity.Switch(t.Context(), core.ViaWeb, done.Token, acme.ID)
+	require.NoError(t, err)
+	assert.NotEqual(t, done.Token, token)
+	assert.Equal(t, acme.ID, session.WorkspaceID)
+	assert.Equal(t, "Acme Homes", session.Workspace)
+	assert.Equal(t, core.RoleViewer, session.Role, "the role is the membership's role there, not the one carried over")
+	_, _, err = e.identity.Resolve(t.Context(), core.ViaWeb, done.Token)
+	assert.ErrorIs(t, err, identity.ErrNoSession, "the old cookie opens nothing")
+	actor, _, err = e.identity.Resolve(t.Context(), core.ViaWeb, token)
+	require.NoError(t, err)
+	assert.Equal(t, core.Actor{UserID: sara.ID, Role: core.RoleViewer, Via: core.ViaWeb, WorkspaceID: acme.ID}, actor)
+
+	// Someone who belongs only to Acme signs in straight into Acme.
+	require.NoError(t, e.db.Writer().SetMembershipEnabled(t.Context(), store.SetMembershipEnabledParams{Enabled: 0, WorkspaceID: core.DefaultWorkspace, UserID: sara.ID}))
+	again := e.signIn(t)
+	assert.Equal(t, acme.ID, again.Session.WorkspaceID)
+}

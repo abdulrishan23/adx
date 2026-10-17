@@ -464,7 +464,6 @@ func boolInt(b bool) int64 {
 // account, as ADX itself. The daily job calls it. Accounts whose start fails
 // are logged by the caller through the returned errors; the others proceed.
 func (r *Reporting) RefreshAll(ctx context.Context, rs *runs.Runs, trailingDays int) (started int, errs []error) {
-	actor := core.System(core.ViaJob)
 	rows, err := r.db.Reader().ListAllAccounts(ctx)
 	if err != nil {
 		return 0, []error{err}
@@ -474,6 +473,8 @@ func (r *Reporting) RefreshAll(ctx context.Context, rs *runs.Runs, trailingDays 
 		if _, ok := r.providers[row.Account.Type]; !ok {
 			continue
 		}
+		// Each account refreshes as ADX in its own client's workspace.
+		actor := core.SystemIn(core.ViaJob, row.Account.WorkspaceID)
 		loc := time.UTC
 		if row.Account.TimeZone.Valid {
 			if l, err := time.LoadLocation(row.Account.TimeZone.String); err == nil {

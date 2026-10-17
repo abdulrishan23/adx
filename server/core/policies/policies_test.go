@@ -46,7 +46,7 @@ func (e env) account(t *testing.T, external string, writeVerified bool) int64 {
 	cred, err := e.db.Writer().UpsertCredential(ctx, store.UpsertCredentialParams{Provider: "google_ads", Kind: "oauth", Subject: "sub-" + external,
 		EncryptedSecret: []byte("sealed"), KeyVersion: 1, Scopes: "adwords", ConnectedAt: time.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{Type: "google_ads", ExternalID: external, CredentialID: cred.ID,
+	acct, err := e.db.Writer().UpsertAccount(ctx, store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "google_ads", ExternalID: external, CredentialID: cred.ID,
 		Details: "{}", ConnectedAt: time.Now(), VerifiedAt: time.Now()})
 	require.NoError(t, err)
 	state := "unknown"

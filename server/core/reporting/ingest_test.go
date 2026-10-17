@@ -114,7 +114,7 @@ func (e *env) account(t *testing.T, typ, external, currency, tz string) int64 {
 	cred, err := e.db.Writer().UpsertCredential(t.Context(), store.UpsertCredentialParams{Provider: typ, Kind: "oauth", Subject: "user-" + typ,
 		EncryptedSecret: []byte("sealed"), KeyVersion: 1, Scopes: "x", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{Type: typ, ExternalID: external, CredentialID: cred.ID,
+	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: typ, ExternalID: external, CredentialID: cred.ID,
 		Currency: sql.NullString{String: currency, Valid: currency != ""}, TimeZone: sql.NullString{String: tz, Valid: tz != ""}, Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	return acct.ID

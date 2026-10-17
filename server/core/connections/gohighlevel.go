@@ -199,7 +199,8 @@ func (c *Connections) saveGHL(ctx context.Context, actor core.Actor, kind string
 		Provider: Provider, Kind: kind, Subject: location.ID, EncryptedSecret: sealed,
 		Scopes: scopes, TokenExpiresAt: expiresAt,
 	}, store.UpsertAccountParams{
-		Type: Provider, ExternalID: location.ID, ParentID: nullString(location.CompanyID),
+		WorkspaceID: actor.WorkspaceID,
+		Type:        Provider, ExternalID: location.ID, ParentID: nullString(location.CompanyID),
 		Name: nullString(locationName(location)), TimeZone: nullString(location.TimeZone), Details: string(details),
 	})
 	if err != nil {
@@ -211,10 +212,10 @@ func (c *Connections) saveGHL(ctx context.Context, actor core.Actor, kind string
 }
 
 func (c *Connections) List(ctx context.Context, actor core.Actor) ([]Connection, error) {
-	if !actor.AtLeast(core.RoleViewer) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return nil, core.ErrForbidden
 	}
-	rows, err := c.db.Reader().ListAccounts(ctx, Provider)
+	rows, err := c.db.Reader().ListAccountsOfType(ctx, store.ListAccountsOfTypeParams{WorkspaceID: actor.WorkspaceID, Type: Provider})
 	if err != nil {
 		return nil, err
 	}
@@ -233,7 +234,7 @@ func (c *Connections) Check(ctx context.Context, actor core.Actor, locationID st
 	}
 	c.credentials.Lock()
 	defer c.credentials.Unlock()
-	account, cred, secrets, err := c.currentSecrets(ctx, locationID)
+	account, cred, secrets, err := c.currentSecrets(ctx, actor.WorkspaceID, locationID)
 	if err != nil {
 		return Connection{}, err
 	}
@@ -281,7 +282,7 @@ func (c *Connections) GHLToken(ctx context.Context, actor core.Actor, locationID
 	}
 	c.credentials.Lock()
 	defer c.credentials.Unlock()
-	_, _, secrets, err := c.currentSecrets(ctx, locationID)
+	_, _, secrets, err := c.currentSecrets(ctx, actor.WorkspaceID, locationID)
 	if err != nil {
 		return "", err
 	}
@@ -290,9 +291,9 @@ func (c *Connections) GHLToken(ctx context.Context, actor core.Actor, locationID
 
 // currentSecrets loads the location's credential and, for an OAuth
 // credential near expiry, rotates it. The caller holds c.credentials.
-func (c *Connections) currentSecrets(ctx context.Context, locationID string) (store.Account, store.Credential, tokenSecrets, error) {
+func (c *Connections) currentSecrets(ctx context.Context, workspaceID int64, locationID string) (store.Account, store.Credential, tokenSecrets, error) {
 	row, err := c.db.Reader().GetAccount(ctx, store.GetAccountParams{Type: Provider, ExternalID: locationID})
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && workspaceID != 0 && row.Account.WorkspaceID != workspaceID) {
 		return store.Account{}, store.Credential{}, tokenSecrets{}, core.NotFound("GoHighLevel location is not connected")
 	}
 	if err != nil {

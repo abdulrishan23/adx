@@ -43,7 +43,7 @@ func (e *env) account(t *testing.T, external string) int64 {
 	cred, err := e.db.Writer().UpsertCredential(t.Context(), store.UpsertCredentialParams{Provider: "gohighlevel", Kind: "private_token", Subject: external,
 		EncryptedSecret: []byte("x"), KeyVersion: 1, Scopes: "", ConnectedAt: e.clock.Now()})
 	require.NoError(t, err)
-	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{Type: "gohighlevel", ExternalID: external, CredentialID: cred.ID,
+	acct, err := e.db.Writer().UpsertAccount(t.Context(), store.UpsertAccountParams{WorkspaceID: core.DefaultWorkspace, Type: "gohighlevel", ExternalID: external, CredentialID: cred.ID,
 		Details: "{}", ConnectedAt: e.clock.Now(), VerifiedAt: e.clock.Now()})
 	require.NoError(t, err)
 	return acct.ID

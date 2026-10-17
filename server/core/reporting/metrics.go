@@ -660,7 +660,7 @@ func (r *Reporting) AssignProjects(ctx context.Context, actor core.Actor) (assig
 	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
 		return 0, nil, core.ErrForbidden
 	}
-	projects, err := r.db.Reader().ListProjects(ctx)
+	projects, err := r.db.Reader().ListProjects(ctx, actor.WorkspaceID)
 	if err != nil {
 		return 0, nil, err
 	}

@@ -244,7 +244,7 @@ func (l *Leads) StartImport(ctx context.Context, actor core.Actor, r *runs.Runs,
 		return runs.Run{}, false, core.Invalid("import mode must be full or incremental")
 	}
 	acct, err := l.db.Reader().GetAccountByID(ctx, accountID)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && acct.Account.WorkspaceID != actor.WorkspaceID) {
 		return runs.Run{}, false, core.NotFound("account %d is not connected", accountID)
 	}
 	if err != nil {
@@ -397,7 +397,7 @@ func (l *Leads) ingest(ctx context.Context, actor core.Actor, runID, accountID i
 	projectID := sql.NullInt64{}
 	if value, present := doc.ProjectField.read(c); present && strings.TrimSpace(value) != "" {
 		projectRaw = nullString(strings.TrimSpace(value))
-		if p, err := l.db.Reader().GetProjectByName(ctx, projectRaw.String); err == nil {
+		if p, err := l.db.Reader().GetProjectByName(ctx, store.GetProjectByNameParams{WorkspaceID: actor.WorkspaceID, Name: projectRaw.String}); err == nil {
 			projectID = sql.NullInt64{Int64: p.ID, Valid: true}
 		} else if !errors.Is(err, sql.ErrNoRows) {
 			return Lead{}, err

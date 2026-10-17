@@ -207,7 +207,7 @@ func (b *Brands) BrandOfProject(ctx context.Context, actor core.Actor, projectID
 	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return 0, core.ErrForbidden
 	}
-	p, err := b.db.Reader().GetProject(ctx, projectID)
+	p, err := b.db.Reader().GetProject(ctx, store.GetProjectParams{ID: projectID, WorkspaceID: actor.WorkspaceID})
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, core.NotFound("project %d not found", projectID)
 	}

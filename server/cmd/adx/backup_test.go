@@ -67,10 +67,10 @@ func TestBackupRestoresRecordsAndCredentialsWithTheKey(t *testing.T) {
 	db, err := store.Open(dbPath)
 	require.NoError(t, err)
 	require.NoError(t, db.Migrate(ctx))
-	_, err = db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "The Wadi", CreatedAt: time.Now().UTC()})
+	_, err = db.Writer().CreateProject(ctx, store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "The Wadi", CreatedAt: time.Now().UTC()})
 	require.NoError(t, err)
 	key := bytes.Repeat([]byte{9}, 32)
-	admin := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb}
+	admin := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace}
 	live, err := connections.New(db, backupGHL{}, connections.Config{EncryptionKey: key})
 	require.NoError(t, err)
 	_, err = live.ConnectPrivate(ctx, admin, "loc-1", "pit-token-value")
@@ -95,7 +95,7 @@ func TestBackupRestoresRecordsAndCredentialsWithTheKey(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { restored.Close() })
 	require.NoError(t, restored.Migrate(ctx))
-	projects, err := restored.Reader().ListProjects(ctx)
+	projects, err := restored.Reader().ListProjects(ctx, core.DefaultWorkspace)
 	require.NoError(t, err)
 	require.Len(t, projects, 1)
 
