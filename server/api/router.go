@@ -16,6 +16,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/runs"
 )
 
 type Deps struct {
@@ -29,6 +30,7 @@ type Deps struct {
 	// sessions at all: dev gets the dev admin, production refuses everything.
 	Identity *identity.Identity
 	Policies *policies.Policies
+	Runs     *runs.Runs
 }
 
 type handlers struct {
@@ -39,10 +41,12 @@ type handlers struct {
 	ops         *ops.Ops
 	identity    *identity.Identity
 	policies    *policies.Policies
+	runs        *runs.Runs
 }
 
 func NewRouter(d Deps) http.Handler {
-	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity, policies: d.Policies}
+	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
+		policies: d.Policies, runs: d.Runs}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -70,6 +74,10 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/policies", h.getPolicies)
 			r.Put("/api/policies", h.putPolicies)
 			r.Put("/api/policies/kill-switch", h.putKillSwitch)
+		}
+		if h.runs != nil {
+			r.Get("/api/runs", h.listRuns)
+			r.Get("/api/runs/{id}", h.getRun)
 		}
 		r.Get("/api/projects", h.listProjects)
 		r.Post("/api/projects", h.createProject)

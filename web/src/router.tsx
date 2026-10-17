@@ -13,6 +13,7 @@ import { ConnectionsPage } from "@/routes/connections";
 import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
+import { RunsPage } from "@/routes/runs";
 
 // Routes are declared in code instead of generated from files, so the whole
 // route tree is readable in one place.
@@ -49,6 +50,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Policies
+          </Link>
+          <Link
+            to="/runs"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Runs
           </Link>
           <div className="ml-auto">
             <AccountMenu />
@@ -96,6 +104,12 @@ const policiesRoute = createRoute({
   component: PoliciesPage,
 });
 
+const runsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/runs",
+  component: RunsPage,
+});
+
 const privacyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/privacy",
@@ -108,6 +122,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   policiesRoute,
+  runsRoute,
   privacyRoute,
 ]);
 

@@ -261,13 +261,59 @@
         "B0.1",
         "B0.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00008_runs_and_evidence.sql",
+        "server/store/queries/runs.sql",
+        "server/core/clock.go",
+        "server/core/coretest/",
+        "server/core/runs/",
+        "server/core/evidence/",
+        "server/jobs/jobs.go",
+        "server/jobs/jobs_test.go",
+        "server/api/runs.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/runs.ts",
+        "web/src/components/run-status.tsx",
+        "web/src/routes/runs.tsx"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Duplicate occurrence is reused or explicitly rejected",
+          "result": "pass",
+          "evidence": "runs TestSameOccurrenceIsReusedAndFailuresRetry; jobs test second Start not created"
+        },
+        {
+          "check": "Interrupted/partial reads cannot be marked complete",
+          "result": "pass",
+          "evidence": "runs TestPartialReadsCannotBeMarkedComplete, TestLeasesAreExclusiveAndExpire"
+        },
+        {
+          "check": "Core tests assert no duplicate stored evidence after repeated work",
+          "result": "pass",
+          "evidence": "evidence TestRepeatedObservationsDoNotDuplicate; jobs test exactly three rows"
+        }
+      ],
+      "remaining": [
+        "Evidence drill-down API (GET /api/evidence) arrives with the first screen that needs it (B1.3)",
+        "Retention is unconfigured by design"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "tests_catch": [
+        "same work queued or done twice",
+        "half-read run recorded complete",
+        "dead worker's lease never expiring or its late writes landing",
+        "two runs on one account",
+        "evidence duplicated or overwritten",
+        "run committed without its job"
+      ]
     },
     {
       "id": "B0.6",

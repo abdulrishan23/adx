@@ -79,3 +79,15 @@ Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. D
 
 ### BD-12. Exported JSON types get unique names across core packages
 2026-10-17. `gentypes` flattens every package into one TypeScript module, so `policies.Action` and `audit.Action` would merge into one wrong union. Types that cross the wire are named uniquely (`WriteAction`, `PolicyDocument`, `PolicyState`). Internal types can keep short names.
+
+### BD-13. Runs are named by occurrence, leased by workers, never completed by a partial read
+2026-10-17. `core/runs` keys each piece of durable work by `(workspace, kind, occurrence_key)`. Starting the same occurrence returns the existing run while it is queued, running or finished; a failed or interrupted run is requeued as a new attempt under the same reference. Workers lease the run and, when it names a provider account, the account, for 5 minutes between renewals. Every write by a worker is conditional on still holding the lease. `Finish` refuses `succeeded` unless completeness is `complete`. Recovery (startup and every minute) marks runs with expired leases `interrupted` and retries them up to 3 attempts, then leaves them for a person.
+
+- **Why.** The spec requires stable occurrence keys, account leases and interrupted-run recovery, and that a partial read can't be called complete. Conditional writes make a dead worker's late writes harmless.
+- **Cost.** A run kind must call `Progress` at least every 5 minutes or lose its lease. Long provider reads page, so that fits.
+
+### BD-14. Evidence is versioned, never edited
+2026-10-14. `core/evidence` keys an observation by `(workspace, source, kind, source_ref)`. Re-recording identical content is a no-op; different content inserts version n+1 and marks the old row superseded. Class is observed, estimated or inferred and completeness complete or partial, both required. Retention is unconfigured (`retain_until` null) and nothing is deleted.
+
+### BD-15. River inserts the run's job in the run's transaction
+2026-10-17. `jobs.Queue` implements `runs.Enqueuer` with River's `InsertTx` and a unique constraint on `run_id`, so a committed run always has exactly one live job and a rolled-back run has none. The job worker finds the run's executor by kind; unknown kinds fail the run visibly. Executors live outside `jobs` (phase 1 registers imports and refreshes in `cmd/adx`).

@@ -74,3 +74,19 @@ make check && make test
 - Web: `/connections` and `/settings/policies` pages with loading, empty, error and unconfigured states; typecheck and biome clean. Not browser-tested in this task.
 
 Live: none. No Google or Meta account exists yet; the policy document and caps are the owner's inputs (decisions.md, unresolved rules).
+
+## B0.5 Evidence, runs and durable operation foundation
+
+Local:
+
+```
+cd server && go test ./core/runs/ ./core/evidence/ ./jobs/ ./api/   # ok
+make check && make test
+```
+
+- `core/runs`: same occurrence reused while queued or running; failed run requeued as attempt 2 under the same public id; succeeded refused with partial or unknown completeness; failure needs a message; two workers can't lease one run; two runs can't hold one account; expired lease → interrupted with a reason; the dead worker's later Progress/Finish refused; the account frees for the other run; runs invisible from another workspace.
+- `core/evidence`: identical re-record ×3 keeps one row; changed payload creates version 2 and supersedes version 1; lookup lists current versions only, scoped by workspace; invalid class/completeness/kind refused; viewer can read, not write.
+- `jobs` (real River on temp SQLite): a started run is worked exactly once, records three evidence rows as the system actor in the run's workspace, finishes complete; executor `core.Error` becomes the run's safe error; a raw error is replaced by a generic message; a kind with no executor fails visibly instead of hanging.
+- Web: `/runs` page and `RunStatus` component (state, incomplete-read marker, observed-through freshness, safe error, attempt). Typecheck and biome clean.
+
+Live: n/a (no provider work exists yet to run).

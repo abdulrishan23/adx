@@ -49,6 +49,12 @@ export interface CheckResult {
     ok: boolean;
 }
 
+// From evidence/evidence.go
+export type Class = "estimated" | "inferred" | "observed";
+
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+
 // From connections/gohighlevel.go
 export interface Connection {
     provider: string;
@@ -80,6 +86,26 @@ export interface ErrorResponse {
     error: string;
 }
 
+// From evidence/evidence.go
+export interface Evidence {
+    id: number;
+    runId: number | null;
+    accountId: number | null;
+    source: string;
+    kind: string;
+    sourceRef: string;
+    scope: string;
+    class: Class;
+    observedAt: string;
+    eventAt: string | null;
+    payloadVersion: number;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    payload: string;
+    completeness: Completeness;
+    retainUntil: string | null;
+    supersededById: number | null;
+}
+
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
 
@@ -101,6 +127,9 @@ export interface KillSwitchInput {
 
 // From core/core.go
 export type Kind = 4 | 2 | 1 | 3 | 5;
+
+// From runs/runs.go
+export const MaxAutoAttempts = 3;
 
 // From policies/policies.go
 export interface Policy {
@@ -219,6 +248,31 @@ export const ReasonWorkspaceMismatch = "workspace_mismatch";
 // From core/core.go
 export type Role = "admin" | "marketer" | "viewer";
 
+// From runs/runs.go
+export interface Run {
+    id: string;
+    kind: string;
+    occurrenceKey: string;
+    accountId: number | null;
+    state: State;
+    completeness: Completeness;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    params: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    progress: string;
+    error: string | null;
+    attempt: number;
+    createdAt: string;
+    startedAt: string | null;
+    finishedAt: string | null;
+    observedThrough: string | null;
+}
+
+// From api/runs.go
+export interface RunsResponse {
+    runs: Run[];
+}
+
 // From identity/identity.go
 export interface Session {
     user: User;
@@ -243,6 +297,9 @@ export interface StartResult {
     authorizationUrl: string;
     expiresAt: string;
 }
+
+// From runs/runs.go
+export type State = "failed" | "interrupted" | "partial" | "queued" | "running" | "succeeded";
 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";

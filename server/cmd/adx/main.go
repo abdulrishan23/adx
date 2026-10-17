@@ -27,6 +27,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
 	"github.com/WokeWorks/adx/server/providers/authentik"
@@ -150,17 +151,22 @@ func run() error {
 		return err
 	}
 
-	worker, err := jobs.New(db, log)
+	// Durable work: core/runs records it, River works it. The queue is bound
+	// after the client exists because each needs the other.
+	queue := &jobs.Queue{}
+	runsService := runs.New(db, queue, runs.Config{})
+	worker, err := jobs.New(db, log, jobs.Deps{Runs: runsService, Executors: runExecutors()})
 	if err != nil {
 		return err
 	}
-	if err := worker.Start(ctx); err != nil {
+	queue.Bind(worker)
+	if err := worker.Client.Start(ctx); err != nil {
 		return err
 	}
 
 	readiness := ops.New(log, db, ops.Check{Name: "jobs", Run: func(context.Context) error {
 		select {
-		case <-worker.Stopped():
+		case <-worker.Client.Stopped():
 			return errors.New("job worker stopped")
 		default:
 			return nil
@@ -176,6 +182,7 @@ func run() error {
 			Ops:         readiness,
 			Identity:    sessions,
 			Policies:    policies.New(db),
+			Runs:        runsService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -196,7 +203,13 @@ func run() error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
-	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Stop(shutdownCtx))
+	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Client.Stop(shutdownCtx))
+}
+
+// runExecutors maps run kinds to the code that works them. Phase 1 adds the
+// imports and refreshes; phase 0 has none.
+func runExecutors() map[string]jobs.Executor {
+	return map[string]jobs.Executor{}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates

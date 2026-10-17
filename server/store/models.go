@@ -33,6 +33,13 @@ type AccountCapability struct {
 	LastError  sql.NullString
 }
 
+type AccountLease struct {
+	AccountID int64
+	RunID     int64
+	Owner     string
+	Until     time.Time
+}
+
 type AuditLog struct {
 	ID           int64
 	At           time.Time
@@ -62,6 +69,26 @@ type Credential struct {
 	TokenExpiresAt  sql.NullTime
 	ConnectedBy     sql.NullInt64
 	ConnectedAt     time.Time
+}
+
+type Evidence struct {
+	ID             int64
+	WorkspaceID    int64
+	RunID          sql.NullInt64
+	AccountID      sql.NullInt64
+	Source         string
+	Kind           string
+	SourceRef      string
+	Scope          string
+	Class          string
+	ObservedAt     time.Time
+	EventAt        sql.NullTime
+	PayloadVersion int64
+	Payload        string
+	PayloadHash    string
+	Completeness   string
+	RetainUntil    sql.NullTime
+	SupersededBy   sql.NullInt64
 }
 
 type KillSwitch struct {
@@ -95,6 +122,28 @@ type Project struct {
 	ID        int64
 	Name      string
 	CreatedAt time.Time
+}
+
+type Run struct {
+	ID              int64
+	PublicID        string
+	WorkspaceID     int64
+	Kind            string
+	OccurrenceKey   string
+	AccountID       sql.NullInt64
+	State           string
+	Completeness    string
+	Params          string
+	Progress        string
+	ErrorSafe       sql.NullString
+	Attempt         int64
+	LeaseOwner      sql.NullString
+	LeaseUntil      sql.NullTime
+	RequestedBy     sql.NullInt64
+	CreatedAt       time.Time
+	StartedAt       sql.NullTime
+	FinishedAt      sql.NullTime
+	ObservedThrough sql.NullTime
 }
 
 type Session struct {
