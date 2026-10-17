@@ -32,6 +32,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/qualification"
+	"github.com/WokeWorks/adx/server/core/registry"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -72,6 +73,7 @@ type Deps struct {
 	Qualification *qualification.Qualification
 	Evaluation    *evaluation.Evaluation
 	Pipeline      *pipeline.Pipeline
+	Registry      *registry.Registry
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -106,13 +108,14 @@ type handlers struct {
 	qualification *qualification.Qualification
 	evaluation    *evaluation.Evaluation
 	pipeline      *pipeline.Pipeline
+	registry      *registry.Registry
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -404,6 +407,17 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/crm/imports/{id}", h.getImport)
 			r.Post("/api/crm/imports/{id}/apply", h.applyImport)
 			r.Get("/api/crm/export", h.exportPipeline)
+		}
+		if h.registry != nil {
+			r.Get("/api/agents/capabilities", h.capabilities)
+			r.Get("/api/registry/{kind}", h.listRegistry)
+			r.Post("/api/skills", h.saveSkill)
+			r.Post("/api/skills/{key}/check-output", h.checkSkillOutput)
+			r.Post("/api/agents", h.saveAgent)
+			r.Post("/api/workflows/definitions", h.saveWorkflow)
+			r.Post("/api/workflows/definitions/validate", h.validateWorkflow)
+			r.Post("/api/registry/{id}/activate", h.activateRegistry)
+			r.Post("/api/registry/{id}/retire", h.retireRegistry)
 		}
 	})
 

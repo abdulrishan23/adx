@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { AgentsPage } from "@/routes/agents";
 import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
 import { AskPage } from "@/routes/ask";
@@ -155,6 +156,13 @@ function Layout() {
             Calls
           </Link>
           <Link
+            to="/settings/agents"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Agents
+          </Link>
+          <Link
             to="/evaluation"
             className="text-muted-foreground"
             activeProps={{ className: "text-foreground" }}
@@ -254,6 +262,12 @@ const outreachRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/outreach",
   component: OutreachPage,
+});
+
+const agentsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/agents",
+  component: AgentsPage,
 });
 
 const evaluationRoute = createRoute({
@@ -388,6 +402,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   outreachRoute,
+  agentsRoute,
   evaluationRoute,
   scoringRoute,
   policiesRoute,

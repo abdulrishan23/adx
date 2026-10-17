@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/providers/gohighlevel"
@@ -128,4 +130,23 @@ func readSecretFile(path string) ([]byte, error) {
 		return nil, errors.New("secret file must be a regular file readable only by its owner")
 	}
 	return os.ReadFile(path)
+}
+
+// connectedAccounts answers the registry's question "which accounts exist"
+// from the connections service, or none when connections are not configured.
+type connectedAccounts struct{ c *connections.Connections }
+
+func (a connectedAccounts) ConnectedAccountIDs(ctx context.Context, actor core.Actor) ([]int64, error) {
+	if a.c == nil {
+		return nil, nil
+	}
+	list, err := a.c.ListAccounts(ctx, actor)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]int64, 0, len(list))
+	for _, acc := range list {
+		out = append(out, acc.ID)
+	}
+	return out, nil
 }

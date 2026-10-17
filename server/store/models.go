@@ -1041,6 +1041,25 @@ type QualificationLabel struct {
 	LabeledAt   time.Time
 }
 
+type RegistryEntry struct {
+	ID          int64
+	WorkspaceID int64
+	Kind        string
+	Key         string
+	Version     int64
+	State       string
+	Source      string
+	Document    string
+	Validation  string
+	NeedsAdmin  int64
+	Reason      string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	ActivatedBy sql.NullInt64
+	ActivatedAt sql.NullTime
+	RetiredAt   sql.NullTime
+}
+
 type Report struct {
 	ID             int64
 	WorkspaceID    int64

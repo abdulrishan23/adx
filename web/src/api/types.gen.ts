@@ -82,6 +82,29 @@ export interface AffectedPlan {
     state: PlanState;
 }
 
+// From api/registry.go
+export interface AgentCapabilitiesResponse {
+    capabilities: AgentCapability[];
+}
+
+// From registry/registry.go
+export interface AgentCapability {
+    name: string;
+    kind: string;
+    domain: string;
+    description: string;
+}
+
+// From registry/registry.go
+export interface AgentDocument {
+    name: string;
+    instructions: string;
+    skills: string[];
+    accountScope: number[];
+    coordinates: string[];
+    model: string;
+}
+
 // From alerts/alerts.go
 export interface Alert {
     id: number;
@@ -604,6 +627,12 @@ export type ChannelMode = "approved" | "automatic" | "off";
 // From alerts/alerts.go
 export const CheckCostSpike = "cost_spike";
 
+// From api/registry.go
+export interface CheckOutputInput {
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    output: string;
+}
+
 // From ops/ops.go
 export interface CheckResult {
     name: string;
@@ -701,7 +730,7 @@ export interface CompleteTaskInput {
 }
 
 // From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
 export interface Conflict {
@@ -1736,6 +1765,11 @@ export interface Link {
     linkedBy: number | null;
     reversedAt: string | null;
     reversalReason: string;
+}
+
+// From registry/registry.go
+export interface LoopSpec {
+    max: number;
 }
 
 // From api/crm.go
@@ -2836,6 +2870,31 @@ export interface RefreshProgress {
     unknownCampaignRows: number;
 }
 
+// From api/registry.go
+export interface RegistryEntriesResponse {
+    entries: RegistryEntry[];
+}
+
+// From registry/registry.go
+export interface RegistryEntry {
+    id: number;
+    kind: string;
+    key: string;
+    version: number;
+    state: string;
+    source: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    document: string;
+    validation: string[];
+    needsAdmin: boolean;
+    reason: string;
+    createdBy: number | null;
+    createdAt: string;
+    activatedBy: number | null;
+    activatedAt: string | null;
+    retiredAt: string | null;
+}
+
 // From creative/production.go
 export interface RenderParams {
     creativeId: number;
@@ -3154,9 +3213,30 @@ export interface SalesBrief {
     daysSinceActivity: number;
 }
 
+// From api/registry.go
+export interface SaveAgentInput {
+    key: string;
+    document: AgentDocument;
+    fromModel: boolean;
+}
+
 // From api/creative.go
 export interface SaveDocumentInput {
     document: Document;
+}
+
+// From api/registry.go
+export interface SaveSkillInput {
+    key: string;
+    document: SkillDocument;
+    fromModel: boolean;
+}
+
+// From api/registry.go
+export interface SaveWorkflowInput {
+    key: string;
+    document: WorkflowDocument;
+    fromModel: boolean;
 }
 
 // From research/schedules.go
@@ -3375,6 +3455,19 @@ export interface SignalKind {
     description: string;
     supported: boolean;
     reason: string;
+}
+
+// From registry/registry.go
+export interface SkillDocument {
+    name: string;
+    instructions: string;
+    // empty interface{} type, falling back to unknown
+    inputSchema: Record<string, unknown> | null;
+    // empty interface{} type, falling back to unknown
+    outputSchema: Record<string, unknown> | null;
+    evidenceScope: string[];
+    permittedTools: string[];
+    maxTokens: number;
 }
 
 // From voice/voice.go
@@ -3607,6 +3700,11 @@ export interface ValidationIssue {
     message: string;
 }
 
+// From api/registry.go
+export interface ValidationResponse {
+    problems: string[];
+}
+
 // From creative/creative.go
 export interface Version {
     id: number;
@@ -3653,6 +3751,25 @@ export interface WebhookResponse {
     ignored: string;
     duplicate: boolean;
     eventId: number;
+}
+
+// From registry/registry.go
+export interface WorkflowDocument {
+    name: string;
+    steps: WorkflowStep[];
+    maxSteps: number;
+    budgetTokens: number;
+}
+
+// From registry/registry.go
+export interface WorkflowStep {
+    key: string;
+    agent: string;
+    skill: string;
+    dependsOn: string[];
+    inputs: Record<string, string> | null;
+    loop: LoopSpec | null;
+    external: boolean;
 }
 
 // From policies/policies.go

@@ -1657,13 +1657,36 @@
         "B2.4",
         "B0.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00031_registry.sql",
+        "server/store/queries/registry.sql",
+        "server/core/registry/registry.go",
+        "server/core/registry/schema.go",
+        "server/core/registry/registry_test.go",
+        "server/api/registry.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/registry.ts",
+        "web/src/routes/agents.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/registry/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a prompt edit cannot add tools, scope or accounts without an admin",
+        "a malformed output fails schema validation with every problem named",
+        "a model-written draft stays draft until an admin accepts it"
+      ],
+      "remaining": [
+        "browser inspection"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-49."
     },
     {
       "id": "B5.3",

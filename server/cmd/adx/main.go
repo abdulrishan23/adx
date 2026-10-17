@@ -46,6 +46,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/qualification"
+	"github.com/WokeWorks/adx/server/core/registry"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -348,6 +349,7 @@ func run() error {
 	}
 	evaluationService := evaluation.New(db, evaluation.Config{})
 	pipelineService := pipeline.New(db, evidenceStore, pipeline.Config{})
+	registryService := registry.New(db, registry.Config{Accounts: connectedAccounts{connections}})
 	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
@@ -519,6 +521,7 @@ func run() error {
 			Qualification: qualificationService,
 			Evaluation:    evaluationService,
 			Pipeline:      pipelineService,
+			Registry:      registryService,
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

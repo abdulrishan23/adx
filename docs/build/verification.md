@@ -485,3 +485,18 @@ make check && make test
 - Web: `/pipeline` with stage filters, opportunity panels (stage moves with the record's version, assignments, interactions, follow-ups), open tasks, import preview/apply/resume and the stage editor. Typecheck and biome clean. Not browser-tested.
 
 Live: none needed; this is ADX's own data.
+
+## B5.2 Skill, agent and capability registry
+
+Local:
+
+```
+cd server && go test ./core/registry/   # ok
+make check && make test
+```
+
+- `core/registry`: a marketer's first skill with a tool needs an admin and the marketer's activation is 403; the admin's activation records acceptance; an instructions-only edit is activated by the marketer and retires v1; an edit that adds `propose_change` names the addition, is 403 for the marketer and leaves v2 active; widening the evidence scope is named. An agent's tools are exactly its skills' tools; adding account 12 names the addition and needs an admin; account 99 is "not connected" and blocks activation; a super agent with skills is a validation problem. Output checks name every problem (`$.offers[0].pct: must be a number`, a missing `name`, `pct` above 100, an unknown field), refuse non-JSON and a non-object, and check inputs the same way; a schema with type `date` or a required field that is not a property is a draft problem that blocks activation; unknown tools and scopes are named. A skill saved through the assistant's actor is `model`, needs an admin, cannot be activated by the marketer or by the model's actor, has no active version until the admin accepts; the explicit flag does the same. Workflow validation names the cycle `a -> c -> b -> a`, the unbounded loop, the proposing step not marked external and the missing agent, and that draft cannot be activated; a clean graph with an external step needs an admin and activates; a graph exceeding `maxSteps` is named; the catalogue has twelve capabilities.
+- `api`: capabilities, registry listing by kind, skill/agent/workflow saves, workflow validation, skill output check, activate and retire.
+- Web: `/settings/agents` with the three kinds, versions and their state, validation problems, activate and retire, a JSON editor with validate-only for workflows, and the capability catalogue. Typecheck and biome clean. Not browser-tested.
+
+Live: none needed.
