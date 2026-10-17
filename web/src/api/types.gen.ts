@@ -46,6 +46,9 @@ export interface Capability {
 // From connections/accounts.go
 export const CapabilityReadLeads = "read.leads";
 
+// From connections/ads.go
+export const CapabilityReadReporting = "read.reporting";
+
 // From ops/ops.go
 export interface CheckResult {
     name: string;
@@ -55,8 +58,8 @@ export interface CheckResult {
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From runs/runs.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From connections/gohighlevel.go
 export interface Connection {
@@ -101,6 +104,9 @@ export interface Coverage {
 export interface CreateInput {
     name: string;
 }
+
+// From reporting/ingest.go
+export type Day = string;
 
 // From core/core.go
 export const DefaultWorkspace = 1;
@@ -150,6 +156,21 @@ export interface FieldLocation {
 
 // From assets/assets.go
 export type Format = "1.91:1" | "1:1" | "4:5" | "9:16";
+
+// From reporting/ingest.go
+export interface Freshness {
+    accountId: number;
+    lastSuccessAt: string | null;
+    observedThrough: Day | null;
+    lastRunId: number | null;
+    lastPartial: boolean;
+    lastError: string | null;
+}
+
+// From api/analytics.go
+export interface FreshnessResponse {
+    accounts: Freshness[];
+}
 
 // From leads/funnel.go
 export interface FunnelDocument {
@@ -363,6 +384,12 @@ export interface ProjectsResponse {
 // From connections/gohighlevel.go
 export const Provider = "gohighlevel";
 
+// From connections/ads.go
+export const ProviderGoogleAds = "google_ads";
+
+// From connections/ads.go
+export const ProviderMeta = "meta";
+
 // From api/leads.go
 export interface PutFunnelInput {
     document: FunnelDocument;
@@ -422,6 +449,34 @@ export interface Ref {
     sha256: string;
     size: number;
     contentType: string;
+}
+
+// From api/analytics.go
+export interface RefreshInput {
+    accountId: number;
+    from: Day;
+    to: Day;
+}
+
+// From reporting/ingest.go
+export const RefreshKind = "ads.refresh";
+
+// From reporting/ingest.go
+export interface RefreshParams {
+    accountId: number;
+    from: Day;
+    to: Day;
+}
+
+// From reporting/ingest.go
+export interface RefreshProgress {
+    stage: string;
+    cursor: string;
+    campaigns: number;
+    metricRows: number;
+    pages: number;
+    throughDay: Day;
+    unknownCampaignRows: number;
 }
 
 // From assets/assets.go

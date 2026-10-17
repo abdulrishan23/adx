@@ -121,3 +121,21 @@ make check && make test
 - Web: `/leads` (coverage, filter by stage, raw status next to stage, "field missing on last scan", bucket-not-a-source marker, import button for marketers) and `/settings/funnel` (field locations, observed statuses with counts, stage per status, unmapped banner, save as new version). Typecheck and biome clean. Not browser-tested.
 
 Live: not verified. Needs the ADX Test location's Private Integration Token (docs/gohighlevel-development.md) and the owner's answer on which field holds the status. Three API details are marked unconfirmed in BD-20 and will be checked on the first live import.
+
+## B1.1 Google and Meta real read adapters
+
+Local:
+
+```
+cd server && go test ./core/reporting/ ./core/connections/ ./providers/googleads/ ./providers/meta/ ./jobs/   # ok
+make check && make test
+```
+
+- `core/reporting` with a fake paginated provider: two campaign pages and two metric pages; page 2 of metrics fails once → run failed, page 1 kept, cursor recorded, freshness marks partial with the error; retry reads only page 2 (campaign pages hit once each, metric page 2 twice: one failure, one read); a ghost campaign's row counted and skipped; re-read replaces revised rows without duplicates; a range including Dubai's today ends partial, observed through yesterday; Google and Meta rows keep separate claim columns and filter by platform; role, date and account validation; unconfigured platform fails the run with a conflict.
+- `providers/googleads` against a fake API: searchStream path, Bearer header, `login-customer-id` from the dashed manager id, no developer token, both batches decoded, micros → fils with rounding, int64 strings, null conversions stay null; hierarchy walks `listAccessibleCustomers` then `customer_client` and skips a forbidden customer; quota error carries `retryDelay` 42s and hides the request id; auth, authorization and 5xx mapped.
+- `providers/meta` against a fake Graph: insights params (campaign level, `time_increment=1`, `time_range`), token in the header not the URL, string numbers, spend 5339.5 → 533950 fils and 0.01 → 1, only the `lead` action counted, `paging.next` followed and a foreign-host cursor refused, budgets as minor-unit strings with daily/lifetime period and nil for ad-set budgets; 190 → reconnect, 17 → throttled with the header's 12 minutes, 200 → permissions, 100/1487534 → too large, transient → unavailable.
+- OAuth adapters: Google consent URL has offline access, S256 and the adwords scope; exchange sends the verifier and redirect URI; refresh token required; `invalid_grant` → reconnect. Meta exchanges the short token for a long-lived one, reads the subject from `/me`, refresh re-exchanges, 400 → reconnect.
+- `core/connections`: a sign-in reaching no accounts saves nothing; the manager is not saved as a spend account; currency, time zone and parent saved; tokens sealed; `ProviderToken` refreshes within an hour of expiry once and stores the new expiry; viewer refused; replayed callback refused.
+- Web: connect buttons for admins, per-account freshness line ("never read" is a state), "Refresh last 30 days" for marketers. Typecheck and biome clean. Not browser-tested.
+
+Live: not verified. Needs a Google Cloud OAuth client on a project with Google Ads API access and the Head of Marketing & AI's Google sign-in; a Meta Business app with the connecting person given a role (D-22). Neither exists on this machine. Same-account/date reconciliation against the platforms' own UI is therefore blocked.

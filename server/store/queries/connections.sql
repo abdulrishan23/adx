@@ -1,11 +1,11 @@
 -- name: CreateConnectionOAuthAttempt :exec
-INSERT INTO connection_oauth_attempts (state_hash, provider, user_id, binding_hash, expires_at)
-VALUES (?, ?, ?, ?, ?);
+INSERT INTO connection_oauth_attempts (state_hash, provider, user_id, binding_hash, expires_at, code_verifier)
+VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: ConsumeConnectionOAuthAttempt :one
 DELETE FROM connection_oauth_attempts
 WHERE state_hash = ? AND provider = ? AND user_id = ? AND binding_hash = ? AND expires_at > ?
-RETURNING state_hash;
+RETURNING *;
 
 -- name: DeleteExpiredConnectionOAuthAttempts :exec
 DELETE FROM connection_oauth_attempts WHERE expires_at <= ?;
@@ -66,3 +66,6 @@ WHERE accounts.id = ? AND EXISTS (
     SELECT 1 FROM credentials
     WHERE credentials.id = accounts.credential_id AND credentials.encrypted_secret = ?
 );
+
+-- name: ListAccountsByCredential :many
+SELECT * FROM accounts WHERE credential_id = ? ORDER BY external_id;

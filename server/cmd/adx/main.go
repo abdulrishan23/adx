@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
@@ -67,6 +68,18 @@ type config struct {
 	OIDCClientID       string `env:"ADX_OIDC_CLIENT_ID"`
 	OIDCClientSecret   string `env:"ADX_OIDC_CLIENT_SECRET"`
 	AuthentikGroupName string `env:"ADX_AUTHENTIK_GROUP_NAME" envDefault:"adx-users"`
+
+	// Ad platforms (B1.1). Each is optional: without its settings the
+	// platform can't be connected and the screen says so. The callback is
+	// ADX_PUBLIC_URL + /api/connections/{provider}/callback.
+	GoogleOAuthClientID     string `env:"ADX_GOOGLE_OAUTH_CLIENT_ID"`
+	GoogleOAuthClientSecret string `env:"ADX_GOOGLE_OAUTH_CLIENT_SECRET"`
+	GoogleAdsLoginCustomer  string `env:"ADX_GOOGLE_ADS_LOGIN_CUSTOMER_ID"`
+	MetaAppID               string `env:"ADX_META_APP_ID"`
+	MetaAppSecret           string `env:"ADX_META_APP_SECRET"`
+	// AdsRefreshTrailingDays is how far back the daily refresh re-reads,
+	// because both platforms revise recent days (28 for Meta's windows).
+	AdsRefreshTrailingDays int `env:"ADX_ADS_REFRESH_TRAILING_DAYS" envDefault:"30"`
 }
 
 func main() {
@@ -126,6 +139,13 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	adPlatforms, err := configuredAdPlatforms(cfg, dev)
+	if err != nil {
+		return err
+	}
+	if connections != nil {
+		connections.WithAds(adPlatforms)
+	}
 	if err := jobs.Migrate(ctx, db); err != nil {
 		return err
 	}
@@ -163,7 +183,27 @@ func run() error {
 		tokens = connections
 	}
 	leadsService := leads.New(db, ghlReader(connections), tokens, evidenceStore, leads.Config{})
-	worker, err := jobs.New(db, log, jobs.Deps{Runs: runsService, Executors: runExecutors(leadsService)})
+	readers := map[string]reporting.Provider{}
+	for name, p := range adPlatforms {
+		readers[name] = p.Reader
+	}
+	var adTokens reporting.Tokens
+	if connections != nil {
+		adTokens = connections
+	}
+	reportingService := reporting.New(db, readers, adTokens, evidenceStore, reporting.Config{})
+	worker, err := jobs.New(db, log, jobs.Deps{
+		Runs:      runsService,
+		Executors: runExecutors(leadsService, reportingService),
+		Periodic: []jobs.Periodic{{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
+			started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
+			for _, e := range errs {
+				log.WarnContext(ctx, "daily ads refresh could not start", "error", e)
+			}
+			log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
+			return nil
+		}}},
+	})
 	if err != nil {
 		return err
 	}
@@ -192,6 +232,7 @@ func run() error {
 			Policies:    policies.New(db),
 			Runs:        runsService,
 			Leads:       leadsService,
+			Reporting:   reportingService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -216,8 +257,8 @@ func run() error {
 }
 
 // runExecutors maps run kinds to the code that works them.
-func runExecutors(l *leads.Leads) map[string]jobs.Executor {
-	return map[string]jobs.Executor{leads.RunKind: l}
+func runExecutors(l *leads.Leads, r *reporting.Reporting) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates

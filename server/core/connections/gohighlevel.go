@@ -100,7 +100,7 @@ func (c *Connections) Start(ctx context.Context, actor core.Actor, browserBindin
 	}
 	err := c.db.Writer().CreateConnectionOAuthAttempt(ctx, store.CreateConnectionOAuthAttemptParams{
 		StateHash: hash(state), Provider: Provider, UserID: actor.UserID,
-		BindingHash: hash(browserBinding), ExpiresAt: expires,
+		BindingHash: hash(browserBinding), ExpiresAt: expires, CodeVerifier: "",
 	})
 	if err != nil {
 		return StartResult{}, err

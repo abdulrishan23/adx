@@ -70,9 +70,19 @@ func Migrate(ctx context.Context, db *store.DB) error {
 	return err
 }
 
+// Periodic is a recurring task that starts runs or does housekeeping. It
+// runs on River's schedule and gets no job arguments.
+type Periodic struct {
+	Kind  string
+	Every time.Duration
+	Run   func(ctx context.Context) error
+}
+
 type Deps struct {
 	Runs      *runs.Runs
 	Executors map[string]Executor
+	// Periodic tasks, such as the daily ads refresh.
+	Periodic []Periodic
 	// Owner names this process in leases. Defaults to the hostname and pid.
 	Owner string
 	// RecoverEvery is how often expired leases are swept. Default a minute.
@@ -106,6 +116,19 @@ func New(db *store.DB, log *slog.Logger, d Deps) (*Worker, error) {
 		river.AddWorker(workers, &recoverWorker{runs: d.Runs, log: log})
 		periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(d.RecoverEvery),
 			func() (river.JobArgs, *river.InsertOpts) { return recoverArgs{}, nil }, &river.PeriodicJobOpts{RunOnStart: true}))
+	}
+
+	if len(d.Periodic) > 0 {
+		tasks := map[string]func(context.Context) error{}
+		for _, p := range d.Periodic {
+			tasks[p.Kind] = p.Run
+			name := p.Kind
+			periodic = append(periodic, river.NewPeriodicJob(river.PeriodicInterval(p.Every),
+				func() (river.JobArgs, *river.InsertOpts) {
+					return periodicArgs{Name: name}, &river.InsertOpts{UniqueOpts: river.UniqueOpts{ByArgs: true}}
+				}, &river.PeriodicJobOpts{RunOnStart: false}))
+		}
+		river.AddWorker(workers, &periodicWorker{tasks: tasks, log: log})
 	}
 
 	// River shares the single write connection with the app, which is how
@@ -220,4 +243,27 @@ func (w *recoverWorker) Work(ctx context.Context, _ *river.Job[recoverArgs]) err
 		}
 	}
 	return nil
+}
+
+// periodicArgs names the periodic task to run. One River kind covers them
+// all; the name picks the function.
+type periodicArgs struct {
+	Name string `json:"name" river:"unique"`
+}
+
+func (periodicArgs) Kind() string { return "periodic" }
+
+type periodicWorker struct {
+	river.WorkerDefaults[periodicArgs]
+	tasks map[string]func(context.Context) error
+	log   *slog.Logger
+}
+
+func (w *periodicWorker) Work(ctx context.Context, job *river.Job[periodicArgs]) error {
+	run, ok := w.tasks[job.Args.Name]
+	if !ok {
+		w.log.WarnContext(ctx, "unknown periodic task", "name", job.Args.Name)
+		return nil
+	}
+	return run(ctx)
 }

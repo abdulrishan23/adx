@@ -386,13 +386,77 @@
         "B0.4",
         "B0.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "docs/build/api-notes/",
+        "server/store/migrations/00010_ad_campaigns_and_metrics.sql",
+        "server/store/migrations/00011_oauth_attempt_verifier.sql",
+        "server/store/queries/reporting.sql",
+        "server/store/queries/connections.sql",
+        "server/core/reporting/",
+        "server/core/connections/ads.go",
+        "server/providers/googleads/",
+        "server/providers/meta/",
+        "server/jobs/jobs.go (Periodic)",
+        "server/api/analytics.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "server/cmd/adx/connections.go",
+        "web/src/api/analytics.ts",
+        "web/src/routes/connections.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Fake paginated provider imports every page once",
+          "result": "pass",
+          "evidence": "reporting TestFakePaginatedProviderImportsEveryPageOnce (hit counts per page)"
+        },
+        {
+          "check": "Same-account/date samples reconcile when live access exists; otherwise live gate stays blocked",
+          "result": "blocked_external",
+          "evidence": "no Google OAuth client, Meta app or account access on this machine; see blockers"
+        },
+        {
+          "check": "Google and Meta conversion claims remain separate",
+          "result": "pass",
+          "evidence": "reporting TestPlatformClaimsStaySeparate; separate columns conversions vs platform_leads"
+        }
+      ],
+      "remaining": [
+        "Live reconciliation of one account/day against the platform UI",
+        "Meta Leads API (lead forms) read for the sync-gap report (B1.3)",
+        "Ad set / ad level objects (B3.5)",
+        "Backoff honouring Google retryDelay / Meta regain time inside the run (currently the run fails safely and the daily job retries)"
+      ],
+      "blockers": [
+        {
+          "capability": "live Google Ads reads",
+          "unblocks": "a Google Cloud project with Google Ads API access (Basic or Standard) and an OAuth client; ADX_GOOGLE_OAUTH_CLIENT_ID/SECRET; the Head of Marketing & AI signs in once (D-20); manager id if access goes through the WokeWorks MCC"
+        },
+        {
+          "capability": "live Meta reads",
+          "unblocks": "a Meta Business app with ADX_META_APP_ID/SECRET; the connecting person given a role on the app (D-22 Standard Access)"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "a page read twice or skipped",
+        "retry restarting from page one",
+        "failed page losing earlier pages",
+        "today's partial day called complete",
+        "Google and Meta claims summed",
+        "micros or decimal spend mis-scaled",
+        "token in a URL or provider error text shown to users",
+        "manager saved as a spend account",
+        "sign-in with no accounts stored as a connection"
+      ]
     },
     {
       "id": "B1.2",

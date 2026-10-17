@@ -20,6 +20,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/storetest"
 )
@@ -517,4 +518,132 @@ func TestAccountsShowHealthFromProvenCapabilities(t *testing.T) {
 
 	_, err = f.service.ListAccounts(t.Context(), core.Actor{})
 	assert.ErrorIs(t, err, core.ErrForbidden)
+}
+
+// fakeAds is a scripted ad platform: an identity that returns tokens for a
+// code and a reader that lists accounts.
+type fakeAds struct {
+	tokens    connections.AdsTokens
+	refreshed connections.AdsTokens
+	exchErr   error
+	refreshes int
+	accounts  []reporting.ProviderAccount
+	listErr   error
+	lastToken string
+}
+
+func (f *fakeAds) AuthorizationURL(state, verifier string) string {
+	return "https://accounts.example/o/oauth2/auth?state=" + state + "&code_challenge=" + verifier
+}
+func (f *fakeAds) Exchange(_ context.Context, code, verifier string) (connections.AdsTokens, error) {
+	if verifier == "" {
+		return connections.AdsTokens{}, errors.New("no verifier")
+	}
+	return f.tokens, f.exchErr
+}
+func (f *fakeAds) Refresh(context.Context, string) (connections.AdsTokens, error) {
+	f.refreshes++
+	return f.refreshed, nil
+}
+func (f *fakeAds) Platform() string { return "google_ads" }
+func (f *fakeAds) ListAccounts(_ context.Context, token string) ([]reporting.ProviderAccount, error) {
+	f.lastToken = token
+	return f.accounts, f.listErr
+}
+func (f *fakeAds) ListCampaigns(context.Context, string, string, string) (reporting.Page[reporting.Campaign], error) {
+	return reporting.Page[reporting.Campaign]{}, nil
+}
+func (f *fakeAds) DailyMetrics(context.Context, string, string, reporting.Day, reporting.Day, string) (reporting.Page[reporting.DailyMetric], error) {
+	return reporting.Page[reporting.DailyMetric]{}, nil
+}
+func (f *fakeAds) ListConversionActions(context.Context, string, string) ([]reporting.ConversionAction, error) {
+	return nil, nil
+}
+
+// Catches: a Google sign-in that reaches no accounts being saved as a
+// connection, managers saved as spend accounts, discovered accounts missing
+// their currency or time zone, the token stored in clear, and a token near
+// expiry not being refreshed before a read.
+func TestAdsConnectDiscoversAccountsAndRefreshesTokens(t *testing.T) {
+	f := newFixture(t)
+	ads := &fakeAds{
+		tokens: connections.AdsTokens{AccessToken: "g-access", RefreshToken: "g-refresh", ExpiresAt: f.now.Add(time.Hour), Scopes: []string{"adwords"}, Subject: "google-user-1"},
+		accounts: []reporting.ProviderAccount{
+			{ExternalID: "9876543210", Name: "WokeWorks MCC", Manager: true, Currency: "AED", TimeZone: "Asia/Dubai"},
+			{ExternalID: "1234567890", Name: "Reportage Felix Properties", ParentID: "9876543210", Currency: "AED", TimeZone: "Asia/Dubai", Status: "ENABLED"},
+		},
+	}
+	f.service.WithAds(map[string]connections.AdsPlatform{connections.ProviderGoogleAds: {Identity: ads, Reader: ads}})
+
+	_, err := f.service.StartAds(t.Context(), viewer, connections.ProviderGoogleAds, binding)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	_, err = f.service.StartAds(t.Context(), admin, connections.ProviderMeta, binding)
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindConflict, ce.Kind, "Meta isn't registered here")
+
+	start, err := f.service.StartAds(t.Context(), admin, connections.ProviderGoogleAds, binding)
+	require.NoError(t, err)
+	u, err := url.Parse(start.AuthorizationURL)
+	require.NoError(t, err)
+	state := u.Query().Get("state")
+	assert.NotEmpty(t, u.Query().Get("code_challenge"))
+
+	// A sign-in that reaches nothing is refused and nothing is saved.
+	ads.accounts, ads.listErr = nil, nil
+	_, err = f.service.FinishAds(t.Context(), admin, connections.ProviderGoogleAds, connections.FinishInput{State: state, BrowserBinding: binding, Code: "code"})
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindConflict, ce.Kind)
+	assert.Equal(t, 0, f.credentialCount(t))
+
+	ads.accounts = []reporting.ProviderAccount{
+		{ExternalID: "9876543210", Name: "WokeWorks MCC", Manager: true, Currency: "AED", TimeZone: "Asia/Dubai"},
+		{ExternalID: "1234567890", Name: "Reportage Felix Properties", ParentID: "9876543210", Currency: "AED", TimeZone: "Asia/Dubai", Status: "ENABLED"},
+	}
+	start, err = f.service.StartAds(t.Context(), admin, connections.ProviderGoogleAds, binding)
+	require.NoError(t, err)
+	u, _ = url.Parse(start.AuthorizationURL)
+	accounts, err := f.service.FinishAds(t.Context(), admin, connections.ProviderGoogleAds, connections.FinishInput{State: u.Query().Get("state"), BrowserBinding: binding, Code: "code"})
+	require.NoError(t, err)
+	require.Len(t, accounts, 1, "the manager is a parent, not a spend account")
+	assert.Equal(t, "1234567890", accounts[0].ExternalID)
+	assert.Equal(t, "AED", *accounts[0].Currency)
+	assert.Equal(t, "Asia/Dubai", *accounts[0].TimeZone)
+	assert.Equal(t, "9876543210", *accounts[0].ParentID)
+	assert.Equal(t, connections.HealthConnected, accounts[0].Health)
+	assert.Equal(t, "g-access", ads.lastToken)
+	assert.Equal(t, 1, f.credentialCount(t))
+
+	var sealed []byte
+	require.NoError(t, f.db.Read.QueryRowContext(t.Context(), "SELECT encrypted_secret FROM credentials WHERE provider = 'google_ads'").Scan(&sealed))
+	assert.NotContains(t, string(sealed), "g-access")
+	assert.NotContains(t, string(sealed), "g-refresh")
+
+	listed, err := f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	require.Len(t, listed, 1)
+	assert.Equal(t, connections.CapabilityReadReporting, listed[0].Capabilities[0].Name)
+
+	// Token still fresh: handed out as is. Near expiry: refreshed and resealed.
+	token, err := f.service.ProviderToken(t.Context(), core.System(core.ViaJob), listed[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, "g-access", token)
+	assert.Equal(t, 0, ads.refreshes)
+	ads.refreshed = connections.AdsTokens{AccessToken: "g-access-2", ExpiresAt: f.now.Add(2 * time.Hour)}
+	f.now = f.now.Add(58 * time.Minute)
+	token, err = f.service.ProviderToken(t.Context(), core.System(core.ViaJob), listed[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, "g-access-2", token)
+	assert.Equal(t, 1, ads.refreshes)
+	token, err = f.service.ProviderToken(t.Context(), core.System(core.ViaJob), listed[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, "g-access-2", token)
+	assert.Equal(t, 1, ads.refreshes, "the new expiry was stored")
+	_, err = f.service.ProviderToken(t.Context(), viewer, listed[0].ID)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+
+	// A replayed callback does nothing.
+	_, err = f.service.FinishAds(t.Context(), admin, connections.ProviderGoogleAds, connections.FinishInput{State: u.Query().Get("state"), BrowserBinding: binding, Code: "code"})
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindInvalid, ce.Kind)
 }

@@ -14,7 +14,7 @@ import (
 const consumeConnectionOAuthAttempt = `-- name: ConsumeConnectionOAuthAttempt :one
 DELETE FROM connection_oauth_attempts
 WHERE state_hash = ? AND provider = ? AND user_id = ? AND binding_hash = ? AND expires_at > ?
-RETURNING state_hash
+RETURNING state_hash, provider, user_id, binding_hash, expires_at, code_verifier
 `
 
 type ConsumeConnectionOAuthAttemptParams struct {
@@ -25,7 +25,7 @@ type ConsumeConnectionOAuthAttemptParams struct {
 	ExpiresAt   time.Time
 }
 
-func (q *Queries) ConsumeConnectionOAuthAttempt(ctx context.Context, arg ConsumeConnectionOAuthAttemptParams) (string, error) {
+func (q *Queries) ConsumeConnectionOAuthAttempt(ctx context.Context, arg ConsumeConnectionOAuthAttemptParams) (ConnectionOauthAttempt, error) {
 	row := q.db.QueryRowContext(ctx, consumeConnectionOAuthAttempt,
 		arg.StateHash,
 		arg.Provider,
@@ -33,22 +33,30 @@ func (q *Queries) ConsumeConnectionOAuthAttempt(ctx context.Context, arg Consume
 		arg.BindingHash,
 		arg.ExpiresAt,
 	)
-	var state_hash string
-	err := row.Scan(&state_hash)
-	return state_hash, err
+	var i ConnectionOauthAttempt
+	err := row.Scan(
+		&i.StateHash,
+		&i.Provider,
+		&i.UserID,
+		&i.BindingHash,
+		&i.ExpiresAt,
+		&i.CodeVerifier,
+	)
+	return i, err
 }
 
 const createConnectionOAuthAttempt = `-- name: CreateConnectionOAuthAttempt :exec
-INSERT INTO connection_oauth_attempts (state_hash, provider, user_id, binding_hash, expires_at)
-VALUES (?, ?, ?, ?, ?)
+INSERT INTO connection_oauth_attempts (state_hash, provider, user_id, binding_hash, expires_at, code_verifier)
+VALUES (?, ?, ?, ?, ?, ?)
 `
 
 type CreateConnectionOAuthAttemptParams struct {
-	StateHash   string
-	Provider    string
-	UserID      int64
-	BindingHash string
-	ExpiresAt   time.Time
+	StateHash    string
+	Provider     string
+	UserID       int64
+	BindingHash  string
+	ExpiresAt    time.Time
+	CodeVerifier string
 }
 
 func (q *Queries) CreateConnectionOAuthAttempt(ctx context.Context, arg CreateConnectionOAuthAttemptParams) error {
@@ -58,6 +66,7 @@ func (q *Queries) CreateConnectionOAuthAttempt(ctx context.Context, arg CreateCo
 		arg.UserID,
 		arg.BindingHash,
 		arg.ExpiresAt,
+		arg.CodeVerifier,
 	)
 	return err
 }
@@ -161,6 +170,45 @@ func (q *Queries) ListAccounts(ctx context.Context, type_ string) ([]ListAccount
 			&i.Credential.TokenExpiresAt,
 			&i.Credential.ConnectedBy,
 			&i.Credential.ConnectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAccountsByCredential = `-- name: ListAccountsByCredential :many
+SELECT id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at FROM accounts WHERE credential_id = ? ORDER BY external_id
+`
+
+func (q *Queries) ListAccountsByCredential(ctx context.Context, credentialID int64) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listAccountsByCredential, credentialID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.Type,
+			&i.ExternalID,
+			&i.CredentialID,
+			&i.ParentID,
+			&i.Name,
+			&i.Currency,
+			&i.TimeZone,
+			&i.Details,
+			&i.ConnectedAt,
+			&i.VerifiedAt,
 		); err != nil {
 			return nil, err
 		}

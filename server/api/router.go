@@ -17,6 +17,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/runs"
 )
 
@@ -33,6 +34,8 @@ type Deps struct {
 	Policies *policies.Policies
 	Runs     *runs.Runs
 	Leads    *leads.Leads
+	// Reporting serves /api/analytics. Nil leaves the routes out.
+	Reporting *reporting.Reporting
 }
 
 type handlers struct {
@@ -45,11 +48,12 @@ type handlers struct {
 	policies    *policies.Policies
 	runs        *runs.Runs
 	leads       *leads.Leads
+	reporting   *reporting.Reporting
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
-		policies: d.Policies, runs: d.Runs, leads: d.Leads}
+		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -97,6 +101,12 @@ func NewRouter(d Deps) http.Handler {
 		r.Post("/api/connections/crm/private", h.connectPrivateGHL)
 		r.Get("/api/connections/crm/callback", h.finishGHL)
 		r.Post("/api/connections/crm/{locationID}/check", h.checkGHL)
+		r.Get("/api/connections/{provider}/start", h.startAds)
+		r.Get("/api/connections/{provider}/callback", h.finishAds)
+		if h.reporting != nil {
+			r.Post("/api/analytics/refresh", h.refreshAnalytics)
+			r.Get("/api/analytics/freshness", h.analyticsFreshness)
+		}
 	})
 
 	// Rejects cross-site POSTs and other unsafe requests, which is what CSRF

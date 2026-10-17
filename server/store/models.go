@@ -33,11 +33,39 @@ type AccountCapability struct {
 	LastError  sql.NullString
 }
 
+type AccountFreshness struct {
+	AccountID       int64
+	WorkspaceID     int64
+	LastSuccessAt   sql.NullTime
+	ObservedThrough sql.NullString
+	LastRunID       sql.NullInt64
+	LastPartial     int64
+	LastError       sql.NullString
+}
+
 type AccountLease struct {
 	AccountID int64
 	RunID     int64
 	Owner     string
 	Until     time.Time
+}
+
+type AdCampaign struct {
+	ID           int64
+	WorkspaceID  int64
+	AccountID    int64
+	Platform     string
+	ExternalID   string
+	Name         string
+	Status       string
+	ChannelType  sql.NullString
+	BudgetMinor  sql.NullInt64
+	BudgetPeriod sql.NullString
+	Currency     sql.NullString
+	ProjectID    sql.NullInt64
+	FirstSeenAt  time.Time
+	LastSeenAt   time.Time
+	RemovedAt    sql.NullTime
 }
 
 type AuditLog struct {
@@ -50,12 +78,47 @@ type AuditLog struct {
 	Detail       string
 }
 
+type CampaignDailyMetric struct {
+	ID                    int64
+	WorkspaceID           int64
+	AccountID             int64
+	CampaignID            int64
+	Platform              string
+	Day                   string
+	Currency              string
+	CostMinor             int64
+	Impressions           int64
+	Clicks                int64
+	Conversions           sql.NullFloat64
+	ConversionsValueMinor sql.NullInt64
+	AllConversions        sql.NullFloat64
+	PlatformLeads         sql.NullFloat64
+	Reach                 sql.NullInt64
+	ObservedAt            time.Time
+	RunID                 sql.NullInt64
+}
+
 type ConnectionOauthAttempt struct {
-	StateHash   string
-	Provider    string
-	UserID      int64
-	BindingHash string
-	ExpiresAt   time.Time
+	StateHash    string
+	Provider     string
+	UserID       int64
+	BindingHash  string
+	ExpiresAt    time.Time
+	CodeVerifier string
+}
+
+type ConversionAction struct {
+	ID                   int64
+	WorkspaceID          int64
+	AccountID            int64
+	ExternalID           string
+	Name                 string
+	Type                 sql.NullString
+	Category             sql.NullString
+	Status               sql.NullString
+	CountingType         sql.NullString
+	IncludeInConversions int64
+	LastSeenAt           time.Time
 }
 
 type Credential struct {

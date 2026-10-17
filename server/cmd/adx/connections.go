@@ -6,11 +6,66 @@ import (
 	"fmt"
 	"os"
 
+	"log/slog"
+	"strings"
+
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/providers/gohighlevel"
+	"github.com/WokeWorks/adx/server/providers/googleads"
+	"github.com/WokeWorks/adx/server/providers/meta"
 	"github.com/WokeWorks/adx/server/store"
 )
+
+// configuredAdPlatforms builds the Google Ads and Meta adapters that have
+// settings. A platform without settings is left out, so connecting it fails
+// with "not configured" instead of a half-working client. Outside dev a
+// configured platform needs the https public URL for its callback.
+func configuredAdPlatforms(cfg config, dev bool) (map[string]connections.AdsPlatform, error) {
+	out := map[string]connections.AdsPlatform{}
+	callback := func(provider string) (string, error) {
+		if cfg.PublicURL == "" {
+			return "", fmt.Errorf("ADX_PUBLIC_URL is required to connect %s", provider)
+		}
+		if !strings.HasPrefix(cfg.PublicURL, "https://") && !dev {
+			return "", fmt.Errorf("ADX_PUBLIC_URL must use https to connect %s", provider)
+		}
+		return strings.TrimRight(cfg.PublicURL, "/") + "/api/connections/" + provider + "/callback", nil
+	}
+	switch {
+	case cfg.GoogleOAuthClientID != "" && cfg.GoogleOAuthClientSecret != "":
+		redirect, err := callback(connections.ProviderGoogleAds)
+		if err != nil {
+			return nil, err
+		}
+		id, err := googleads.NewOAuth(googleads.OAuthConfig{ClientID: cfg.GoogleOAuthClientID, ClientSecret: cfg.GoogleOAuthClientSecret, RedirectURL: redirect})
+		if err != nil {
+			return nil, err
+		}
+		out[connections.ProviderGoogleAds] = connections.AdsPlatform{Identity: id, Reader: googleads.New(googleads.Config{LoginCustomerID: cfg.GoogleAdsLoginCustomer})}
+	case cfg.GoogleOAuthClientID != "" || cfg.GoogleOAuthClientSecret != "":
+		return nil, errors.New("set both ADX_GOOGLE_OAUTH_CLIENT_ID and ADX_GOOGLE_OAUTH_CLIENT_SECRET, or neither")
+	default:
+		slog.Info("Google Ads is not configured; connecting it is disabled")
+	}
+	switch {
+	case cfg.MetaAppID != "" && cfg.MetaAppSecret != "":
+		redirect, err := callback(connections.ProviderMeta)
+		if err != nil {
+			return nil, err
+		}
+		id, err := meta.NewOAuth(meta.OAuthConfig{AppID: cfg.MetaAppID, AppSecret: cfg.MetaAppSecret, RedirectURL: redirect})
+		if err != nil {
+			return nil, err
+		}
+		out[connections.ProviderMeta] = connections.AdsPlatform{Identity: id, Reader: meta.New(meta.Config{})}
+	case cfg.MetaAppID != "" || cfg.MetaAppSecret != "":
+		return nil, errors.New("set both ADX_META_APP_ID and ADX_META_APP_SECRET, or neither")
+	default:
+		slog.Info("Meta is not configured; connecting it is disabled")
+	}
+	return out, nil
+}
 
 // ghlClient is kept so the same provider serves connection checks and lead
 // imports.

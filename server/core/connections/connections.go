@@ -45,6 +45,8 @@ type Connections struct {
 	now  func() time.Time
 	// Serializes reconnects and rotating refresh tokens in this single-server app.
 	credentials sync.Mutex
+	// ads holds the ad platforms registered with WithAds.
+	ads map[string]AdsPlatform
 }
 
 func New(db *store.DB, ghl GHL, cfg Config) (*Connections, error) {
