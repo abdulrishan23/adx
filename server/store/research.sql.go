@@ -186,6 +186,101 @@ func (q *Queries) CreateResearchItem(ctx context.Context, arg CreateResearchItem
 	return i, err
 }
 
+const createResearchReport = `-- name: CreateResearchReport :one
+INSERT INTO research_reports (workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at
+`
+
+type CreateResearchReportParams struct {
+	WorkspaceID      int64
+	BriefID          int64
+	ScheduleID       sql.NullInt64
+	OccurrenceKey    string
+	PeriodStart      time.Time
+	PeriodEnd        time.Time
+	PreviousReportID sql.NullInt64
+	Limited          int64
+	LimitedReason    string
+	Document         string
+	GeneratedAt      time.Time
+}
+
+func (q *Queries) CreateResearchReport(ctx context.Context, arg CreateResearchReportParams) (ResearchReport, error) {
+	row := q.db.QueryRowContext(ctx, createResearchReport,
+		arg.WorkspaceID,
+		arg.BriefID,
+		arg.ScheduleID,
+		arg.OccurrenceKey,
+		arg.PeriodStart,
+		arg.PeriodEnd,
+		arg.PreviousReportID,
+		arg.Limited,
+		arg.LimitedReason,
+		arg.Document,
+		arg.GeneratedAt,
+	)
+	var i ResearchReport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.ScheduleID,
+		&i.OccurrenceKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PreviousReportID,
+		&i.Limited,
+		&i.LimitedReason,
+		&i.Document,
+		&i.GeneratedAt,
+	)
+	return i, err
+}
+
+const createResearchSchedule = `-- name: CreateResearchSchedule :one
+INSERT INTO research_schedules (workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at
+`
+
+type CreateResearchScheduleParams struct {
+	WorkspaceID int64
+	BriefID     int64
+	Name        string
+	Cadence     string
+	Enabled     int64
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+func (q *Queries) CreateResearchSchedule(ctx context.Context, arg CreateResearchScheduleParams) (ResearchSchedule, error) {
+	row := q.db.QueryRowContext(ctx, createResearchSchedule,
+		arg.WorkspaceID,
+		arg.BriefID,
+		arg.Name,
+		arg.Cadence,
+		arg.Enabled,
+		arg.CreatedBy,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	var i ResearchSchedule
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.Name,
+		&i.Cadence,
+		&i.Enabled,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteResearchFindingsForItem = `-- name: DeleteResearchFindingsForItem :exec
 DELETE FROM research_findings WHERE item_id = ?
 `
@@ -193,6 +288,35 @@ DELETE FROM research_findings WHERE item_id = ?
 func (q *Queries) DeleteResearchFindingsForItem(ctx context.Context, itemID int64) error {
 	_, err := q.db.ExecContext(ctx, deleteResearchFindingsForItem, itemID)
 	return err
+}
+
+const getPreviousResearchReport = `-- name: GetPreviousResearchReport :one
+SELECT id, workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at FROM research_reports WHERE brief_id = ? AND period_start < ? ORDER BY period_start DESC, id DESC LIMIT 1
+`
+
+type GetPreviousResearchReportParams struct {
+	BriefID     int64
+	PeriodStart time.Time
+}
+
+func (q *Queries) GetPreviousResearchReport(ctx context.Context, arg GetPreviousResearchReportParams) (ResearchReport, error) {
+	row := q.db.QueryRowContext(ctx, getPreviousResearchReport, arg.BriefID, arg.PeriodStart)
+	var i ResearchReport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.ScheduleID,
+		&i.OccurrenceKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PreviousReportID,
+		&i.Limited,
+		&i.LimitedReason,
+		&i.Document,
+		&i.GeneratedAt,
+	)
+	return i, err
 }
 
 const getResearchBrief = `-- name: GetResearchBrief :one
@@ -256,6 +380,85 @@ func (q *Queries) GetResearchItem(ctx context.Context, arg GetResearchItemParams
 	return i, err
 }
 
+const getResearchReport = `-- name: GetResearchReport :one
+SELECT id, workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at FROM research_reports WHERE id = ? AND workspace_id = ?
+`
+
+type GetResearchReportParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) GetResearchReport(ctx context.Context, arg GetResearchReportParams) (ResearchReport, error) {
+	row := q.db.QueryRowContext(ctx, getResearchReport, arg.ID, arg.WorkspaceID)
+	var i ResearchReport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.ScheduleID,
+		&i.OccurrenceKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PreviousReportID,
+		&i.Limited,
+		&i.LimitedReason,
+		&i.Document,
+		&i.GeneratedAt,
+	)
+	return i, err
+}
+
+const getResearchReportByOccurrence = `-- name: GetResearchReportByOccurrence :one
+SELECT id, workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at FROM research_reports WHERE occurrence_key = ?
+`
+
+func (q *Queries) GetResearchReportByOccurrence(ctx context.Context, occurrenceKey string) (ResearchReport, error) {
+	row := q.db.QueryRowContext(ctx, getResearchReportByOccurrence, occurrenceKey)
+	var i ResearchReport
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.ScheduleID,
+		&i.OccurrenceKey,
+		&i.PeriodStart,
+		&i.PeriodEnd,
+		&i.PreviousReportID,
+		&i.Limited,
+		&i.LimitedReason,
+		&i.Document,
+		&i.GeneratedAt,
+	)
+	return i, err
+}
+
+const getResearchSchedule = `-- name: GetResearchSchedule :one
+SELECT id, workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at FROM research_schedules WHERE id = ? AND workspace_id = ?
+`
+
+type GetResearchScheduleParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) GetResearchSchedule(ctx context.Context, arg GetResearchScheduleParams) (ResearchSchedule, error) {
+	row := q.db.QueryRowContext(ctx, getResearchSchedule, arg.ID, arg.WorkspaceID)
+	var i ResearchSchedule
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.Name,
+		&i.Cadence,
+		&i.Enabled,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const listCompetitorBrands = `-- name: ListCompetitorBrands :many
 SELECT id, workspace_id, name, kind, notes, created_by, created_at FROM brands WHERE workspace_id = ? AND kind = 'competitor' ORDER BY name
 `
@@ -277,6 +480,79 @@ func (q *Queries) ListCompetitorBrands(ctx context.Context, workspaceID int64) (
 			&i.Notes,
 			&i.CreatedBy,
 			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEnabledResearchSchedulesAllWorkspaces = `-- name: ListEnabledResearchSchedulesAllWorkspaces :many
+SELECT id, workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at FROM research_schedules WHERE enabled = 1 ORDER BY id
+`
+
+func (q *Queries) ListEnabledResearchSchedulesAllWorkspaces(ctx context.Context) ([]ResearchSchedule, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledResearchSchedulesAllWorkspaces)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ResearchSchedule{}
+	for rows.Next() {
+		var i ResearchSchedule
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.BriefID,
+			&i.Name,
+			&i.Cadence,
+			&i.Enabled,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHypothesisReviews = `-- name: ListHypothesisReviews :many
+SELECT id, workspace_id, report_id, hypothesis_key, status, note, decided_by, decided_at FROM research_hypothesis_reviews WHERE report_id = ? ORDER BY id
+`
+
+func (q *Queries) ListHypothesisReviews(ctx context.Context, reportID int64) ([]ResearchHypothesisReview, error) {
+	rows, err := q.db.QueryContext(ctx, listHypothesisReviews, reportID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ResearchHypothesisReview{}
+	for rows.Next() {
+		var i ResearchHypothesisReview
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.ReportID,
+			&i.HypothesisKey,
+			&i.Status,
+			&i.Note,
+			&i.DecidedBy,
+			&i.DecidedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -430,6 +706,140 @@ func (q *Queries) ListResearchItems(ctx context.Context, briefID int64) ([]Resea
 	return items, nil
 }
 
+const listResearchReportsForBrief = `-- name: ListResearchReportsForBrief :many
+SELECT id, workspace_id, brief_id, schedule_id, occurrence_key, period_start, period_end, previous_report_id, limited, limited_reason, document, generated_at FROM research_reports WHERE brief_id = ? ORDER BY period_start DESC, id DESC LIMIT ?
+`
+
+type ListResearchReportsForBriefParams struct {
+	BriefID int64
+	Limit   int64
+}
+
+func (q *Queries) ListResearchReportsForBrief(ctx context.Context, arg ListResearchReportsForBriefParams) ([]ResearchReport, error) {
+	rows, err := q.db.QueryContext(ctx, listResearchReportsForBrief, arg.BriefID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ResearchReport{}
+	for rows.Next() {
+		var i ResearchReport
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.BriefID,
+			&i.ScheduleID,
+			&i.OccurrenceKey,
+			&i.PeriodStart,
+			&i.PeriodEnd,
+			&i.PreviousReportID,
+			&i.Limited,
+			&i.LimitedReason,
+			&i.Document,
+			&i.GeneratedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResearchRunsForBrief = `-- name: ListResearchRunsForBrief :many
+SELECT r.id, r.public_id, r.workspace_id, r.kind, r.occurrence_key, r.account_id, r.state, r.completeness, r.params, r.progress, r.error_safe, r.attempt, r.lease_owner, r.lease_until, r.requested_by, r.created_at, r.started_at, r.finished_at, r.observed_through FROM runs r WHERE r.kind = 'research.run' AND json_extract(r.params, '$.briefId') = ?1 ORDER BY r.id DESC LIMIT ?2
+`
+
+type ListResearchRunsForBriefParams struct {
+	BriefID string
+	Max     int64
+}
+
+func (q *Queries) ListResearchRunsForBrief(ctx context.Context, arg ListResearchRunsForBriefParams) ([]Run, error) {
+	rows, err := q.db.QueryContext(ctx, listResearchRunsForBrief, arg.BriefID, arg.Max)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Run{}
+	for rows.Next() {
+		var i Run
+		if err := rows.Scan(
+			&i.ID,
+			&i.PublicID,
+			&i.WorkspaceID,
+			&i.Kind,
+			&i.OccurrenceKey,
+			&i.AccountID,
+			&i.State,
+			&i.Completeness,
+			&i.Params,
+			&i.Progress,
+			&i.ErrorSafe,
+			&i.Attempt,
+			&i.LeaseOwner,
+			&i.LeaseUntil,
+			&i.RequestedBy,
+			&i.CreatedAt,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.ObservedThrough,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listResearchSchedules = `-- name: ListResearchSchedules :many
+SELECT id, workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at FROM research_schedules WHERE workspace_id = ? ORDER BY id
+`
+
+func (q *Queries) ListResearchSchedules(ctx context.Context, workspaceID int64) ([]ResearchSchedule, error) {
+	rows, err := q.db.QueryContext(ctx, listResearchSchedules, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ResearchSchedule{}
+	for rows.Next() {
+		var i ResearchSchedule
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.BriefID,
+			&i.Name,
+			&i.Cadence,
+			&i.Enabled,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markResearchItemFailed = `-- name: MarkResearchItemFailed :exec
 UPDATE research_items SET state = ?, error_safe = ?, attempts = attempts + 1, run_id = ? WHERE id = ?
 `
@@ -490,4 +900,83 @@ func (q *Queries) ResolveResearchItemsCompetitor(ctx context.Context, arg Resolv
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+const updateResearchSchedule = `-- name: UpdateResearchSchedule :one
+UPDATE research_schedules SET name = ?, cadence = ?, enabled = ?, updated_at = ? WHERE id = ? AND workspace_id = ?
+RETURNING id, workspace_id, brief_id, name, cadence, enabled, created_by, created_at, updated_at
+`
+
+type UpdateResearchScheduleParams struct {
+	Name        string
+	Cadence     string
+	Enabled     int64
+	UpdatedAt   time.Time
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) UpdateResearchSchedule(ctx context.Context, arg UpdateResearchScheduleParams) (ResearchSchedule, error) {
+	row := q.db.QueryRowContext(ctx, updateResearchSchedule,
+		arg.Name,
+		arg.Cadence,
+		arg.Enabled,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.WorkspaceID,
+	)
+	var i ResearchSchedule
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.BriefID,
+		&i.Name,
+		&i.Cadence,
+		&i.Enabled,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const upsertHypothesisReview = `-- name: UpsertHypothesisReview :one
+INSERT INTO research_hypothesis_reviews (workspace_id, report_id, hypothesis_key, status, note, decided_by, decided_at)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT (report_id, hypothesis_key) DO UPDATE SET status = excluded.status, note = excluded.note, decided_by = excluded.decided_by, decided_at = excluded.decided_at
+RETURNING id, workspace_id, report_id, hypothesis_key, status, note, decided_by, decided_at
+`
+
+type UpsertHypothesisReviewParams struct {
+	WorkspaceID   int64
+	ReportID      int64
+	HypothesisKey string
+	Status        string
+	Note          string
+	DecidedBy     int64
+	DecidedAt     time.Time
+}
+
+func (q *Queries) UpsertHypothesisReview(ctx context.Context, arg UpsertHypothesisReviewParams) (ResearchHypothesisReview, error) {
+	row := q.db.QueryRowContext(ctx, upsertHypothesisReview,
+		arg.WorkspaceID,
+		arg.ReportID,
+		arg.HypothesisKey,
+		arg.Status,
+		arg.Note,
+		arg.DecidedBy,
+		arg.DecidedAt,
+	)
+	var i ResearchHypothesisReview
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.ReportID,
+		&i.HypothesisKey,
+		&i.Status,
+		&i.Note,
+		&i.DecidedBy,
+		&i.DecidedAt,
+	)
+	return i, err
 }

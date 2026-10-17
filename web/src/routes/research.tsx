@@ -5,13 +5,21 @@ import {
   useBrief,
   useBriefs,
   useCreateBrief,
+  useCreateResearchSchedule,
+  useGenerateResearchReport,
+  useMarketEvents,
+  useRecordMarketEvent,
   useResearchEvidence,
+  useResearchReports,
+  useResearchSchedules,
   useResolveCompetitor,
+  useReviewHypothesis,
   useStartResearchRun,
+  useUpdateResearchSchedule,
 } from "@/api/research";
 import { useRun } from "@/api/runs";
 import { useSession } from "@/api/session";
-import type { BriefDetail, Finding, Item } from "@/api/types.gen";
+import type { BriefDetail, ComparativeReport, Finding, Hypothesis, Item } from "@/api/types.gen";
 import { RunStatus } from "@/components/run-status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +91,7 @@ export function ResearchPage() {
           ))}
         </ul>
         {canEdit && <NewBrief onCreated={setCurrent} />}
+        <MarketEvents canEdit={canEdit} />
       </aside>
       <div>
         {current === null ? (
@@ -423,7 +432,477 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
         )}
       </section>
 
+      <Schedules briefId={id} canEdit={canEdit} />
+      <Reports briefId={id} canEdit={canEdit} onOpen={setEvidenceId} />
+
       {evidenceId !== null && <EvidencePanel id={evidenceId} onClose={() => setEvidenceId(null)} />}
+    </div>
+  );
+}
+
+// Market events are the only way a festival or economic explanation enters
+// a report: a person records what happened, with a source. Nothing is
+// derived from a calendar ADX doesn't have.
+function MarketEvents({ canEdit }: { canEdit: boolean }) {
+  const events = useMarketEvents();
+  const record = useRecordMarketEvent();
+  const [form, setForm] = useState({
+    name: "",
+    kind: "festival",
+    from: "",
+    to: "",
+    sourceUrl: "",
+    note: "",
+  });
+  return (
+    <div className="space-y-2 rounded-lg border p-3 text-sm">
+      <h2 className="font-medium">Market events</h2>
+      <p className="text-muted-foreground">
+        Recorded by the team, with a source. Reports can only mention events recorded here, and only
+        as hypotheses.
+      </p>
+      <ul className="space-y-1">
+        {events.data?.events.map((e) => (
+          <li key={e.evidenceId}>
+            {e.name}{" "}
+            <span className="text-muted-foreground">
+              · {e.kind} · {e.from} to {e.to}
+            </span>
+          </li>
+        ))}
+        {events.data?.events.length === 0 && (
+          <li className="text-muted-foreground">None recorded.</li>
+        )}
+      </ul>
+      {canEdit && (
+        <form
+          className="space-y-1"
+          onSubmit={(e) => {
+            e.preventDefault();
+            record.mutate(form, {
+              onSuccess: () =>
+                setForm({ name: "", kind: "festival", from: "", to: "", sourceUrl: "", note: "" }),
+            });
+          }}
+        >
+          <Input
+            placeholder="Event (e.g. Eid al-Fitr, Cityscape)"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+          />
+          <div className="flex gap-1">
+            <select
+              className="rounded-md border bg-background px-1"
+              value={form.kind}
+              onChange={(e) => setForm({ ...form, kind: e.target.value })}
+            >
+              {["festival", "economic", "regulatory", "competitor", "other"].map((k) => (
+                <option key={k}>{k}</option>
+              ))}
+            </select>
+            <Input
+              type="date"
+              value={form.from}
+              onChange={(e) => setForm({ ...form, from: e.target.value })}
+              aria-label="From"
+            />
+            <Input
+              type="date"
+              value={form.to}
+              onChange={(e) => setForm({ ...form, to: e.target.value })}
+              aria-label="To"
+            />
+          </div>
+          <Input
+            placeholder="Source URL"
+            value={form.sourceUrl}
+            onChange={(e) => setForm({ ...form, sourceUrl: e.target.value })}
+          />
+          <Button type="submit" size="xs" variant="outline" disabled={record.isPending}>
+            Record
+          </Button>
+          {record.error && <p className="text-destructive">{record.error.message}</p>}
+        </form>
+      )}
+    </div>
+  );
+}
+
+function Schedules({ briefId, canEdit }: { briefId: number; canEdit: boolean }) {
+  const schedules = useResearchSchedules();
+  const create = useCreateResearchSchedule();
+  const update = useUpdateResearchSchedule();
+  const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly">("monthly");
+  const mine = schedules.data?.schedules.filter((s) => s.briefId === briefId) ?? [];
+  return (
+    <section className="space-y-2">
+      <h3 className="font-medium">Recurring</h3>
+      {mine.length === 0 && (
+        <p className="text-muted-foreground">
+          Not scheduled. A schedule re-reads every source each period and writes a comparative
+          report.
+        </p>
+      )}
+      {mine.map((s) => (
+        <div key={s.id} className="flex flex-wrap items-center gap-2">
+          <span>
+            {s.name} · {s.cadence} · {s.enabled ? "on" : "paused"}
+          </span>
+          {canEdit && (
+            <Button
+              size="xs"
+              variant="outline"
+              disabled={update.isPending}
+              onClick={() =>
+                update.mutate({
+                  id: s.id,
+                  input: { briefId, name: s.name, cadence: s.cadence, enabled: !s.enabled },
+                })
+              }
+            >
+              {s.enabled ? "Pause" : "Resume"}
+            </Button>
+          )}
+        </div>
+      ))}
+      {canEdit && mine.length === 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <select
+            className="rounded-md border bg-background px-2 py-1"
+            value={cadence}
+            onChange={(e) => setCadence(e.target.value as typeof cadence)}
+          >
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={create.isPending}
+            onClick={() =>
+              create.mutate({ briefId, name: `${cadence} comparison`, cadence, enabled: true })
+            }
+          >
+            Schedule
+          </Button>
+          {create.error && <span className="text-destructive">{create.error.message}</span>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function Reports({
+  briefId,
+  canEdit,
+  onOpen,
+}: {
+  briefId: number;
+  canEdit: boolean;
+  onOpen: (id: number) => void;
+}) {
+  const reports = useResearchReports(briefId);
+  const generate = useGenerateResearchReport(briefId);
+  const [open, setOpen] = useState<number | null>(null);
+  const list = reports.data?.reports ?? [];
+  const shown = list.find((r) => r.id === open) ?? list[0];
+  return (
+    <section className="space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="font-medium">Comparative reports</h3>
+        {canEdit && (
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={generate.isPending}
+            onClick={() => generate.mutate({ from: "", to: "" })}
+          >
+            Write report for last month
+          </Button>
+        )}
+      </div>
+      {generate.error && <p className="text-destructive">{generate.error.message}</p>}
+      {list.length === 0 && <p className="text-muted-foreground">No reports yet.</p>}
+      {list.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {list.map((r) => (
+            <Button
+              key={r.id}
+              size="xs"
+              variant={shown?.id === r.id ? "default" : "outline"}
+              onClick={() => setOpen(r.id)}
+            >
+              {r.periodStart} to {r.periodEnd}
+            </Button>
+          ))}
+        </div>
+      )}
+      {shown && <ReportView report={shown} canEdit={canEdit} onOpen={onOpen} />}
+    </section>
+  );
+}
+
+// Observed on the left, hypothetical cause on the right. Every hypothesis
+// cites evidence and stays a hypothesis; the team's review is recorded
+// beside it, not folded into it.
+function ReportView({
+  report,
+  canEdit,
+  onOpen,
+}: {
+  report: ComparativeReport;
+  canEdit: boolean;
+  onOpen: (id: number) => void;
+}) {
+  const d = report.document;
+  const reviews = new Map(report.reviews.map((r) => [r.key, r]));
+  const pct = (v: number | null | undefined) =>
+    typeof v === "number" ? `${v >= 0 ? "+" : ""}${Math.round(v * 100)}%` : "Not available";
+  const money = (minor: number | null | undefined, cur: string) =>
+    typeof minor === "number" ? `${cur} ${(minor / 100).toLocaleString()}` : "Not available";
+  return (
+    <div className="space-y-3 rounded-lg border p-3">
+      <p className="text-muted-foreground">
+        {d.period.from} to {d.period.to} against {d.previous.from} to {d.previous.to} · written{" "}
+        {new Date(report.generatedAt).toLocaleString()}
+        {report.previousReportId && ` · follows report ${report.previousReportId}`}
+      </p>
+      {report.limited ? (
+        <p className="rounded-md border border-destructive/40 p-2 text-destructive">
+          Limited audit: {report.limitedReason}.
+        </p>
+      ) : (
+        d.account && (
+          <div>
+            <h4 className="font-medium">
+              Your account{" "}
+              <span className="font-normal text-muted-foreground">
+                (observed · formula {d.account.formulaVersion})
+              </span>
+            </h4>
+            <p>
+              Spend{" "}
+              {money(
+                d.account.summary.metrics.spend.minor,
+                d.account.summary.metrics.spend.currency,
+              )}{" "}
+              ({pct(d.account.summary.changes?.spend?.relative)}) · Leads{" "}
+              {d.account.summary.metrics.leads} ({pct(d.account.summary.changes?.leads?.relative)})
+              {" · "}
+              <button
+                type="button"
+                className="underline text-muted-foreground"
+                onClick={() => onOpen(d.account?.evidenceId ?? 0)}
+              >
+                source
+              </button>
+            </p>
+            {d.account.freshness.partial && (
+              <p className="text-destructive">Figures are partial for this period.</p>
+            )}
+          </div>
+        )
+      )}
+      {d.competitors.length > 0 && (
+        <div>
+          <h4 className="font-medium">
+            Competitor pages <span className="font-normal text-muted-foreground">(observed)</span>
+          </h4>
+          {d.competitors.map((c) =>
+            c.pages.map((p) => (
+              <p key={`${c.brandId}-${p.itemId}`}>
+                {c.name}:{" "}
+                <a href={p.url} target="_blank" rel="noreferrer noopener" className="underline">
+                  {p.title || p.url}
+                </a>{" "}
+                {p.changed ? (
+                  <span className="text-destructive">changed since last read</span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {p.previousEvidenceId ? "unchanged" : "first read"}
+                  </span>
+                )}
+                {" · "}
+                <button
+                  type="button"
+                  className="underline text-muted-foreground"
+                  onClick={() => onOpen(p.evidenceId)}
+                >
+                  now
+                </button>
+                {p.previousEvidenceId && (
+                  <>
+                    {" "}
+                    ·{" "}
+                    <button
+                      type="button"
+                      className="underline text-muted-foreground"
+                      onClick={() => onOpen(p.previousEvidenceId as number)}
+                    >
+                      before
+                    </button>
+                  </>
+                )}
+              </p>
+            )),
+          )}
+        </div>
+      )}
+      {d.keywords.length > 0 && (
+        <div>
+          <h4 className="font-medium">
+            Keyword estimates{" "}
+            <span className="font-normal text-muted-foreground">
+              (Google's estimates, not observations)
+            </span>
+          </h4>
+          {d.keywords.map((k) => (
+            <p key={k.text}>
+              {k.text}: {k.before ?? "—"} → {k.after ?? "—"}
+              {typeof k.changePct === "number"
+                ? ` (${k.changePct >= 0 ? "+" : ""}${k.changePct}%)`
+                : ""}
+            </p>
+          ))}
+        </div>
+      )}
+      {d.events.length > 0 && (
+        <div>
+          <h4 className="font-medium">Recorded events in the period</h4>
+          {d.events.map((e) => (
+            <p key={e.evidenceId}>
+              {e.name} · {e.kind} · {e.from} to {e.to}
+            </p>
+          ))}
+        </div>
+      )}
+      <div>
+        <h4 className="font-medium">
+          Possible explanations{" "}
+          <span className="font-normal text-muted-foreground">
+            (hypotheses; none is a demonstrated cause)
+          </span>
+        </h4>
+        {d.hypotheses.length === 0 && (
+          <p className="text-muted-foreground">
+            Nothing to explain or nothing recorded that could explain it.
+          </p>
+        )}
+        {d.hypotheses.map((h) => (
+          <HypothesisRow
+            key={h.key}
+            reportId={report.id}
+            h={h}
+            review={reviews.get(h.key)}
+            canEdit={canEdit}
+            onOpen={onOpen}
+          />
+        ))}
+      </div>
+      {d.prior && d.prior.hypotheses.length > 0 && (
+        <div>
+          <h4 className="font-medium">
+            From the previous report{" "}
+            <span className="font-normal text-muted-foreground">
+              ({d.prior.periodStart} to {d.prior.periodEnd})
+            </span>
+          </h4>
+          {d.prior.hypotheses.map((p) => (
+            <p key={p.key} className="text-muted-foreground">
+              {p.text} — {p.status ? `${p.status}${p.note ? `: ${p.note}` : ""}` : "not reviewed"}
+            </p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HypothesisRow({
+  reportId,
+  h,
+  review,
+  canEdit,
+  onOpen,
+}: {
+  reportId: number;
+  h: Hypothesis;
+  review?: { status: string; note: string };
+  canEdit: boolean;
+  onOpen: (id: number) => void;
+}) {
+  const act = useReviewHypothesis();
+  const [note, setNote] = useState("");
+  return (
+    <div className="grid gap-2 border-t py-2 md:grid-cols-2">
+      <div>
+        <span className="text-muted-foreground">Observed:</span> {h.observed}
+      </div>
+      <div>
+        <span className="text-muted-foreground">Hypothetical cause:</span> {h.hypothetical}{" "}
+        <span className="text-muted-foreground">
+          · evidence{" "}
+          {h.evidenceRefs.map((id, i) => (
+            <button key={id} type="button" className="underline" onClick={() => onOpen(id)}>
+              {i > 0 ? `, ${id}` : id}
+            </button>
+          ))}
+        </span>
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {review ? (
+            <span
+              className={review.status === "rejected" ? "text-muted-foreground" : "font-medium"}
+            >
+              Team: {review.status}
+              {review.note ? ` — ${review.note}` : ""}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Not reviewed.</span>
+          )}
+          {canEdit && (
+            <>
+              <Input
+                className="h-7 max-w-xs"
+                placeholder="Note or corrected explanation"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={act.isPending}
+                onClick={() =>
+                  act.mutate({ reportId, input: { key: h.key, status: "accepted", note } })
+                }
+              >
+                Plausible
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={act.isPending}
+                onClick={() =>
+                  act.mutate({ reportId, input: { key: h.key, status: "rejected", note } })
+                }
+              >
+                Reject
+              </Button>
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={act.isPending || !note}
+                onClick={() =>
+                  act.mutate({ reportId, input: { key: h.key, status: "corrected", note } })
+                }
+              >
+                Correct
+              </Button>
+            </>
+          )}
+          {act.error && <span className="text-destructive">{act.error.message}</span>}
+        </div>
+      </div>
     </div>
   );
 }

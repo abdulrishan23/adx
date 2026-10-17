@@ -257,6 +257,9 @@ const ResearchRunKind = "research.run"
 
 type RunParams struct {
 	BriefID int64 `json:"briefId"`
+	// Mode is "" (pending and failed items only) or "refresh" (re-read every
+	// item that can be read, so a scheduled comparison sees today's pages).
+	Mode string `json:"mode"`
 }
 
 type RunProgress struct {
@@ -589,9 +592,10 @@ func (r *Research) StartRun(ctx context.Context, actor core.Actor, rs *runs.Runs
 	return rs.Start(ctx, actor, runs.StartInput{Kind: ResearchRunKind, OccurrenceKey: key, Params: RunParams{BriefID: briefID}})
 }
 
-// Execute works one research run: every pending or failed item once. It is
-// the jobs.Executor for ResearchRunKind. Items waiting on a competitor's identity
-// are skipped. The run is partial when anything was skipped or failed.
+// Execute works one research run: every pending or failed item once, or
+// every readable item in refresh mode. It is the jobs.Executor for
+// ResearchRunKind. Items waiting on a competitor's identity are skipped.
+// The run is partial when anything was skipped or failed.
 func (r *Research) Execute(ctx context.Context, h *runs.Handle) (runs.Completion, error) {
 	var params RunParams
 	if err := json.Unmarshal(h.Run.Params, &params); err != nil || params.BriefID == 0 {
@@ -616,8 +620,8 @@ func (r *Research) Execute(ctx context.Context, h *runs.Handle) (runs.Completion
 			progress.Refused++
 			continue
 		case ItemFetched:
-			if it.RunID.Valid && it.RunID.Int64 != h.Run.RowID() {
-				// Fetched by an earlier run today; leave it.
+			if params.Mode != "refresh" && it.RunID.Valid && it.RunID.Int64 != h.Run.RowID() {
+				// Fetched by an earlier run; leave it unless this is a refresh.
 				progress.Done++
 				continue
 			}

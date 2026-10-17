@@ -266,6 +266,14 @@ func run() error {
 				log.InfoContext(ctx, "daily ads refresh", "started", started, "failed", len(errs))
 				return nil
 			}},
+			{Kind: "research.run_due", Every: 6 * time.Hour, Run: func(ctx context.Context) error {
+				started, generated, errs := researchService.RunDue(ctx, runsService)
+				for _, e := range errs {
+					log.WarnContext(ctx, "scheduled research failed", "error", e)
+				}
+				log.InfoContext(ctx, "scheduled research", "refreshes_started", started, "reports", generated, "failed", len(errs))
+				return nil
+			}},
 			{Kind: "reports.run_due", Every: 6 * time.Hour, Run: func(ctx context.Context) error {
 				generated, errs := reportsService.RunDue(ctx)
 				for _, e := range errs {

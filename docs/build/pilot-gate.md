@@ -34,3 +34,18 @@ Taken on 2026-10-17 at the end of phase 1. The local journey is implemented and 
 - The canvas drag editor from the creative source is not ported; the pilot editor changes text and vertical position only (B3.1).
 - Pixel export (PNG/JPG) is not implemented; the output is SVG, rasterized by the browser when viewed. A server-side rasterizer or a browser export is B3.1.
 - Live calling, messaging and any ad-account write are not part of phase 1 by design.
+
+# Phase 2 gate (B2.1–B2.5)
+
+Taken on 2026-10-17. The journey the spec names, "brand evidence/conflict → research → typed plan → validation → correction → immutable accepted version", runs locally end to end in tests:
+
+| Step | Where it is proven |
+|---|---|
+| Two price sources disagree, neither becomes a claim until an admin resolves, approval then makes the claim | `core/brands/brands_test.go` |
+| A research brief reads pages and keyword estimates, refuses private addresses, leaves an ambiguous competitor unresolved | `core/research/research_test.go` |
+| A typed plan whose allocations must total the budget; a model-drafted version pinned to the frame and cleaned of uncited figures | `core/plans/plans_test.go`, `core/plans/generate_test.go` |
+| Validation blocks, a correction becomes the next version, an admin accepts a ready version; acceptance grants no spend | `core/plans/plans_test.go` |
+| An accepted version is immutable; the diff names it as superseded in content | `core/plans/generate_test.go` (TestDiffAndRevisionImpact) |
+| Monthly comparison with hypotheses that cite evidence and stay hypotheses; reviews carry forward | `core/research/schedules_test.go` |
+
+Externally blocked, as the spec allows: the exact Excel template adapter (no file), live Keyword Planner and web fetches (no Google OAuth client), live plan drafting (no model API key). Not done: browser inspection of the five new pages (`/brands`, `/research`, `/plans` and the creative and offer additions).

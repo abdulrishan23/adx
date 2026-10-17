@@ -266,3 +266,18 @@ make check && make test
 - Web: generate panel (briefs of the brand, instructions, the model's corrections listed), version compare with field, allocation and section changes and the superseded warning, an "accepted version is older than the latest" notice, and plans citing an offer on the offer detail. Typecheck and biome clean. Not browser-tested.
 
 Live: the model was not called; no API key exists here. The adapter's tool-choice shape is tested against a fake Messages API only.
+
+## B2.5 Recurring research and plan evaluation
+
+Local:
+
+```
+cd server && go test ./core/research/ ./api/   # ok
+make check && make test
+```
+
+- `core/research`: a brief for a brand with no account history gets a `limited` report that states why, no account section, the previous period computed, no hypotheses, a competitor page marked unchanged after one read, and the same report again on a second request; a viewer can't record a market event and an unknown kind is refused; after a festival is recorded the next period's report lists the event and one `event` hypothesis classed `hypothesis`, `causal: false`, citing the event's evidence id, whose observed side says there is no history to correlate with, and whose prior context names the first report. With history: a refresh run re-reads the competitor page (two fetches) and the keyword estimates; the report shows the page changed with before/after excerpts and both evidence ids, keyword estimates moved +30% and +4% and labelled `estimated`, and three hypotheses (event, competitor change, demand shift ≥20%) each with evidence refs and the observed line "spend +25%, leads -10%, cost per lead change not available"; the 4% keyword move yields no hypothesis; a viewer can't review; an unknown key is not found; a correction needs text; a correction and an acceptance are recorded without changing any class; the following period's report carries both reviews forward and marks the third hypothesis unreviewed; reports list and load with reviews. Schedules: daily is refused; a viewer can't create; the first tick starts one refresh run and writes nothing; the second tick starts nothing; after the run is worked the third tick writes one report for last month tied to the schedule; the fourth tick does nothing; a paused schedule never runs and a disabled one stops.
+- `api`: schedule, report, review and market-event routes wired; the generate route defaults to last month. Covered by compile and core tests; the shared research route test still passes.
+- Web: market events (list and record with source), a schedule per brief (create, pause, resume), "write report for last month", report tabs by period, the limited-audit banner, account figures with changes and a source link, competitor pages changed/unchanged with now/before links, keyword estimates labelled, recorded events, hypotheses as observed vs hypothetical cause with evidence links and plausible/reject/correct, and the previous report's hypotheses with their reviews. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external. The periodic job `research.run_due` runs every 6 hours in the server.

@@ -204,6 +204,15 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/research/briefs/{id}/competitors", h.resolveCompetitor)
 			r.Get("/api/research/briefs/{id}/findings", h.listFindings)
 			r.Get("/api/research/evidence/{id}", h.researchEvidence)
+			r.Get("/api/research/schedules", h.listResearchSchedules)
+			r.Post("/api/research/schedules", h.createResearchSchedule)
+			r.Put("/api/research/schedules/{id}", h.updateResearchSchedule)
+			r.Get("/api/research/briefs/{id}/reports", h.listResearchReports)
+			r.Post("/api/research/briefs/{id}/reports", h.generateResearchReport)
+			r.Get("/api/research/reports/{id}", h.getResearchReport)
+			r.Post("/api/research/reports/{id}/review", h.reviewHypothesis)
+			r.Get("/api/research/events", h.listMarketEvents)
+			r.Post("/api/research/events", h.recordMarketEvent)
 		}
 		if h.plans != nil {
 			r.Get("/api/plans", h.listPlans)

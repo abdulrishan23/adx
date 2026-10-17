@@ -989,13 +989,36 @@
         "B2.4",
         "B1.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00018_research_schedules_and_reports.sql",
+        "server/store/queries/research.sql",
+        "server/store/queries/evidence.sql",
+        "server/core/research/research.go",
+        "server/core/research/schedules.go",
+        "server/api/research.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/research.ts",
+        "web/src/routes/research.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/research/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "no account history produces a limited report with no trend and hypotheses that say so",
+        "a festival or economic explanation appears only for a recorded event, cites its evidence, and stays a hypothesis after review",
+        "the next period's report carries the previous report's hypotheses and reviews forward"
+      ],
+      "remaining": [
+        "browser inspection",
+        "evaluation cases live as tests, not as a stored fixture set"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-35. No model in report generation; hypotheses are deterministic correlations."
     },
     {
       "id": "B3.1",

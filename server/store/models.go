@@ -532,6 +532,17 @@ type ResearchFinding struct {
 	CreatedAt        time.Time
 }
 
+type ResearchHypothesisReview struct {
+	ID            int64
+	WorkspaceID   int64
+	ReportID      int64
+	HypothesisKey string
+	Status        string
+	Note          string
+	DecidedBy     int64
+	DecidedAt     time.Time
+}
+
 type ResearchItem struct {
 	ID                int64
 	WorkspaceID       int64
@@ -549,6 +560,33 @@ type ResearchItem struct {
 	RunID             sql.NullInt64
 	EvidenceID        sql.NullInt64
 	CreatedAt         time.Time
+}
+
+type ResearchReport struct {
+	ID               int64
+	WorkspaceID      int64
+	BriefID          int64
+	ScheduleID       sql.NullInt64
+	OccurrenceKey    string
+	PeriodStart      time.Time
+	PeriodEnd        time.Time
+	PreviousReportID sql.NullInt64
+	Limited          int64
+	LimitedReason    string
+	Document         string
+	GeneratedAt      time.Time
+}
+
+type ResearchSchedule struct {
+	ID          int64
+	WorkspaceID int64
+	BriefID     int64
+	Name        string
+	Cadence     string
+	Enabled     int64
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type Run struct {

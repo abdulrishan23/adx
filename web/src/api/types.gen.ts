@@ -17,6 +17,17 @@ export interface Account {
     capabilities: Capability[];
 }
 
+// From research/schedules.go
+export interface AccountComparison {
+    summary: ReportRow;
+    rows: ReportRow[];
+    freshness: ResultFreshness;
+    coverage: ReportCoverage;
+    warnings: ReportWarning[];
+    formulaVersion: string;
+    evidenceId: number;
+}
+
 // From api/policies.go
 export interface AccountsResponse {
     accounts: Account[];
@@ -362,6 +373,29 @@ export interface ClaimSet {
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
+// From research/schedules.go
+export interface ComparativeReport {
+    id: number;
+    briefId: number;
+    scheduleId: number | null;
+    occurrenceKey: string;
+    periodStart: string;
+    periodEnd: string;
+    previousReportId: number | null;
+    limited: boolean;
+    limitedReason: string;
+    document: ReportDocument;
+    reviews: HypothesisReview[];
+    generatedAt: string;
+}
+
+// From research/schedules.go
+export interface CompetitorComparison {
+    brandId: number;
+    name: string;
+    pages: PageComparison[];
+}
+
 // From research/research.go
 export interface CompetitorInput {
     name: string;
@@ -376,8 +410,8 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From runs/runs.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+// From evidence/evidence.go
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From brands/facts.go
 export interface Conflict {
@@ -501,6 +535,12 @@ export interface CreativeResponse {
 // From api/creative.go
 export interface CreativesResponse {
     creatives: Creative[];
+}
+
+// From research/schedules.go
+export interface DateRange {
+    from: string;
+    to: string;
 }
 
 // From reporting/ingest.go
@@ -730,6 +770,12 @@ export interface GenerateInput {
     instructions: string;
 }
 
+// From api/research.go
+export interface GenerateReportInput {
+    from: string;
+    to: string;
+}
+
 // From api/reports.go
 export interface GenerateReportResponse {
     report: Report;
@@ -752,6 +798,33 @@ export interface GenerationNote {
 
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
+
+// From research/schedules.go
+export interface Hypothesis {
+    key: string;
+    kind: string;
+    observed: string;
+    hypothetical: string;
+    evidenceRefs: number[];
+    class: string;
+    causal: boolean;
+}
+
+// From research/schedules.go
+export interface HypothesisReview {
+    key: string;
+    status: string;
+    note: string;
+    decidedBy: number;
+    decidedAt: string;
+}
+
+// From api/research.go
+export interface HypothesisReviewInput {
+    key: string;
+    status: string;
+    note: string;
+}
 
 // From research/research.go
 export type IdentityState = "ambiguous" | "n/a" | "resolved" | "unknown";
@@ -817,6 +890,16 @@ export type ItemKind = "account_audit" | "competitor_page" | "keywords" | "web_p
 
 // From research/research.go
 export type ItemState = "failed" | "fetched" | "needs_identity" | "pending" | "refused";
+
+// From research/schedules.go
+export interface KeywordComparison {
+    text: string;
+    before: number | null;
+    after: number | null;
+    changePct: number | null;
+    class: string;
+    evidenceId: number;
+}
 
 // From research/research.go
 export interface KeywordIdea {
@@ -907,6 +990,34 @@ export interface Lead {
 export interface LeadsResponse {
     leads: Lead[];
     nextAfterId: number | null;
+}
+
+// From research/schedules.go
+export interface MarketEvent {
+    evidenceId: number;
+    name: string;
+    kind: string;
+    from: string;
+    to: string;
+    sourceUrl: string;
+    note: string;
+    recordedBy: number | null;
+    recordedAt: string;
+}
+
+// From research/schedules.go
+export interface MarketEventInput {
+    name: string;
+    kind: string;
+    from: string;
+    to: string;
+    sourceUrl: string;
+    note: string;
+}
+
+// From api/research.go
+export interface MarketEventsResponse {
+    events: MarketEvent[];
 }
 
 // From runs/runs.go
@@ -1009,6 +1120,20 @@ export interface OfferVersion {
     createdAt: string;
     approvedBy: number | null;
     approvedAt: string | null;
+}
+
+// From research/schedules.go
+export interface PageComparison {
+    itemId: number;
+    url: string;
+    title: string;
+    changed: boolean;
+    evidenceId: number;
+    previousEvidenceId: number | null;
+    excerptBefore: string;
+    excerptAfter: string;
+    observedAt: string;
+    previousObservedAt: string | null;
 }
 
 // From plans/plans.go
@@ -1186,6 +1311,23 @@ export interface Price {
     currency: string;
 }
 
+// From research/schedules.go
+export interface PriorContext {
+    reportId: number;
+    periodStart: string;
+    periodEnd: string;
+    hypotheses: PriorHypothesis[];
+}
+
+// From research/schedules.go
+export interface PriorHypothesis {
+    key: string;
+    kind: string;
+    text: string;
+    status: string | null;
+    note: string;
+}
+
 // From projects/projects.go
 export interface Project {
     id: number;
@@ -1358,6 +1500,18 @@ export interface ReportCoverage {
     dependenciesMissing: string[];
 }
 
+// From research/schedules.go
+export interface ReportDocument {
+    period: DateRange;
+    previous: DateRange;
+    account: AccountComparison | null;
+    competitors: CompetitorComparison[];
+    keywords: KeywordComparison[];
+    events: MarketEvent[];
+    hypotheses: Hypothesis[];
+    prior: PriorContext | null;
+}
+
 // From reporting/metrics.go
 export interface ReportMetrics {
     spend: Money;
@@ -1457,8 +1611,18 @@ export interface ReportsResponse {
     reports: Report[];
 }
 
+// From api/research.go
+export interface ResearchReportsResponse {
+    reports: ComparativeReport[];
+}
+
 // From research/research.go
 export const ResearchRunKind = "research.run";
+
+// From api/research.go
+export interface ResearchSchedulesResponse {
+    schedules: Schedule[];
+}
 
 // From api/research.go
 export interface ResolveCompetitorInput {
@@ -1532,6 +1696,7 @@ export const RunKind = "ghl.import";
 // From research/research.go
 export interface RunParams {
     briefId: number;
+    mode: string;
 }
 
 // From research/research.go
@@ -1551,6 +1716,26 @@ export interface RunsResponse {
 // From api/creative.go
 export interface SaveDocumentInput {
     document: Document;
+}
+
+// From research/schedules.go
+export interface Schedule {
+    id: number;
+    briefId: number;
+    name: string;
+    cadence: Cadence;
+    enabled: boolean;
+    createdBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From research/schedules.go
+export interface ScheduleInput {
+    briefId: number;
+    name: string;
+    cadence: Cadence;
+    enabled: boolean;
 }
 
 // From api/reports.go

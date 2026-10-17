@@ -66,3 +66,170 @@ func (q *Queries) GetEvidenceByID(ctx context.Context, arg GetEvidenceByIDParams
 	)
 	return i, err
 }
+
+const listCurrentEvidenceByKind = `-- name: ListCurrentEvidenceByKind :many
+SELECT id, workspace_id, run_id, account_id, source, kind, source_ref, scope, class, observed_at, event_at, payload_version, payload, payload_hash, completeness, retain_until, superseded_by FROM evidence WHERE workspace_id = ? AND source = ? AND kind = ? AND superseded_by IS NULL ORDER BY id
+`
+
+type ListCurrentEvidenceByKindParams struct {
+	WorkspaceID int64
+	Source      string
+	Kind        string
+}
+
+func (q *Queries) ListCurrentEvidenceByKind(ctx context.Context, arg ListCurrentEvidenceByKindParams) ([]Evidence, error) {
+	rows, err := q.db.QueryContext(ctx, listCurrentEvidenceByKind, arg.WorkspaceID, arg.Source, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Evidence{}
+	for rows.Next() {
+		var i Evidence
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.AccountID,
+			&i.Source,
+			&i.Kind,
+			&i.SourceRef,
+			&i.Scope,
+			&i.Class,
+			&i.ObservedAt,
+			&i.EventAt,
+			&i.PayloadVersion,
+			&i.Payload,
+			&i.PayloadHash,
+			&i.Completeness,
+			&i.RetainUntil,
+			&i.SupersededBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listCurrentEvidenceByScope = `-- name: ListCurrentEvidenceByScope :many
+SELECT id, workspace_id, run_id, account_id, source, kind, source_ref, scope, class, observed_at, event_at, payload_version, payload, payload_hash, completeness, retain_until, superseded_by FROM evidence WHERE workspace_id = ? AND source = ? AND kind = ? AND scope = ? AND superseded_by IS NULL ORDER BY id
+`
+
+type ListCurrentEvidenceByScopeParams struct {
+	WorkspaceID int64
+	Source      string
+	Kind        string
+	Scope       string
+}
+
+func (q *Queries) ListCurrentEvidenceByScope(ctx context.Context, arg ListCurrentEvidenceByScopeParams) ([]Evidence, error) {
+	rows, err := q.db.QueryContext(ctx, listCurrentEvidenceByScope,
+		arg.WorkspaceID,
+		arg.Source,
+		arg.Kind,
+		arg.Scope,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Evidence{}
+	for rows.Next() {
+		var i Evidence
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.AccountID,
+			&i.Source,
+			&i.Kind,
+			&i.SourceRef,
+			&i.Scope,
+			&i.Class,
+			&i.ObservedAt,
+			&i.EventAt,
+			&i.PayloadVersion,
+			&i.Payload,
+			&i.PayloadHash,
+			&i.Completeness,
+			&i.RetainUntil,
+			&i.SupersededBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listEvidenceVersions = `-- name: ListEvidenceVersions :many
+SELECT id, workspace_id, run_id, account_id, source, kind, source_ref, scope, class, observed_at, event_at, payload_version, payload, payload_hash, completeness, retain_until, superseded_by FROM evidence WHERE workspace_id = ? AND source = ? AND kind = ? AND source_ref = ? ORDER BY payload_version DESC LIMIT ?
+`
+
+type ListEvidenceVersionsParams struct {
+	WorkspaceID int64
+	Source      string
+	Kind        string
+	SourceRef   string
+	Limit       int64
+}
+
+func (q *Queries) ListEvidenceVersions(ctx context.Context, arg ListEvidenceVersionsParams) ([]Evidence, error) {
+	rows, err := q.db.QueryContext(ctx, listEvidenceVersions,
+		arg.WorkspaceID,
+		arg.Source,
+		arg.Kind,
+		arg.SourceRef,
+		arg.Limit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Evidence{}
+	for rows.Next() {
+		var i Evidence
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.RunID,
+			&i.AccountID,
+			&i.Source,
+			&i.Kind,
+			&i.SourceRef,
+			&i.Scope,
+			&i.Class,
+			&i.ObservedAt,
+			&i.EventAt,
+			&i.PayloadVersion,
+			&i.Payload,
+			&i.PayloadHash,
+			&i.Completeness,
+			&i.RetainUntil,
+			&i.SupersededBy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
