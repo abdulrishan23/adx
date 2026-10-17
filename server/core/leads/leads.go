@@ -117,8 +117,16 @@ type Coverage struct {
 	FunnelConfigured bool `json:"funnelConfigured"`
 }
 
+// FieldObserver is told the custom fields of every contact an import sees,
+// so the outreach outbox can tell its own echoes from outside edits. It
+// never changes what the import stores.
+type FieldObserver interface {
+	ObserveFields(ctx context.Context, actor core.Actor, accountID int64, externalID string, fields map[string]string, at time.Time) error
+}
+
 type Config struct {
-	Clock core.Clock
+	Clock    core.Clock
+	Observer FieldObserver
 }
 
 type Leads struct {
@@ -127,6 +135,7 @@ type Leads struct {
 	tokens   Tokens
 	evidence *evidence.Store
 	clock    core.Clock
+	observer FieldObserver
 }
 
 // New wires the leads service. crm and tokens may be nil when no GoHighLevel
@@ -135,7 +144,7 @@ func New(db *store.DB, crm CRM, tokens Tokens, ev *evidence.Store, cfg Config) *
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	return &Leads{db: db, crm: crm, tokens: tokens, evidence: ev, clock: cfg.Clock}
+	return &Leads{db: db, crm: crm, tokens: tokens, evidence: ev, clock: cfg.Clock, observer: cfg.Observer}
 }
 
 // ListFilter narrows List. AfterID pages by id.
@@ -435,6 +444,11 @@ func (l *Leads) ingest(ctx context.Context, actor core.Actor, runID, accountID i
 	})
 	if err != nil {
 		return Lead{}, err
+	}
+	if l.observer != nil && len(c.CustomFields) > 0 {
+		if err := l.observer.ObserveFields(ctx, actor, accountID, c.ID, c.CustomFields, now); err != nil {
+			return Lead{}, err
+		}
 	}
 	return l.fromRow(row, mapping), nil
 }

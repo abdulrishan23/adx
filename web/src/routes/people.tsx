@@ -15,6 +15,7 @@ import { useProjects } from "@/api/projects";
 import { useSession } from "@/api/session";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { BriefPanel } from "@/routes/brief";
 import { ScoreSection } from "@/routes/person-score";
 
 // People and their enquiries. A person is who; an enquiry is a project
@@ -157,6 +158,9 @@ function PersonView({
   const setStated = useSetStated();
   const reverse = useReverseLink();
   const [attr, setAttr] = useState({ key: "", value: "" });
+  const [brief, setBrief] = useState<number | null>(null);
+  const session = useSession();
+  const isAdmin = session.data?.role === "admin";
   if (q.isPending) return <p className="text-muted-foreground">Loading…</p>;
   if (q.error) return <p className="text-destructive">{q.error.message}</p>;
   const d = q.data;
@@ -229,12 +233,23 @@ function PersonView({
         <h3 className="font-medium">Enquiries</h3>
         {d.enquiries.length === 0 && <p className="text-muted-foreground">None.</p>}
         {d.enquiries.map((e) => (
-          <p key={e.id}>
-            {projectName(e.projectId)} · {e.state}
-            {e.stage ? ` · ${e.stage}` : ""} · from {e.sourceKind} {e.sourceRef} · first{" "}
-            {new Date(e.firstContactAt).toLocaleDateString()} · last{" "}
-            {new Date(e.lastActivityAt).toLocaleDateString()}
-          </p>
+          <div key={e.id} className="space-y-1">
+            <p>
+              {projectName(e.projectId)} · {e.state}
+              {e.stage ? ` · ${e.stage}` : ""} · from {e.sourceKind} {e.sourceRef} · first{" "}
+              {new Date(e.firstContactAt).toLocaleDateString()} · last{" "}
+              {new Date(e.lastActivityAt).toLocaleDateString()}
+              <Button
+                size="xs"
+                variant="outline"
+                className="ml-2"
+                onClick={() => setBrief(brief === e.id ? null : e.id)}
+              >
+                {brief === e.id ? "Hide brief" : "Sales brief"}
+              </Button>
+            </p>
+            {brief === e.id && <BriefPanel enquiryId={e.id} canEdit={canEdit} isAdmin={isAdmin} />}
+          </div>
         ))}
       </section>
 

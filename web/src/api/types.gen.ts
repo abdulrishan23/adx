@@ -418,6 +418,9 @@ export interface ChannelInfo {
     supported: boolean;
 }
 
+// From outreach/outreach.go
+export type ChannelMode = "approved" | "automatic" | "off";
+
 // From alerts/alerts.go
 export const CheckCostSpike = "cost_spike";
 
@@ -708,6 +711,11 @@ export interface DiffChange {
     after: string;
 }
 
+// From api/outreach.go
+export interface DispatchResponse {
+    sent: number;
+}
+
 // From assets/assets.go
 export interface Document {
     version: number;
@@ -718,6 +726,19 @@ export interface Document {
     background: string;
     image: Image | null;
     layers: Layer[];
+}
+
+// From outreach/outreach.go
+export interface DraftInput {
+    personId: number;
+    enquiryId: number;
+    channel: string;
+    body: string;
+}
+
+// From api/outreach.go
+export interface DraftsResponse {
+    drafts: MessageDraft[];
 }
 
 // From api/crm.go
@@ -917,6 +938,40 @@ export type FetchKind = "refused" | "unavailable" | "unsupported";
 export interface FieldLocation {
     kind: string;
     ref: string;
+}
+
+// From outreach/outreach.go
+export type FieldOwner = "adx" | "crm";
+
+// From outreach/outreach.go
+export interface FieldWrite {
+    id: number;
+    personId: number;
+    accountId: number;
+    externalId: string;
+    field: string;
+    value: string;
+    state: string;
+    reason: string;
+    attempts: number;
+    idempotencyKey: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    conflict: string;
+    createdAt: string;
+    updatedAt: string;
+    sentAt: string | null;
+    confirmedAt: string | null;
+}
+
+// From outreach/outreach.go
+export interface FieldWriteState {
+    adapter: string;
+    reason: string;
+}
+
+// From api/outreach.go
+export interface FieldWritesResponse {
+    writes: FieldWrite[];
 }
 
 // From research/research.go
@@ -1481,6 +1536,35 @@ export interface MergeInput {
     reason: string;
 }
 
+// From outreach/outreach.go
+export interface MessageDraft {
+    id: number;
+    personId: number;
+    enquiryId: number | null;
+    channel: string;
+    language: string;
+    body: string;
+    claims: ClaimReport | null;
+    state: string;
+    reason: string;
+    attempts: number;
+    idempotencyKey: string;
+    providerRef: string;
+    createdBy: number | null;
+    approvedBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    sentAt: string | null;
+}
+
+// From outreach/outreach.go
+export interface MessagingState {
+    adapter: string;
+    channels: string[];
+    automatic: boolean;
+    reason: string;
+}
+
 // From execution/recovery.go
 export interface Milestones {
     planId: number;
@@ -1500,6 +1584,37 @@ export interface Milestones {
 export interface Money {
     minor: number | null;
     currency: string;
+}
+
+// From outreach/outreach.go
+export interface NextStep {
+    action: string;
+    reason: string;
+    draft: string;
+}
+
+// From outreach/outreach.go
+export interface Objection {
+    id: number;
+    personId: number;
+    enquiryId: number | null;
+    kind: string;
+    text: string;
+    source: string;
+    evidenceId: number | null;
+    recordedBy: number | null;
+    recordedAt: string;
+    resolvedAt: string | null;
+    resolution: string;
+}
+
+// From outreach/outreach.go
+export interface ObjectionInput {
+    personId: number;
+    enquiryId: number;
+    kind: string;
+    text: string;
+    source: string;
 }
 
 // From plans/plans.go
@@ -1591,6 +1706,32 @@ export interface OpenEnvelopesInput {
     planId: number;
     planVersion: number;
     accountByPlatform: Record<string, number> | null;
+}
+
+// From outreach/outreach.go
+export interface OutreachConfig {
+    version: number;
+    document: OutreachDocument;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From outreach/outreach.go
+export interface OutreachDocument {
+    fields: Record<string, FieldOwner> | null;
+    channels: Record<string, ChannelMode> | null;
+    quietStart: number;
+    quietEnd: number;
+    note: string;
+}
+
+// From outreach/outreach.go
+export interface OutreachState {
+    configured: boolean;
+    current: OutreachConfig | null;
+    messaging: MessagingState;
+    fieldWrites: FieldWriteState;
+    suggested: OutreachDocument;
 }
 
 // From pages/pages.go
@@ -1940,6 +2081,13 @@ export interface PolicyState {
     suggested: PolicyDocument;
 }
 
+// From outreach/outreach.go
+export interface Preferences {
+    language: string;
+    preferredChannel: string;
+    doNotContact: boolean;
+}
+
 // From brands/brands.go
 export interface Price {
     minor: number;
@@ -2089,12 +2237,24 @@ export interface PutPolicyInput {
     document: PolicyDocument;
 }
 
+// From api/outreach.go
+export interface QueueFieldInput {
+    personId: number;
+    field: string;
+    value: string;
+}
+
 // From creative/production.go
 export interface QueueItem {
     creative: Creative;
     version: number;
     reviewState: ReviewState;
     renderError: string;
+}
+
+// From api/outreach.go
+export interface QueuedResponse {
+    queued: number;
 }
 
 // From reporting/metrics.go
@@ -2385,6 +2545,12 @@ export interface ResolveConflictInput {
     resolution: string;
 }
 
+// From api/outreach.go
+export interface ResolveFieldConflictInput {
+    keepOurs: boolean;
+    reason: string;
+}
+
 // From reporting/metrics.go
 export interface ResultFreshness {
     lastSuccessAt: string | null;
@@ -2426,8 +2592,8 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+// From core/core.go
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From runs/runs.go
 export interface Run {
@@ -2470,6 +2636,25 @@ export interface RunProgress {
 // From api/runs.go
 export interface RunsResponse {
     runs: Run[];
+}
+
+// From outreach/outreach.go
+export interface SalesBrief {
+    enquiry: Enquiry;
+    person: Person;
+    projectName: string;
+    score: ScoreAssessment | null;
+    claims: Fact[];
+    claimsNote: string;
+    objections: Objection[];
+    preferences: Preferences;
+    suppressions: Suppression[];
+    attributes: AttributeView[];
+    drafts: MessageDraft[];
+    fieldWrites: FieldWrite[];
+    next: NextStep;
+    lastActivity: string;
+    daysSinceActivity: number;
 }
 
 // From api/creative.go
@@ -2741,6 +2926,27 @@ export interface Submission {
 // From api/pages.go
 export interface SubmissionsResponse {
     submissions: Submission[];
+}
+
+// From api/outreach.go
+export interface SuppressInput {
+    personId: number;
+    channel: string;
+    reason: string;
+    source: string;
+}
+
+// From outreach/outreach.go
+export interface Suppression {
+    id: number;
+    personId: number;
+    channel: string;
+    reason: string;
+    source: string;
+    since: string;
+    liftedAt: string | null;
+    liftedBy: number | null;
+    liftReason: string;
 }
 
 // From api/crm.go

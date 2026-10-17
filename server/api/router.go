@@ -22,6 +22,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/outreach"
 	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
@@ -62,6 +63,7 @@ type Deps struct {
 	Execution   *execution.Dispatcher
 	CRM         *crm.CRM
 	Signals     *signals.Signals
+	Outreach    *outreach.Outreach
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -91,13 +93,14 @@ type handlers struct {
 	execution     *execution.Dispatcher
 	crm           *crm.CRM
 	signals       *signals.Signals
+	outreach      *outreach.Outreach
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -324,6 +327,24 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/signals/events/{id}/correct", h.correctEvent)
 			r.Post("/api/signals/derive", h.deriveSignals)
 			r.Get("/api/signals/people/{id}", h.personScore)
+		}
+		if h.outreach != nil {
+			r.Get("/api/outreach/config", h.getOutreachConfig)
+			r.Put("/api/outreach/config", h.putOutreachConfig)
+			r.Get("/api/outreach/enquiries/{id}/brief", h.enquiryBrief)
+			r.Post("/api/outreach/objections", h.recordObjection)
+			r.Post("/api/outreach/objections/{id}/resolve", h.resolveObjection)
+			r.Post("/api/outreach/suppressions", h.suppress)
+			r.Post("/api/outreach/suppressions/{id}/lift", h.liftSuppression)
+			r.Get("/api/outreach/drafts", h.listDrafts)
+			r.Post("/api/outreach/drafts", h.createDraft)
+			r.Post("/api/outreach/drafts/{id}/approve", h.approveDraft)
+			r.Post("/api/outreach/drafts/{id}/send", h.sendDraft)
+			r.Get("/api/outreach/fields", h.listFieldWrites)
+			r.Post("/api/outreach/fields", h.queueFieldWrite)
+			r.Post("/api/outreach/fields/{id}/resolve", h.resolveFieldConflict)
+			r.Post("/api/outreach/fields/dispatch", h.dispatchFieldWrites)
+			r.Post("/api/outreach/fields/sync-scores", h.syncScores)
 		}
 	})
 

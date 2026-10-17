@@ -403,3 +403,20 @@ make check && make test
 - Web: `/settings/scoring` rules editor with the catalog and the unknown-event list with attribute/discard; the person page shows fit, intent, temperature, the explanation lines, the timeline, history and corrections. Typecheck and biome clean. Not browser-tested.
 
 Live: no GoHighLevel webhook is configured against a real location; the adapter's parsing is tested on documented payload shapes only.
+
+## B4.3 Nurturing, objections and CRM feedback
+
+Local:
+
+```
+cd server && go test ./core/outreach/ ./core/leads/ ./providers/gohighlevel/   # ok
+make check && make test
+```
+
+- `core/outreach`: with fields `adx_temperature` owned by ADX and `notes` by the CRM, a dispatch sends the ADX field once and holds the CRM field ("not owned by ADX") and the unconfigured field; the import then showing `warm`, other notes and a budget makes the ADX row a conflict with ours and theirs recorded, the CRM row superseded, the unconfigured row a conflict saying the owner is not configured, with nothing re-sent and nothing dispatched; keep-ours re-queues a fresh row that dispatches, a second resolution is refused, take-theirs leaves the row superseded. The same value queued twice is one row; the import echoing our value confirms it and creates nothing; a newer value supersedes. A draft can't send unapproved; after approval an opt-out on WhatsApp makes the send `suppressed` with the reason and the adapter untouched, a retry is also `suppressed` with the adapter still untouched, a marketer can't lift, an admin needs a reason, and after the lift the send goes out once to the normalised phone with the draft's idempotency key; an all-channel opt-out makes the next step `stop`. Unconfigured sends are held "not configured", channel off is held "is off", automatic with no adapter is held "no messaging adapter" and the state never claims automatic; a draft quoting AED 1,200,000 and 10% is held as unapproved and refuses approval with 409; a marketer can't save config; a `fax` channel is rejected. The brief waits on an active enquiry, calls on a price objection with no fact, messages with "AED 1,500,000" once an approved money fact exists, stores that draft as `draft` with the claim approved, carries the waiting draft as the step, reads an Arabic preference, stops on do-not-contact and 404s an unknown enquiry.
+- `core/leads`: the import hands every contact's custom fields to the observer; existing lead tests still pass.
+- `providers/gohighlevel`: `SetContactFields` is `PUT /contacts/{id}` with the bearer token and only `customFields`; a 400 is an error; empty id or fields are errors.
+- `api`: config, brief, objections, suppressions, drafts (create/approve/send), field outbox (list/queue/resolve/dispatch/sync-scores). Jobs `outreach.dispatch_fields` (5 min) and `outreach.sync_scores` (hourly).
+- Web: `/settings/outreach` with the config editor, messaging and field-writer state, the outbox and conflict resolution; a "Sales brief" panel per enquiry on the person page with next step, facts, objections, preferences and opt-outs, drafts with approve/send, and CRM field states. Typecheck and biome clean. Not browser-tested.
+
+Live: no message was sent and no CRM field was written. Both need an adapter (`Messenger`; GoHighLevel field writes need `ADX_LIVE_WRITES=1`, the policy row and a verified capability) and Reportage's messaging policy.

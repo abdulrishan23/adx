@@ -1395,13 +1395,54 @@
         "B4.2",
         "B1.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00026_outreach.sql",
+        "server/store/queries/outreach.sql",
+        "server/core/outreach/outreach.go",
+        "server/core/outreach/outreach_test.go",
+        "server/core/leads/leads.go",
+        "server/providers/gohighlevel/fields.go",
+        "server/providers/gohighlevel/fields_test.go",
+        "server/api/outreach.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/outreach.ts",
+        "web/src/routes/brief.tsx",
+        "web/src/routes/outreach.tsx",
+        "web/src/routes/people.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/outreach/ ./core/leads/ ./providers/gohighlevel/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "an outside edit is a conflict (ADX-owned or unconfigured) or supersedes ADX (CRM-owned); nothing re-sends",
+        "an echo confirms the row and creates nothing",
+        "a suppressed person is not contacted by a retry",
+        "no send without a configured channel mode and a wired adapter; automatic never claimed"
+      ],
+      "remaining": [
+        "a messaging adapter and Reportage's messaging policy",
+        "live CRM field write against a location",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "policy",
+          "what": "Reportage's messaging policy (channels, hours, consent) and a chosen messaging provider",
+          "unblocks": "sending approved drafts"
+        },
+        {
+          "kind": "external",
+          "what": "ADX_LIVE_WRITES=1, ghl.lead_fields.set allowed and write.lead_fields verified for the location",
+          "unblocks": "CRM field dispatch"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-44."
     },
     {
       "id": "B4.4",

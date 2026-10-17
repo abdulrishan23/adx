@@ -233,6 +233,19 @@ type ConnectionOauthAttempt struct {
 	CodeVerifier string
 }
 
+type ContactSuppression struct {
+	ID          int64
+	WorkspaceID int64
+	PersonID    int64
+	Channel     string
+	Reason      string
+	Source      string
+	Since       time.Time
+	LiftedAt    sql.NullTime
+	LiftedBy    sql.NullInt64
+	LiftReason  string
+}
+
 type ConversionAction struct {
 	ID                   int64
 	WorkspaceID          int64
@@ -303,6 +316,26 @@ type Credential struct {
 	TokenExpiresAt  sql.NullTime
 	ConnectedBy     sql.NullInt64
 	ConnectedAt     time.Time
+}
+
+type CrmFieldOutbox struct {
+	ID             int64
+	WorkspaceID    int64
+	PersonID       int64
+	AccountID      int64
+	ExternalID     string
+	Field          string
+	Value          string
+	State          string
+	Reason         string
+	Attempts       int64
+	IdempotencyKey string
+	Conflict       string
+	CreatedBy      sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	SentAt         sql.NullTime
+	ConfirmedAt    sql.NullTime
 }
 
 type Enquiry struct {
@@ -568,6 +601,42 @@ type Membership struct {
 	CreatedAt   time.Time
 }
 
+type MessageDraft struct {
+	ID             int64
+	WorkspaceID    int64
+	PersonID       int64
+	EnquiryID      sql.NullInt64
+	Channel        string
+	Language       string
+	Body           string
+	Claims         string
+	State          string
+	Reason         string
+	Attempts       int64
+	IdempotencyKey string
+	ProviderRef    string
+	CreatedBy      sql.NullInt64
+	ApprovedBy     sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	SentAt         sql.NullTime
+}
+
+type Objection struct {
+	ID          int64
+	WorkspaceID int64
+	PersonID    int64
+	EnquiryID   sql.NullInt64
+	Kind        string
+	Text        string
+	Source      string
+	EvidenceID  sql.NullInt64
+	RecordedBy  sql.NullInt64
+	RecordedAt  time.Time
+	ResolvedAt  sql.NullTime
+	Resolution  string
+}
+
 type Offer struct {
 	ID          int64
 	WorkspaceID int64
@@ -591,6 +660,15 @@ type OfferVersion struct {
 	CreatedAt     time.Time
 	ApprovedBy    sql.NullInt64
 	ApprovedAt    sql.NullTime
+}
+
+type OutreachConfig struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
 }
 
 type Page struct {

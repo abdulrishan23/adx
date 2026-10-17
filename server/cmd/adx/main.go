@@ -36,6 +36,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/measurement"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/outreach"
 	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
@@ -229,7 +230,19 @@ func run() error {
 	if connections != nil {
 		tokens = connections
 	}
-	leadsService := leads.New(db, ghlReader(connections), tokens, evidenceStore, leads.Config{})
+	// Outreach is wired before leads so the import can hand it every
+	// contact's custom fields for echo and conflict detection. Its own
+	// dependencies (brands, signals, policies) are set below, once they
+	// exist. No messaging adapter exists; the CRM field writer is the
+	// GoHighLevel client only when live writes are on.
+	outreachCfg := outreach.Config{Tokens: tokens}
+	if cfg.LiveWrites {
+		if w, ok := ghlReader(connections).(outreach.FieldWriter); ok {
+			outreachCfg.Fields = w
+		}
+	}
+	outreachService := outreach.New(db, evidenceStore, outreachCfg)
+	leadsService := leads.New(db, ghlReader(connections), tokens, evidenceStore, leads.Config{Observer: outreachService})
 	readers := map[string]reporting.Provider{}
 	for name, p := range adPlatforms {
 		readers[name] = p.Reader
@@ -291,6 +304,7 @@ func run() error {
 	// form submissions only.
 	crmService := crm.New(db, evidenceStore, crm.Config{})
 	signalService := signals.New(db, evidenceStore, crmService, signals.Config{Alerts: alertsService})
+	outreachService.Attach(brandService, signalService, crmService, policyService)
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -339,6 +353,24 @@ func run() error {
 					log.WarnContext(ctx, "signal derivation failed", "error", err)
 				} else if n > 0 {
 					log.InfoContext(ctx, "derived signals", "events", n)
+				}
+				return nil
+			}},
+			{Kind: "outreach.dispatch_fields", Every: 5 * time.Minute, Run: func(ctx context.Context) error {
+				n, err := outreachService.DispatchFields(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "CRM field dispatch failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "sent CRM field values", "sent", n)
+				}
+				return nil
+			}},
+			{Kind: "outreach.sync_scores", Every: time.Hour, Run: func(ctx context.Context) error {
+				n, err := outreachService.SyncScores(ctx, core.System(core.ViaJob))
+				if err != nil {
+					log.WarnContext(ctx, "score sync failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "queued score fields", "queued", n)
 				}
 				return nil
 			}},
