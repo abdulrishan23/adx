@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evaluation"
@@ -67,6 +68,7 @@ import (
 	"github.com/WokeWorks/adx/server/providers/svgrender"
 	"github.com/WokeWorks/adx/server/providers/twilio"
 	"github.com/WokeWorks/adx/server/providers/webfetch"
+	"github.com/WokeWorks/adx/server/providers/whatsapp"
 	"github.com/WokeWorks/adx/server/store"
 
 	// Containers often ship without time zone data, and reports need Asia/Dubai.
@@ -136,11 +138,17 @@ type config struct {
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
-	SMTPHost     string `env:"ADX_SMTP_HOST"`
-	SMTPPort     int    `env:"ADX_SMTP_PORT" envDefault:"587"`
-	SMTPUsername string `env:"ADX_SMTP_USERNAME"`
-	SMTPPassword string `env:"ADX_SMTP_PASSWORD"`
-	SMTPFrom     string `env:"ADX_SMTP_FROM"`
+	SMTPHost string `env:"ADX_SMTP_HOST"`
+	// WhatsApp Business Cloud API, for the outreach whatsapp channel. Both
+	// empty keeps the adapter off.
+	WhatsAppAccessToken   string `env:"ADX_WHATSAPP_ACCESS_TOKEN"`
+	WhatsAppPhoneNumberID string `env:"ADX_WHATSAPP_PHONE_NUMBER_ID"`
+	// OutreachEmailSubject is the subject line of outreach mail.
+	OutreachEmailSubject string `env:"ADX_OUTREACH_EMAIL_SUBJECT"`
+	SMTPPort             int    `env:"ADX_SMTP_PORT" envDefault:"587"`
+	SMTPUsername         string `env:"ADX_SMTP_USERNAME"`
+	SMTPPassword         string `env:"ADX_SMTP_PASSWORD"`
+	SMTPFrom             string `env:"ADX_SMTP_FROM"`
 
 	// Ask ADX (B1.5). The model is configuration: provider, name, key,
 	// effort, timeout, daily token budget and prices for cost accounting.
@@ -259,12 +267,28 @@ func run() error {
 	// Outreach is wired before leads so the import can hand it every
 	// contact's custom fields for echo and conflict detection. Its own
 	// dependencies (brands, signals, policies) are set below, once they
-	// exist. No messaging adapter exists; the CRM field writer is the
-	// GoHighLevel client only when live writes are on.
+	// exist. The CRM field writer is the GoHighLevel client only when live
+	// writes are on.
+	mailer, err := configuredMailer(cfg)
+	if err != nil {
+		return err
+	}
+	// Messaging adapters exist (WhatsApp Cloud, SMTP) but are wired only
+	// with live writes on; the channel mode in the outreach config and the
+	// policy still gate every send after that.
 	outreachCfg := outreach.Config{Tokens: tokens}
+	var channels []string
 	if cfg.LiveWrites {
 		if w, ok := ghlReader(connections).(outreach.FieldWriter); ok {
 			outreachCfg.Fields = w
+		}
+		messengers, err := configuredMessengers(cfg, mailer)
+		if err != nil {
+			return err
+		}
+		outreachCfg.Messenger = outreach.Combine(messengers...)
+		if outreachCfg.Messenger != nil {
+			channels = outreachCfg.Messenger.Channels()
 		}
 	}
 	outreachService := outreach.New(db, evidenceStore, outreachCfg)
@@ -278,7 +302,6 @@ func run() error {
 		adTokens = connections
 	}
 	reportingService := reporting.New(db, readers, adTokens, evidenceStore, reporting.Config{})
-	mailer, err := configuredMailer(cfg)
 	if err != nil {
 		return err
 	}
@@ -564,6 +587,7 @@ func run() error {
 			Learning:      learningService,
 			Workspaces:    workspaces.New(db, nil),
 			WebhookSecret: cfg.WebhookSecret,
+			Wiring:        wiring(cfg, adPlatforms, connections != nil, channels, speech != nil, model != nil, mailer != nil),
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -764,4 +788,39 @@ func devAddrIsLocal(addr string) error {
 		return nil
 	}
 	return fmt.Errorf("ADX_ADDR %q: dev mode only listens on localhost, because it has no sign-in", addr)
+}
+
+// configuredMessengers builds the outreach adapters the environment names:
+// WhatsApp Cloud when its token and phone number id are set, and SMTP for
+// the email channel when a relay is configured. Neither is a decision to
+// send: the channel mode and the policy still gate every draft.
+func configuredMessengers(cfg config, mailer reports.Mailer) ([]outreach.Messenger, error) {
+	var out []outreach.Messenger
+	if cfg.WhatsAppAccessToken != "" || cfg.WhatsAppPhoneNumberID != "" {
+		wa, err := whatsapp.New(whatsapp.Config{AccessToken: cfg.WhatsAppAccessToken, PhoneNumberID: cfg.WhatsAppPhoneNumberID})
+		if err != nil {
+			return nil, fmt.Errorf("ADX_WHATSAPP_*: %w", err)
+		}
+		out = append(out, wa)
+	}
+	if m, ok := mailer.(*smtpmail.Mailer); ok && m != nil {
+		em, err := smtpmail.NewMessenger(m, cfg.OutreachEmailSubject)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, em)
+	}
+	return out, nil
+}
+
+// wiring records what this process configured, for the capability matrix.
+func wiring(cfg config, platforms map[string]connections.AdsPlatform, ghl bool, channels []string, speech, model, mail bool) connections.Wiring {
+	w := connections.Wiring{LiveWrites: cfg.LiveWrites, Channels: channels, Telecom: cfg.TelecomRoute, Speech: speech, Model: model, Webhooks: cfg.WebhookSecret != "", Mail: mail}
+	for name := range platforms {
+		w.Providers = append(w.Providers, name)
+	}
+	if ghl {
+		w.Providers = append(w.Providers, "gohighlevel")
+	}
+	return w
 }

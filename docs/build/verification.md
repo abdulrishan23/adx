@@ -563,3 +563,21 @@ make check && make test
 - `api`: `/api/workspaces` (mine, create), `/api/workspaces/members` (list, add, remove), `/api/session/switch`, `/api/settings/industry` (current, versions, put with permission-key refusal). Web: `/settings/workspaces` (clients, members, versioned industry document) and a header switcher that reloads after switching so nothing of the previous client stays in memory. Typecheck and biome clean. Not browser-tested.
 
 Live: none needed. Sign-in through authentik with two memberships is unverified until ADX_AUTHENTIK_* is configured.
+
+## B6.2 Selected channel extensions and native capability review
+
+Local:
+
+```
+cd server && go test ./providers/whatsapp/ ./providers/smtpmail/ ./core/outreach/ ./core/connections/ ./core/reporting/   # ok
+make check && make test
+```
+
+- `providers/whatsapp`: the request carries the bearer token, posts to `/{phoneNumberId}/messages` with `messaging_product` whatsapp, the recipient without its plus and a text body; the message id comes back as the reference. A Graph error (131047, outside the 24-hour window) is an error naming the code and Meta's detail, without the token; a wrong channel, a non-numeric recipient and an empty body never reach the API; a client without token or phone id is refused.
+- `providers/smtpmail`: the messenger serves email only; an invalid recipient is refused before the relay; a valid one reaches the relay (dial error in the test, never a silent success); the Message-ID is `<draft-7-v1@reportage.ae>` from the key and the From domain; a nil mailer and a subject with a line break are refused.
+- `core/outreach`: `Combine` of nils is nil, of one adapter is that adapter; two adapters name `fake-wa+smtp` and serve both channels; a shared channel goes to the first adapter; an unserved channel is refused.
+- `core/connections`: the catalog has no duplicate rows, every row has a reason, no publish row is supported, nothing is wired on an empty server; with credentials and live writes off, reads are wired and no write is; with Meta credentials, live writes and a WhatsApp channel, Meta's budget write and WhatsApp's send are wired while Google's budget, Meta's publish and email stay unwired. Every ad platform, GoHighLevel, WhatsApp and email names at least one thing it does not do.
+- `core/reporting`: `RefreshAll` with three provider accounts and one of an unknown provider starts three runs and reports no error; the account whose credential is revoked fails its own run with the reason, and the Google and Meta runs complete.
+- `api`: `GET /api/connections/capabilities`. Web: the connections page explains what connecting does and does not do and shows the matrix per connector (wired, supported but not wired, not supported, with the reason). Typecheck and biome clean. Not browser-tested.
+
+Live: none run. A WhatsApp or email send needs ADX_LIVE_WRITES, the adapter configuration, the channel mode on and the messaging policy, none of which are supplied.

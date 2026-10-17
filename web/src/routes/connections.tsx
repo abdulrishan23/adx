@@ -1,7 +1,7 @@
-import { useAccounts } from "@/api/accounts";
+import { useAccounts, useCapabilityMatrix } from "@/api/accounts";
 import { useFreshness, useRefreshAnalytics } from "@/api/analytics";
 import { useSession } from "@/api/session";
-import type { Account, Freshness } from "@/api/types.gen";
+import type { Account, ConnectorCapability, Freshness } from "@/api/types.gen";
 import { Button } from "@/components/ui/button";
 
 const healthLabel: Record<Account["health"], string> = {
@@ -22,6 +22,12 @@ const providerLabel: Record<string, string> = {
   gohighlevel: "GoHighLevel",
   google_ads: "Google Ads",
   meta: "Meta",
+  whatsapp: "WhatsApp Cloud",
+  email: "Email (SMTP)",
+  telephony: "Telephony",
+  speech: "Speech engine",
+  model: "Model",
+  mail: "Staff mail",
 };
 
 function dayAgo(days: number): string {
@@ -68,8 +74,10 @@ export function ConnectionsPage() {
         )}
       </div>
       <p className="text-sm text-muted-foreground">
-        Connecting reads accounts, campaigns and figures. Nothing here writes to an ad account;
-        writes stay off until the policy is configured.
+        Connecting an ad platform reads its accounts, campaigns and figures. Nothing here publishes
+        or writes on its own: writes stay off until live writes are on and the policy allows them,
+        and ADX never publishes creative or posts. The matrix below says exactly what each connector
+        does and does not do on this server.
       </p>
       {refresh.data && (
         <p className="text-sm text-muted-foreground">
@@ -139,7 +147,57 @@ export function ConnectionsPage() {
           })}
         </ul>
       )}
+      <CapabilityMatrix />
     </section>
+  );
+}
+
+// The matrix is what a connector's name may claim: every unsupported row is
+// written down with its reason, so a logo never implies publishing or any
+// write the server cannot do.
+function CapabilityMatrix() {
+  const matrix = useCapabilityMatrix();
+  if (!matrix.data) return null;
+  const byProvider = new Map<string, ConnectorCapability[]>();
+  for (const c of matrix.data.capabilities) {
+    const list = byProvider.get(c.provider) ?? [];
+    list.push(c);
+    byProvider.set(c.provider, list);
+  }
+  return (
+    <div className="space-y-3">
+      <h2 className="text-lg font-semibold">What each connector can do</h2>
+      <p className="text-sm text-muted-foreground">
+        Live writes are {matrix.data.liveWrites ? "on" : "off"} on this server. Supported means the
+        code exists; wired means this server is configured for it.
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {[...byProvider.entries()].map(([provider, caps]) => (
+          <div key={provider} className="rounded border p-3">
+            <h3 className="font-medium">{providerLabel[provider] ?? provider}</h3>
+            <ul className="mt-2 space-y-1 text-sm">
+              {caps.map((c) => (
+                <li key={c.capability} className="flex flex-wrap gap-x-2">
+                  <span className="font-mono text-xs">{c.capability}</span>
+                  <span
+                    className={
+                      c.supported
+                        ? c.wired
+                          ? "text-foreground"
+                          : "text-muted-foreground"
+                        : "text-destructive"
+                    }
+                  >
+                    {c.supported ? (c.wired ? "wired" : "supported, not wired") : "not supported"}
+                  </span>
+                  <span className="w-full text-muted-foreground">{c.reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 

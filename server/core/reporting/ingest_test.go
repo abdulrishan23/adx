@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -279,4 +280,45 @@ func TestRefreshValidation(t *testing.T) {
 	_, err = unconfigured.Execute(t.Context(), h)
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindConflict, ce.Kind)
+}
+
+// Catches: one account's failure (a revoked credential, an unknown
+// provider) stopping or failing the daily refresh of the others.
+func TestRefreshAllContinuesPastAFailingAccount(t *testing.T) {
+	e := setup(t)
+	for _, f := range []*fakeProvider{e.google, e.meta} {
+		f.campaigns = [][]reporting.Campaign{nil}
+		f.metrics = [][]reporting.DailyMetric{nil}
+	}
+	bad := e.account(t, "google_ads", "9999", "AED", "Asia/Dubai")
+	e.account(t, "tiktok", "tt-1", "AED", "Asia/Dubai")
+	r := reporting.New(e.db, map[string]reporting.Provider{"google_ads": e.google, "meta": e.meta}, failingTokens{bad: bad}, evidence.New(e.db, e.clock), reporting.Config{Clock: e.clock})
+
+	started, errs := r.RefreshAll(t.Context(), e.runs, 7)
+	assert.Equal(t, 3, started, "every account with a provider starts; the one without is skipped, not an error")
+	assert.Empty(t, errs)
+
+	execute := func(account int64) error {
+		run, created, err := r.StartRefresh(t.Context(), coretest.Marketer, e.runs, account, reporting.DayOf(e.clock.Now().AddDate(0, 0, -7)), reporting.DayOf(e.clock.Now()))
+		require.NoError(t, err)
+		require.False(t, created, "RefreshAll already queued this run")
+		h, err := e.runs.Begin(t.Context(), run.RowID(), "test")
+		require.NoError(t, err)
+		_, execErr := r.Execute(t.Context(), h)
+		return execErr
+	}
+	err := execute(bad)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "revoked")
+	require.NoError(t, execute(e.googleAcc), "the healthy Google account's refresh completes")
+	require.NoError(t, execute(e.metaAcc), "and so does Meta's")
+}
+
+type failingTokens struct{ bad int64 }
+
+func (f failingTokens) ProviderToken(_ context.Context, _ core.Actor, account int64) (string, error) {
+	if account == f.bad {
+		return "", errors.New("credential 9999 revoked")
+	}
+	return "tok", nil
 }

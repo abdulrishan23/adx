@@ -396,3 +396,39 @@ func TestNextActionUsesFactsObjectionsAndPreferences(t *testing.T) {
 	_, err = e.out.NextAction(ctx, coretest.Viewer, 999)
 	require.Error(t, err)
 }
+
+// Catches: a combined adapter sending on a channel nobody serves, the first
+// adapter not winning a shared channel, and nil adapters counting.
+func TestCombineRoutesByChannel(t *testing.T) {
+	wa := &fakeMessenger{}
+	mail := &namedMessenger{name: "smtp", channels: []string{"email", "whatsapp"}}
+	assert.Nil(t, outreach.Combine(nil, nil))
+	assert.Same(t, wa, outreach.Combine(wa).(*fakeMessenger))
+	both := outreach.Combine(nil, wa, mail)
+	assert.Equal(t, "fake-wa+smtp", both.Name())
+	assert.Equal(t, []string{"email", "whatsapp"}, both.Channels())
+
+	ref, err := both.Send(t.Context(), outreach.OutboundMessage{Channel: "whatsapp", To: "+971500000000", Body: "x"})
+	require.NoError(t, err)
+	assert.Equal(t, "wamid-1", ref)
+	require.Len(t, wa.sent, 1, "the first adapter given keeps a shared channel")
+	assert.Empty(t, mail.sent)
+	_, err = both.Send(t.Context(), outreach.OutboundMessage{Channel: "email", To: "a@b.c", Body: "x"})
+	require.NoError(t, err)
+	assert.Len(t, mail.sent, 1)
+	_, err = both.Send(t.Context(), outreach.OutboundMessage{Channel: "sms", To: "+971500000000", Body: "x"})
+	require.Error(t, err)
+}
+
+type namedMessenger struct {
+	name     string
+	channels []string
+	sent     []outreach.OutboundMessage
+}
+
+func (m *namedMessenger) Name() string       { return m.name }
+func (m *namedMessenger) Channels() []string { return m.channels }
+func (m *namedMessenger) Send(_ context.Context, msg outreach.OutboundMessage) (string, error) {
+	m.sent = append(m.sent, msg)
+	return m.name + "-ref", nil
+}

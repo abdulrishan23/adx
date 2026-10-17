@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJSON } from "./client";
 import type {
   AccountsResponse,
+  CapabilityMatrixResponse,
   KillSwitch,
   KillSwitchInput,
   Policy,
@@ -46,5 +47,12 @@ export function useKillSwitch() {
   return useMutation({
     mutationFn: (input: KillSwitchInput) => putJSON<KillSwitch>("/api/policies/kill-switch", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["policies"] }),
+  });
+}
+
+export function useCapabilityMatrix() {
+  return useQuery({
+    queryKey: ["accounts", "capabilities"],
+    queryFn: () => getJSON<CapabilityMatrixResponse>("/api/connections/capabilities"),
   });
 }

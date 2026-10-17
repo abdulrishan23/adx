@@ -618,6 +618,12 @@ export interface Capability {
     lastError: string | null;
 }
 
+// From api/capabilities.go
+export interface CapabilityMatrixResponse {
+    capabilities: ConnectorCapability[];
+    liveWrites: boolean;
+}
+
 // From connections/accounts.go
 export const CapabilityReadLeads = "read.leads";
 
@@ -748,7 +754,7 @@ export interface CompleteTaskInput {
 }
 
 // From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
+export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
 
 // From brands/facts.go
 export interface Conflict {
@@ -786,6 +792,16 @@ export interface Connection {
 // From api/connections.go
 export interface ConnectionsResponse {
     connections: Connection[];
+}
+
+// From connections/catalog.go
+export interface ConnectorCapability {
+    provider: string;
+    capability: string;
+    direction: string;
+    supported: boolean;
+    reason: string;
+    wired: boolean;
 }
 
 // From calls/calls.go
@@ -3417,7 +3433,7 @@ export interface ReviseInsightInput {
 }
 
 // From assistant/model.go
-export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
+export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
 
 // From calls/calls.go
 export interface Route {

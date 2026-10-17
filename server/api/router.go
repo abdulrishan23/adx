@@ -82,6 +82,8 @@ type Deps struct {
 	Supervisor    *supervisor.Supervisor
 	Learning      *learning.Learning
 	Workspaces    *workspaces.Workspaces
+	// Wiring says what this server has configured, for the capability matrix.
+	Wiring connections.Wiring
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -121,13 +123,14 @@ type handlers struct {
 	supervisor    *supervisor.Supervisor
 	learning      *learning.Learning
 	workspaces    *workspaces.Workspaces
+	wiring        connections.Wiring
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -176,6 +179,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Put("/api/settings/industry", h.putIndustry)
 		r.Get("/api/settings/industry/versions/{version}", h.getIndustryVersion)
 		r.Get("/api/accounts", h.listAccounts)
+		r.Get("/api/connections/capabilities", h.capabilityMatrix)
 		if h.policies != nil {
 			r.Get("/api/policies", h.getPolicies)
 			r.Put("/api/policies", h.putPolicies)

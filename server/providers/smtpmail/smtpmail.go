@@ -43,6 +43,11 @@ func New(cfg Config) (*Mailer, error) {
 // Build renders the RFC 5322 message. Exported so tests can check headers
 // without a server.
 func Build(from string, m reports.Message) ([]byte, error) {
+	return build(from, m, "")
+}
+
+// build renders the message, with a Message-ID header when one is given.
+func build(from string, m reports.Message, messageID string) ([]byte, error) {
 	if len(m.To) == 0 {
 		return nil, errors.New("message has no recipients")
 	}
@@ -59,13 +64,20 @@ func Build(from string, m reports.Message) ([]byte, error) {
 	fmt.Fprintf(&b, "To: %s\r\n", strings.Join(m.To, ", "))
 	fmt.Fprintf(&b, "Subject: %s\r\n", m.Subject)
 	fmt.Fprintf(&b, "Date: %s\r\n", time.Now().UTC().Format(time.RFC1123Z))
+	if messageID != "" {
+		fmt.Fprintf(&b, "Message-ID: %s\r\n", messageID)
+	}
 	b.WriteString("MIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n")
 	b.WriteString(strings.ReplaceAll(m.Body, "\n", "\r\n"))
 	return []byte(b.String()), nil
 }
 
 func (s *Mailer) Send(ctx context.Context, m reports.Message) error {
-	msg, err := Build(s.cfg.From, m)
+	return s.send(ctx, m, "")
+}
+
+func (s *Mailer) send(ctx context.Context, m reports.Message, messageID string) error {
+	msg, err := build(s.cfg.From, m, messageID)
 	if err != nil {
 		return err
 	}

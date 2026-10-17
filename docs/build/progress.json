@@ -1880,13 +1880,46 @@
         "B6.1",
         "B3.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/providers/whatsapp/",
+        "server/providers/smtpmail/outreach.go",
+        "server/providers/smtpmail/smtpmail.go",
+        "server/core/outreach/route.go",
+        "server/core/connections/catalog.go",
+        "server/core/reporting/ingest_test.go",
+        "server/api/capabilities.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/accounts.ts",
+        "web/src/routes/connections.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "docs/build/native-review.md"
+      ],
+      "commands": [
+        "cd server && go test ./providers/whatsapp/ ./providers/smtpmail/ ./core/outreach/ ./core/connections/ ./core/reporting/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "every connector lists its unsupported capabilities with a reason and no publish capability is ever supported; the connections page shows the matrix",
+        "a revoked credential or unknown provider fails or skips only its own account's refresh; the others complete",
+        "native-versus-integrate review records user value, maintenance and the decision per capability"
+      ],
+      "remaining": [
+        "browser inspection of the matrix",
+        "a live WhatsApp or email send once the messaging policy, adapter configuration and live writes exist"
+      ],
+      "blockers": [
+        {
+          "kind": "policy",
+          "what": "messaging policy (who may send what, on which channel, with what consent) and ADX_WHATSAPP_*/ADX_SMTP_* with ADX_LIVE_WRITES=1",
+          "unblocks": "a live send through the new adapters"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-54. docs/build/native-review.md."
     },
     {
       "id": "B6.3",
