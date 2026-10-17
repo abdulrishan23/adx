@@ -18,6 +18,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
+	"github.com/WokeWorks/adx/server/core/evaluation"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -68,6 +69,7 @@ type Deps struct {
 	Outreach      *outreach.Outreach
 	Calls         *calls.Calls
 	Qualification *qualification.Qualification
+	Evaluation    *evaluation.Evaluation
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -100,13 +102,14 @@ type handlers struct {
 	outreach      *outreach.Outreach
 	calls         *calls.Calls
 	qualification *qualification.Qualification
+	evaluation    *evaluation.Evaluation
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -206,6 +209,8 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/assistant/conversations", h.createConversation)
 			r.Get("/api/assistant/conversations/{id}", h.conversationTurns)
 			r.Post("/api/assistant/conversations/{id}/messages", h.sendMessage)
+			r.Post("/api/assistant/conversations/{id}/voice", h.sendVoice)
+			r.Post("/api/assistant/voice/preview", h.previewVoice)
 		}
 		if h.creative != nil {
 			r.Get("/api/assets", h.listAssets)
@@ -373,6 +378,10 @@ func NewRouter(d Deps) http.Handler {
 				r.Post("/api/voice/calls/{id}/outcome", h.correctReading)
 				r.Get("/api/voice/calls/{id}/recording", h.callRecording)
 			}
+		}
+		if h.evaluation != nil {
+			r.Get("/api/evaluation", h.evaluationReport)
+			r.Post("/api/evaluation/labels", h.labelCall)
 		}
 	})
 

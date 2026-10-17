@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useConfirmReading, useCorrectReading, useEvidence } from "@/api/calls";
+import { useLabelCall } from "@/api/evaluation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -12,6 +13,8 @@ export function CallEvidencePanel({ id, canEdit }: { id: number; canEdit: boolea
   const correct = useCorrectReading();
   const [outcome, setOutcome] = useState("callback");
   const [note, setNote] = useState("");
+  const label = useLabelCall();
+  const [labelOutcome, setLabelOutcome] = useState("interested");
   if (!q.data) return null;
   const ev = q.data;
   const s = ev.session;
@@ -100,6 +103,45 @@ export function CallEvidencePanel({ id, canEdit }: { id: number; canEdit: boolea
               >
                 Correct
               </Button>
+            </div>
+          )}
+          {canEdit && (
+            <div className="flex flex-wrap items-center gap-1">
+              <span>Agreed label (for evaluation only, changes nothing):</span>
+              <select
+                className="h-7 rounded-md border bg-background px-1"
+                value={labelOutcome}
+                onChange={(e) => setLabelOutcome(e.target.value)}
+              >
+                {[
+                  "interested",
+                  "not_interested",
+                  "callback",
+                  "transfer",
+                  "no_answer",
+                  "voicemail",
+                  "wrong_number",
+                  "unclear",
+                ].map((o) => (
+                  <option key={o}>{o}</option>
+                ))}
+              </select>
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() =>
+                  label.mutate({
+                    callId: id,
+                    outcome: labelOutcome,
+                    answers: {},
+                    note: "labelled from the call page",
+                  })
+                }
+              >
+                Label
+              </Button>
+              {label.data && <span>Labelled {label.data.outcome}.</span>}
+              {label.error && <span className="text-destructive">{label.error.message}</span>}
             </div>
           )}
           {ev.corrections.map((c) => (

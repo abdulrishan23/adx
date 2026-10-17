@@ -163,6 +163,12 @@ func (a *Assistant) conversation(ctx context.Context, actor core.Actor, id int64
 // allowlist with the person's actor; the result goes back to the model as
 // data. The final text is checked for numbers that no tool result contains.
 func (a *Assistant) Send(ctx context.Context, actor core.Actor, conversationID int64, text string) (Reply, error) {
+	return a.send(ctx, actor, conversationID, text, nil)
+}
+
+// send is Send with warnings on the person's own turn, which a spoken turn
+// uses to carry its transcript marker and action preview.
+func (a *Assistant) send(ctx context.Context, actor core.Actor, conversationID int64, text string, userWarnings []string) (Reply, error) {
 	conv, err := a.conversation(ctx, actor, conversationID)
 	if err != nil {
 		return Reply{}, err
@@ -172,8 +178,12 @@ func (a *Assistant) Send(ctx context.Context, actor core.Actor, conversationID i
 		return Reply{}, core.Invalid("a message needs between 1 and 8000 characters")
 	}
 	now := a.clock.Now().UTC()
+	if userWarnings == nil {
+		userWarnings = []string{}
+	}
+	warnJSON, _ := json.Marshal(userWarnings)
 	userRow, err := a.db.Writer().CreateAssistantMessage(ctx, store.CreateAssistantMessageParams{ConversationID: conv.ID, Role: "user", Status: "complete", Content: text,
-		ToolCalls: "[]", EvidenceRefs: "[]", Warnings: "[]", CreatedAt: now})
+		ToolCalls: "[]", EvidenceRefs: "[]", Warnings: string(warnJSON), CreatedAt: now})
 	if err != nil {
 		return Reply{}, err
 	}

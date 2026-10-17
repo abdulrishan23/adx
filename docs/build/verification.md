@@ -454,3 +454,19 @@ make check && make test
 - Web: an evidence panel per call with reading, confidence, answers (uncertain ones flagged), applied/held, transcript, confirm and correct controls, corrections and recording state. Typecheck and biome clean. Not browser-tested.
 
 Live: no conversation has run with a real speech engine or phone; needs `ADX_ELEVENLABS_API_KEY`, `ADX_ELEVENLABS_AGENT_ID` with an agent set to `ulaw_8000`, and the B4.4 route.
+
+## B4.6 User voice interface and lead-loop evaluation
+
+Local:
+
+```
+cd server && go test ./core/assistant/ ./core/evaluation/   # ok
+make check && make test
+```
+
+- `core/assistant`: a spoken "raise the Wadi Search budget to five thousand, or was it fifteen" is previewed as a budget change with the figure "five thousand" and "Nothing was executed"; the person's turn carries `voice_transcript` and the preview warning; the model's `set_budget` call is refused; the campaign budget is unchanged and no proposal exists. A plain spoken question previews read-only and is answered the same way; another person's conversation is refused; an empty transcript is refused; "pause the Oceana campaign and text them the price" names pause and send a message.
+- `core/evaluation`: with no data every rate is null and the gate says "0 labelled calls; 3 are needed"; three sessions with two labels (one agreeing) give 2 labelled, 1 agreement, 50%, zero corrections (a label is not a correction) and the gate off; three labels with low agreement keep it off "below the required"; relabelling (one label per call) to full agreement opens it; the default requirement of 50 keeps it shut on three.
+- `api`: `POST /api/assistant/conversations/{id}/voice`, `POST /api/assistant/voice/preview`, `GET /api/evaluation`, `POST /api/evaluation/labels`.
+- Web: a Speak button on Ask ADX shows the transcript and its preview with send, edit and discard; spoken turns and previews are labelled in the conversation; `/evaluation` shows the gate, qualification, alert and feedback figures with "Not available" for empty rates; the call evidence panel has an agreed-label control. Typecheck and biome clean. Not browser-tested.
+
+Live: no spoken session or labelled call exists; the figures are empty by construction.

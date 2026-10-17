@@ -278,3 +278,47 @@ func TestConversationsBelongToTheirOwner(t *testing.T) {
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindInvalid, ce.Kind)
 }
+
+// Catches: a spoken "raise the budget to five thousand" doing anything but
+// a read-only answer, a heard figure being trusted, and the transcript turn
+// not being marked as speech.
+func TestSpokenBudgetChangeCannotSilentlyExecute(t *testing.T) {
+	e := setup(t, assistant.Limits{})
+	e.model.Responses = []assistant.Response{
+		assistanttest.ToolCall("c1", "set_budget", map[string]any{"campaign": "Wadi Search", "dailyBudgetMinor": 500000}),
+		assistanttest.Text("I can't change budgets. Changes go through proposals and approvals in ADX."),
+	}
+	conv, err := e.assistant.CreateConversation(t.Context(), coretest.Admin)
+	require.NoError(t, err)
+	vr, err := e.assistant.SendVoice(t.Context(), coretest.Admin, conv.ID, "raise the Wadi Search budget to five thousand, or was it fifteen")
+	require.NoError(t, err)
+	assert.True(t, vr.Preview.Detected)
+	assert.Contains(t, vr.Preview.Intents, "budget change")
+	assert.Contains(t, vr.Preview.Figures, "five thousand")
+	assert.Contains(t, vr.Preview.Message, "Nothing was executed")
+	assert.Contains(t, vr.Reply.Turns[0].Warnings, "voice_transcript")
+	assert.Contains(t, vr.Reply.Turns[0].Warnings[1], "action_preview: budget change")
+	var result assistant.ToolResult
+	require.NoError(t, json.Unmarshal(vr.Reply.Turns[2].ToolResult, &result))
+	assert.Contains(t, result.Error, `tool "set_budget" is not available`)
+	var budget sql.NullInt64
+	require.NoError(t, e.db.Read.QueryRowContext(t.Context(), "SELECT budget_minor FROM ad_campaigns WHERE external_id = 'g1'").Scan(&budget))
+	assert.False(t, budget.Valid, "nothing changed")
+	var n int
+	require.NoError(t, e.db.Read.QueryRowContext(t.Context(), "SELECT count(*) FROM proposals").Scan(&n))
+	assert.Zero(t, n, "no proposal was created from speech")
+
+	// A plain question previews as read-only and is answered the same way.
+	e.model.Responses = []assistant.Response{assistanttest.Text("Nothing is open.")}
+	vr, err = e.assistant.SendVoice(t.Context(), coretest.Viewer, conv.ID, "anything urgent today")
+	assert.Error(t, err, "someone else's conversation")
+	conv2, _ := e.assistant.CreateConversation(t.Context(), coretest.Viewer)
+	vr, err = e.assistant.SendVoice(t.Context(), coretest.Viewer, conv2.ID, "anything urgent today")
+	require.NoError(t, err)
+	assert.False(t, vr.Preview.Detected)
+	assert.Equal(t, []string{"voice_transcript"}, vr.Reply.Turns[0].Warnings)
+	_, err = e.assistant.SendVoice(t.Context(), coretest.Viewer, conv2.ID, "   ")
+	require.Error(t, err)
+	p := assistant.Preview("pause the Oceana campaign and text them the price")
+	assert.ElementsMatch(t, []string{"pause", "send a message"}, p.Intents)
+}

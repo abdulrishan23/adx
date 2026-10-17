@@ -1,8 +1,16 @@
 import { type FormEvent, useState } from "react";
-import { useConversations, useCreateConversation, useSendMessage, useTurns } from "@/api/assistant";
+import {
+  useConversations,
+  useCreateConversation,
+  usePreviewVoice,
+  useSendMessage,
+  useSendVoice,
+  useTurns,
+} from "@/api/assistant";
 import type { Turn } from "@/api/types.gen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { VoiceInput } from "@/routes/voice-input";
 
 // Ask ADX. The assistant can only read, through tools that run as you.
 // Every answer shows the tools it used and the evidence behind them; an
@@ -13,7 +21,10 @@ export function AskPage() {
   const [current, setCurrent] = useState<number | null>(null);
   const turns = useTurns(current);
   const send = useSendMessage(current);
+  const sendVoice = useSendVoice(current);
+  const preview = usePreviewVoice();
   const [text, setText] = useState("");
+  const [spoken, setSpoken] = useState("");
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -68,6 +79,44 @@ export function AskPage() {
         )}
         {send.isPending && <p className="text-sm text-muted-foreground">Asking…</p>}
         {send.error && <p className="text-sm text-destructive">{send.error.message}</p>}
+        {current !== null && spoken && (
+          <div className="space-y-1 rounded-md border p-2 text-sm">
+            <p>
+              Heard: <span className="font-medium">{spoken}</span>
+            </p>
+            {preview.data && (
+              <p className={preview.data.detected ? "text-destructive" : "text-muted-foreground"}>
+                {preview.data.message}
+              </p>
+            )}
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                disabled={sendVoice.isPending}
+                onClick={() => sendVoice.mutate(spoken, { onSuccess: () => setSpoken("") })}
+              >
+                Send as spoken
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setText(spoken);
+                  setSpoken("");
+                }}
+              >
+                Edit first
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setSpoken("")}>
+                Discard
+              </Button>
+            </div>
+            {sendVoice.data?.preview.detected && (
+              <p className="text-destructive">{sendVoice.data.preview.message}</p>
+            )}
+            {sendVoice.error && <p className="text-destructive">{sendVoice.error.message}</p>}
+          </div>
+        )}
         {current !== null && (
           <form onSubmit={onSubmit} className="flex gap-2">
             <Input
@@ -79,6 +128,13 @@ export function AskPage() {
             <Button type="submit" disabled={send.isPending || !text.trim()}>
               Send
             </Button>
+            <VoiceInput
+              language="en-AE"
+              onTranscript={(t) => {
+                setSpoken(t);
+                preview.mutate(t);
+              }}
+            />
           </form>
         )}
       </div>
@@ -138,6 +194,8 @@ function TurnView({ turn }: { turn: Turn }) {
 }
 
 function warningText(w: string): string {
+  if (w.startsWith("action_preview"))
+    return `Sounded like a change: ${w.split(": ")[1] ?? ""}. Changes go through proposals; nothing was executed.`;
   if (w.startsWith("ungrounded_numbers"))
     return `Numbers not found in any tool result: ${w.split(": ")[1] ?? ""}. Treat them as unverified.`;
   switch (w) {
@@ -147,6 +205,8 @@ function warningText(w: string): string {
       return "The model was unavailable. Nothing was generated.";
     case "retryable":
       return "You can try again.";
+    case "voice_transcript":
+      return "Spoken; this is the browser's transcript of what was said.";
     case "model_not_configured":
       return "No model is configured on this server.";
     case "daily_budget_exhausted":

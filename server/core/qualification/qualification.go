@@ -86,7 +86,10 @@ type CallSession struct {
 }
 
 // AppliedDetail is what an application did and did not do, and why.
+// ModelOutcome is the model's own first reading, kept here so a correction
+// that overwrites the session's outcome does not erase what the model said.
 type AppliedDetail struct {
+	ModelOutcome  string   `json:"modelOutcome"`
 	SignalEventID *int64   `json:"signalEventId"`
 	Stage         string   `json:"stage"`
 	Attributes    []string `json:"attributes"`
@@ -378,6 +381,16 @@ func (q *Qualification) apply(ctx context.Context, actor core.Actor, callID int6
 		return AppliedDetail{}, err
 	}
 	d := AppliedDetail{Attributes: []string{}, Held: []string{}}
+	var prev AppliedDetail
+	_ = json.Unmarshal([]byte(row.AppliedDetail), &prev)
+	switch {
+	case prev.ModelOutcome != "":
+		d.ModelOutcome = prev.ModelOutcome
+	case row.ReviewStatus == "corrected":
+		d.ModelOutcome = ""
+	default:
+		d.ModelOutcome = row.Outcome
+	}
 	if row.State != "ended" {
 		d.Note = "the conversation did not end cleanly; nothing applied"
 		return d, nil

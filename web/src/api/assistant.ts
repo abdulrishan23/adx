@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJSON, postJSON } from "./client";
-import type { Conversation, ConversationsResponse, Reply, TurnsResponse } from "./types.gen";
+import type {
+  ActionPreview,
+  Conversation,
+  ConversationsResponse,
+  Reply,
+  TurnsResponse,
+  VoiceReply,
+} from "./types.gen";
 
 export function useConversations() {
   return useQuery({
@@ -34,5 +41,24 @@ export function useSendMessage(id: number | null) {
       qc.invalidateQueries({ queryKey: ["assistant", "turns", id] });
       qc.invalidateQueries({ queryKey: ["assistant", "conversations"] });
     },
+  });
+}
+
+export function useSendVoice(id: number | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (transcript: string) =>
+      postJSON<VoiceReply>(`/api/assistant/conversations/${id}/voice`, { transcript }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["assistant", "turns", id] });
+      qc.invalidateQueries({ queryKey: ["assistant", "conversations"] });
+    },
+  });
+}
+
+export function usePreviewVoice() {
+  return useMutation({
+    mutationFn: (transcript: string) =>
+      postJSON<ActionPreview>("/api/assistant/voice/preview", { transcript }),
   });
 }

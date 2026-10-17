@@ -923,6 +923,17 @@ type Proposal struct {
 	UpdatedAt       time.Time
 }
 
+type QualificationLabel struct {
+	ID          int64
+	WorkspaceID int64
+	CallID      int64
+	Outcome     string
+	Answers     string
+	Note        string
+	LabeledBy   sql.NullInt64
+	LabeledAt   time.Time
+}
+
 type Report struct {
 	ID             int64
 	WorkspaceID    int64

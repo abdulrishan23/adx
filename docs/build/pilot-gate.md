@@ -64,3 +64,18 @@ Taken on 2026-10-17. The spec's journey, "accepted plan → exact reviewed asset
 | Restart mid-send recovered as uncertain, kill switch holds, compensation never claims spend back, delivery from impressions | `core/execution/recovery_test.go` |
 
 The live provider gate is separate and was not run: no account is enabled for writes, `ADX_LIVE_WRITES` is unset, no test account exists on this machine and no written approval was given. The Google Ads and Meta write adapters are tested against fakes of the documented responses only.
+
+## Phase 4 gate: lead intelligence, voice and CRM feedback
+
+Taken on 2026-10-17. Every phase 4 task is implemented locally with its pass conditions as tests; nothing phase 4 adds reaches a customer, a CRM field or a phone without configuration and authorization that do not exist on this machine.
+
+| Capability | Where it is proven | Live state |
+|---|---|---|
+| People and enquiries resolved conservatively, candidates for shared phones, reversible links and merges, class-kept enrichment | `core/crm/crm_test.go` | enrichment provider: none |
+| Signals scored once per occurrence under versioned rules, unknown identity excluded, corrections with history | `core/signals/signals_test.go` | GoHighLevel webhook: no secret configured |
+| Sales brief with a rule-based next step, field-owned CRM outbox (echo vs conflict vs ownership), drafts from approved facts, suppression at every send | `core/outreach/outreach_test.go`, `providers/gohighlevel/fields_test.go` | messaging adapter: none; field writer: off (`ADX_LIVE_WRITES`) |
+| Calls gated on an authorized route, contactability checks, atomic reservation, unknown results reconciled, signed callbacks | `core/calls/calls_test.go`, `providers/twilio/twilio_test.go` | route: unchosen; `ADX_TELECOM_ROUTE` unset |
+| Conversation bridge with interruption clearing, transcript evidence, trusted-only application, corrections, recording access and retention | `core/qualification/qualification_test.go`, `core/voice/audio_test.go`, `providers/elevenlabs/elevenlabs_test.go`, `providers/twilio/stream_test.go` | speech engine: unset |
+| Operator speech as a previewed read-only transcript; evaluation against labels; predictive claims gated | `core/assistant/assistant_test.go`, `core/evaluation/evaluation_test.go` | no labelled calls |
+
+What live use still needs, in the owner's hands: Reportage's written reversal of "not open to automated calls" and a chosen, authorized UAE telecom route; a messaging policy and provider; `ADX_WEBHOOK_SECRET` with a GoHighLevel webhook; `ADX_LIVE_WRITES=1` with `ghl.lead_fields.set` allowed for the location; ElevenLabs credentials with a `ulaw_8000` agent.

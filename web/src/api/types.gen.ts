@@ -43,6 +43,14 @@ export interface AccountsResponse {
 // From audit/audit.go
 export type Action = "sign_in" | "sign_in.refused" | "user.added" | "user.disabled" | "user.enabled" | "user.password_link_sent" | "user.role_changed";
 
+// From assistant/voice.go
+export interface ActionPreview {
+    detected: boolean;
+    intents: string[];
+    figures: string[];
+    message: string;
+}
+
 // From api/reports.go
 export interface AdHocReportInput {
     from: Day;
@@ -126,6 +134,16 @@ export interface AlertEvaluation {
     evaluated: boolean;
 }
 
+// From evaluation/evaluation.go
+export interface AlertQuality {
+    total: number;
+    open: number;
+    acknowledged: number;
+    resolved: number;
+    resolvedRate: number | null;
+    raisedLast7Days: number;
+}
+
 // From api/reports.go
 export interface AlertsResponse {
     alerts: Alert[];
@@ -154,6 +172,7 @@ export interface AllocationChange {
 
 // From qualification/qualification.go
 export interface AppliedDetail {
+    modelOutcome: string;
     signalEventId: number | null;
     stage: string;
     attributes: string[];
@@ -659,8 +678,8 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From runs/runs.go
+export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
 export interface Conflict {
@@ -960,6 +979,16 @@ export interface EvaluateAlertsInput {
     day: Day;
 }
 
+// From evaluation/evaluation.go
+export interface EvaluationReport {
+    qualification: QualificationQuality;
+    alerts: AlertQuality;
+    feedback: Feedback;
+    predictive: PredictiveGate;
+    labels: QualificationLabel[];
+    generatedAt: string;
+}
+
 // From execution/execution.go
 export interface Event {
     id: number;
@@ -1089,6 +1118,16 @@ export type FactSource = "document" | "evidence" | "manual";
 // From api/brands.go
 export interface FactsResponse {
     facts: Fact[];
+}
+
+// From evaluation/evaluation.go
+export interface Feedback {
+    objections: number;
+    activeSuppressions: number;
+    draftsHeld: number;
+    draftsSent: number;
+    fieldConflicts: number;
+    signalCorrections: number;
 }
 
 // From research/research.go
@@ -1476,6 +1515,14 @@ export interface KillSwitchInput {
 
 // From core/core.go
 export type Kind = 4 | 2 | 1 | 3 | 5;
+
+// From evaluation/evaluation.go
+export interface LabelInput {
+    callId: number;
+    outcome: string;
+    answers: Record<string, string> | null;
+    note: string;
+}
 
 // From assets/assets.go
 export type Language = "ar" | "en";
@@ -2256,6 +2303,13 @@ export interface PolicyState {
     suggested: PolicyDocument;
 }
 
+// From evaluation/evaluation.go
+export interface PredictiveGate {
+    enabled: boolean;
+    reason: string;
+    requirements: Requirements;
+}
+
 // From outreach/outreach.go
 export interface Preferences {
     language: string;
@@ -2410,6 +2464,30 @@ export interface PutFunnelInput {
 // From api/policies.go
 export interface PutPolicyInput {
     document: PolicyDocument;
+}
+
+// From evaluation/evaluation.go
+export interface QualificationLabel {
+    id: number;
+    callId: number;
+    outcome: string;
+    answers: Record<string, string> | null;
+    note: string;
+    labeledBy: number | null;
+    labeledAt: string;
+}
+
+// From evaluation/evaluation.go
+export interface QualificationQuality {
+    sessions: number;
+    read: number;
+    pending: number;
+    labeled: number;
+    agreements: number;
+    agreementRate: number | null;
+    corrections: number;
+    correctionRate: number | null;
+    note: string;
 }
 
 // From qualification/qualification.go
@@ -2743,6 +2821,12 @@ export interface ReportsResponse {
     reports: Report[];
 }
 
+// From evaluation/evaluation.go
+export interface Requirements {
+    minLabels: number;
+    minAgreement: number;
+}
+
 // From api/research.go
 export interface ResearchReportsResponse {
     reports: ComparativeReport[];
@@ -2815,8 +2899,8 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
-// From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+// From core/core.go
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From calls/calls.go
 export interface Route {
@@ -3332,6 +3416,18 @@ export interface VersionInput {
 
 // From core/core.go
 export type Via = "assistant" | "job" | "mcp" | "startup" | "web";
+
+// From api/evaluation.go
+export interface VoiceInput {
+    transcript: string;
+}
+
+// From assistant/voice.go
+export interface VoiceReply {
+    transcript: string;
+    preview: ActionPreview;
+    reply: Reply;
+}
 
 // From api/signals.go
 export interface WebhookResponse {

@@ -1571,13 +1571,44 @@
         "B1.5",
         "B4.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/core/assistant/voice.go",
+        "server/core/assistant/assistant.go",
+        "server/core/assistant/assistant_test.go",
+        "server/store/migrations/00029_evaluation.sql",
+        "server/store/queries/evaluation.sql",
+        "server/core/evaluation/evaluation.go",
+        "server/core/evaluation/evaluation_test.go",
+        "server/core/qualification/qualification.go",
+        "server/api/evaluation.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/assistant.ts",
+        "web/src/api/evaluation.ts",
+        "web/src/routes/voice-input.tsx",
+        "web/src/routes/ask.tsx",
+        "web/src/routes/evaluation.tsx",
+        "web/src/routes/call-evidence.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/assistant/ ./core/evaluation/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a spoken budget change is previewed, answered read-only and executes nothing",
+        "qualification agreement is measured against the team's labels, apart from corrections",
+        "predictive claims are gated on labels and agreement and report what is missing"
+      ],
+      "remaining": [
+        "real spoken sessions and labelled calls",
+        "browser inspection of speech recognition"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-47. Lead-facing calling (B4.4/B4.5) and the operator interface share only codec helpers."
     },
     {
       "id": "B5.1",
