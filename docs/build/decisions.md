@@ -1,0 +1,45 @@
+# Build decisions
+
+Decisions, engineering assumptions and unresolved business rules made while running `ADX_AUTONOMOUS_BUILD.md`. Numbered `BD-nn` so they don't collide with the `D-nn` decisions in `docs/architecture.md`. When one of these changes an architecture decision, the architecture doc gets a new `D-nn` entry too and the old one is marked replaced, never deleted.
+
+Business policy is never invented here. Where a rule is missing it is listed under "Unresolved business rules" with who supplies it, and the code ships the rule as typed configuration in an unconfigured state.
+
+## Decisions
+
+### BD-01. Build ledger lives in `docs/build/`
+2026-10-17. `progress.json` (task states and evidence), `decisions.md` (this file), `verification.md` (commands and results, fake-provider versus live) and `inventory.md` (baseline). Updated after each task and committed with it.
+
+### BD-02. Commit per task, locally, one-line Conventional Commits
+2026-10-17. The checkout has no remote. Each task that passes `make check` and `make test` is committed on `main` so progress is diffable. No force-push or reset.
+
+### BD-03. The spec's "existing lead ingestion" and mock layer do not exist here
+2026-10-17. The checkout is the pristine baseline. Lead import, analytics screens and mock selection are built new in phase 1 rather than extended. Recorded so nobody looks for code that was never there.
+
+### BD-04. Toolchain installs
+2026-10-17. pnpm 10.33.4, sqlc 1.31.1 and golangci-lint 2.14.0 were installed user-locally (see `inventory.md`). Nothing else was installed system-wide. air is optional and was skipped.
+
+## Engineering assumptions
+
+Defaults chosen so the platform can be built without the owner's policy. Each one can be overridden by configuration and none activates an external effect.
+
+- EA-01. External mutation policy defaults to disabled for every provider and action until an admin configures it (spec section 2).
+- EA-02. Assistant tools default to read-only.
+- EA-03. Missing identity denies; missing workspace or account scope denies; missing business evidence is null or "needs review", never 0 or a guess.
+- EA-04. An unresolved customer match is never auto-merged.
+
+## Unresolved business rules
+
+Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. Dependent behaviour stays disabled or unconfigured until then.
+
+| Rule | Needed by | State |
+|---|---|---|
+| Final GoHighLevel status-to-stage mapping | B1.2, B1.3 | unconfigured |
+| MQL/SQL criteria | B4.2 | unconfigured |
+| Attribution-conflict resolution (Google and Meta both claim a lead) | B1.3 | unconfigured; claims kept separate |
+| Source precedence for price/inventory facts | B2.1 | unconfigured; conflicts need review |
+| Approved budgets and write privileges per account | B0.4, B3.4 | unconfigured; writes disabled |
+| Urgent anomaly thresholds | B1.4 | unconfigured; checks don't fire |
+| Calling, recording and contact policy | B4.4, B4.5 | unconfigured; live calling disabled |
+| Retention periods | B0.5, B6.3 | unconfigured; nothing deleted automatically |
+| Reporting recipients | B1.4 | unconfigured; nothing delivered |
+| Exact Excel media-plan template and marketing skill file | B2.3 | missing; exact-template adapter blocked |

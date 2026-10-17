@@ -1,0 +1,652 @@
+{
+  "spec_version": 1,
+  "updated": "2026-10-17",
+  "states": [
+    "pending",
+    "in_progress",
+    "implemented_local",
+    "verified",
+    "blocked_external",
+    "blocked_decision",
+    "failed"
+  ],
+  "note": "A fake provider proves local behavior, not live compatibility. implemented_local means core+tests pass locally; verified needs live access. Blockers name the exact missing input.",
+  "tasks": [
+    {
+      "id": "B0.1",
+      "phase": 0,
+      "title": "Baseline, migration map and build ledger",
+      "depends_on": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "docs/build/inventory.md",
+        "docs/build/decisions.md",
+        "docs/build/verification.md",
+        "docs/build/progress.json",
+        "docs/build/reuse-creative.md",
+        "docs/build/reuse-voice.md",
+        "server/store/store_test.go"
+      ],
+      "commands": [
+        "go test ./...",
+        "go vet ./... && golangci-lint run",
+        "pnpm check && pnpm typecheck && pnpm test"
+      ],
+      "acceptance": [
+        {
+          "check": "Existing projects and GHL data survive a representative migration rehearsal",
+          "result": "pass",
+          "evidence": "server/store/store_test.go TestMigrationsKeepExistingData"
+        },
+        {
+          "check": "No secret values enter inventory or progress records",
+          "result": "pass",
+          "evidence": "inventories list variable names only; no .env read"
+        },
+        {
+          "check": "Existing test failures are recorded without being misrepresented",
+          "result": "pass",
+          "evidence": "baseline had no failures; verification.md"
+        }
+      ],
+      "remaining": [],
+      "blockers": [
+        {
+          "capability": "creative source CODE_SNAPSHOT.md at the spec path",
+          "unblocks": "n/a: equivalent app found at ~/Desktop/creative-studio and inventoried"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "a migration that drops, renames or re-types projects, users or sealed credentials"
+      ]
+    },
+    {
+      "id": "B0.2",
+      "phase": 0,
+      "title": "Deployment, persistence and recovery",
+      "depends_on": [
+        "B0.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B0.3",
+      "phase": 0,
+      "title": "Real session identity and workspace scope",
+      "depends_on": [
+        "B0.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B0.4",
+      "phase": 0,
+      "title": "Policy and provider capability contracts",
+      "depends_on": [
+        "B0.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B0.5",
+      "phase": 0,
+      "title": "Evidence, runs and durable operation foundation",
+      "depends_on": [
+        "B0.1",
+        "B0.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B0.6",
+      "phase": 0,
+      "title": "Reusable creative and voice integration boundaries",
+      "depends_on": [
+        "B0.1",
+        "B0.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.1",
+      "phase": 1,
+      "title": "Google and Meta real read adapters",
+      "depends_on": [
+        "B0.4",
+        "B0.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.2",
+      "phase": 1,
+      "title": "GHL mapping, identity evidence and funnel configuration",
+      "depends_on": [
+        "B0.4",
+        "B0.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.3",
+      "phase": 1,
+      "title": "Deterministic metrics and comparison engine",
+      "depends_on": [
+        "B1.1",
+        "B1.2"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.4",
+      "phase": 1,
+      "title": "Reports, schedules and anomaly observations",
+      "depends_on": [
+        "B1.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.5",
+      "phase": 1,
+      "title": "Read-only grounded assistant",
+      "depends_on": [
+        "B1.3",
+        "B0.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B1.6",
+      "phase": 1,
+      "title": "Pilot creative integration and end-to-end validation",
+      "depends_on": [
+        "B0.6",
+        "B0.3",
+        "B1.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B2.1",
+      "phase": 2,
+      "title": "Brand, offer and approved-fact knowledge",
+      "depends_on": [
+        "B0.5",
+        "B1.6"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B2.2",
+      "phase": 2,
+      "title": "Sourced market, competitor, SEO and customer research",
+      "depends_on": [
+        "B2.1",
+        "B1.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B2.3",
+      "phase": 2,
+      "title": "Structured plan schema and template adapter",
+      "depends_on": [
+        "B2.1",
+        "B2.2"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B2.4",
+      "phase": 2,
+      "title": "Plan generation, validation and revision impact",
+      "depends_on": [
+        "B2.3",
+        "B1.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B2.5",
+      "phase": 2,
+      "title": "Recurring research and plan evaluation",
+      "depends_on": [
+        "B2.4",
+        "B1.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.1",
+      "phase": 3,
+      "title": "Production asset/version and approval lifecycle",
+      "depends_on": [
+        "B2.4",
+        "B1.6"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.2",
+      "phase": 3,
+      "title": "Landing page lifecycle and form path",
+      "depends_on": [
+        "B2.4",
+        "B3.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.3",
+      "phase": 3,
+      "title": "Measurement and launch-readiness verification",
+      "depends_on": [
+        "B3.2",
+        "B1.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.4",
+      "phase": 3,
+      "title": "Proposal authority, budget reservation and outbox",
+      "depends_on": [
+        "B3.3",
+        "B0.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.5",
+      "phase": 3,
+      "title": "Google/Meta controlled deployment and reconciliation",
+      "depends_on": [
+        "B3.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B3.6",
+      "phase": 3,
+      "title": "Pause, compensation and launch validation",
+      "depends_on": [
+        "B3.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.1",
+      "phase": 4,
+      "title": "Person/enquiry resolution and enrichment",
+      "depends_on": [
+        "B1.2",
+        "B2.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.2",
+      "phase": 4,
+      "title": "Observable signals and scoring",
+      "depends_on": [
+        "B4.1",
+        "B0.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.3",
+      "phase": 4,
+      "title": "Nurturing, objections and CRM feedback",
+      "depends_on": [
+        "B4.2",
+        "B1.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.4",
+      "phase": 4,
+      "title": "UAE telecom integration and call lifecycle",
+      "depends_on": [
+        "B0.6",
+        "B4.1",
+        "B0.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.5",
+      "phase": 4,
+      "title": "Conversational qualification and corrected outcomes",
+      "depends_on": [
+        "B4.4",
+        "B4.2"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B4.6",
+      "phase": 4,
+      "title": "User voice interface and lead-loop evaluation",
+      "depends_on": [
+        "B4.5",
+        "B1.5",
+        "B4.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B5.1",
+      "phase": 5,
+      "title": "Native CRM ownership and migration",
+      "depends_on": [
+        "B4.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B5.2",
+      "phase": 5,
+      "title": "Skill, agent and capability registry",
+      "depends_on": [
+        "B2.4",
+        "B0.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B5.3",
+      "phase": 5,
+      "title": "Durable workflow graph and task orchestration",
+      "depends_on": [
+        "B5.2",
+        "B3.4",
+        "B5.1"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B5.4",
+      "phase": 5,
+      "title": "Supervisor, conflict arbitration and constrained autonomy",
+      "depends_on": [
+        "B5.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B5.5",
+      "phase": 5,
+      "title": "Learning records and organizational memory",
+      "depends_on": [
+        "B5.4",
+        "B4.6"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B6.1",
+      "phase": 6,
+      "title": "Full client isolation and industry configuration",
+      "depends_on": [
+        "B5.4"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B6.2",
+      "phase": 6,
+      "title": "Selected channel extensions and native capability review",
+      "depends_on": [
+        "B6.1",
+        "B3.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B6.3",
+      "phase": 6,
+      "title": "Reliability, cost and model release evaluation",
+      "depends_on": [
+        "B6.1",
+        "B5.5"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    },
+    {
+      "id": "B6.4",
+      "phase": 6,
+      "title": "Final seven-phase capability verification and handoff",
+      "depends_on": [
+        "B6.2",
+        "B6.3"
+      ],
+      "state": "pending",
+      "changed_paths": [],
+      "commands": [],
+      "acceptance": [],
+      "remaining": [],
+      "blockers": [],
+      "commit": null
+    }
+  ]
+}
