@@ -14,6 +14,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 )
 
@@ -27,6 +28,7 @@ type Deps struct {
 	// Identity resolves session cookies and runs sign-in. Nil means no
 	// sessions at all: dev gets the dev admin, production refuses everything.
 	Identity *identity.Identity
+	Policies *policies.Policies
 }
 
 type handlers struct {
@@ -36,10 +38,11 @@ type handlers struct {
 	connections *connections.Connections
 	ops         *ops.Ops
 	identity    *identity.Identity
+	policies    *policies.Policies
 }
 
 func NewRouter(d Deps) http.Handler {
-	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity}
+	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity, policies: d.Policies}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -62,6 +65,12 @@ func NewRouter(d Deps) http.Handler {
 	r.Group(func(r chi.Router) {
 		r.Use(withActor(d.Dev, d.Identity))
 		r.Get("/api/session", h.session)
+		r.Get("/api/accounts", h.listAccounts)
+		if h.policies != nil {
+			r.Get("/api/policies", h.getPolicies)
+			r.Put("/api/policies", h.putPolicies)
+			r.Put("/api/policies/kill-switch", h.putKillSwitch)
+		}
 		r.Get("/api/projects", h.listProjects)
 		r.Post("/api/projects", h.createProject)
 		r.Get("/api/connections/crm", h.listConnections)

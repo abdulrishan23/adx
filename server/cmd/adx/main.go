@@ -25,6 +25,7 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
@@ -174,6 +175,7 @@ func run() error {
 			Connections: connections,
 			Ops:         readiness,
 			Identity:    sessions,
+			Policies:    policies.New(db),
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

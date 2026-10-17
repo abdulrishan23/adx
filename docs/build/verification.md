@@ -58,3 +58,19 @@ make check && make test
 - Web: `pnpm check`, `pnpm typecheck` clean. Header shows checking / Sign in / Dev admin (no sign-in) / name · role · workspace with Sign out.
 
 Live: not verified. Needs the `adx-auth` provider's client ID and secret, its redirect URI set to `ADX_PUBLIC_URL/api/auth/callback`, and the groups scope mapping. Owner of the authentik instance: WokeWorks (D-24).
+
+## B0.4 Policy and provider capability contracts
+
+Local:
+
+```
+cd server && go test ./core/policies/ ./core/connections/ ./api/   # ok
+make check && make test
+```
+
+- `core/policies`: no document denies even a verified token; account not enabled, write capability unverified, account not connected each deny with their reason; marketer vs admin modes (needs_approval vs self-approved allowed); off, viewer, unknown action denied; missing caps deny raises; kill switch per account and per workspace, cleared again; admin-only Put with validation and incrementing versions; another workspace sees its own absent policy.
+- `core/connections`: `ListAccounts` shows connected → stale after 25 h → needs_permission after a rejected read (keeping the last verified time) → failed on a raw error (message replaced by a safe one) → connected after a good check; one real account throughout, never a fixture.
+- `api`: GET /api/policies for a marketer shows unconfigured; PUT refused for a marketer (403), invalid action 400, admin 201 with version 1; kill switch PUT 200; GET /api/accounts without a connection service returns an honest empty list.
+- Web: `/connections` and `/settings/policies` pages with loading, empty, error and unconfigured states; typecheck and biome clean. Not browser-tested in this task.
+
+Live: none. No Google or Meta account exists yet; the policy document and caps are the owner's inputs (decisions.md, unresolved rules).

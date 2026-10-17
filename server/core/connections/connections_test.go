@@ -466,3 +466,55 @@ func TestLocationSavedBeforeCredentialsAndAccountsStillWorks(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "private-secret", provider.lastAccess)
 }
+
+// Catches: a connection whose read failed still showing as connected, health
+// being stored instead of derived from the last check, or a failed check
+// inventing a placeholder account.
+func TestAccountsShowHealthFromProvenCapabilities(t *testing.T) {
+	f := newFixture(t)
+	_, err := f.service.ConnectPrivate(t.Context(), admin, "loc-1", "pit-token")
+	require.NoError(t, err)
+
+	accounts, err := f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	require.Len(t, accounts, 1)
+	assert.Equal(t, connections.HealthConnected, accounts[0].Health)
+	require.Len(t, accounts[0].Capabilities, 1)
+	assert.Equal(t, connections.CapabilityReadLeads, accounts[0].Capabilities[0].Name)
+	assert.Equal(t, "verified", accounts[0].Capabilities[0].State)
+	assert.Nil(t, accounts[0].Capabilities[0].LastError)
+
+	f.now = f.now.Add(25 * time.Hour)
+	accounts, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	assert.Equal(t, connections.HealthStale, accounts[0].Health, "a day without a check is stale")
+
+	f.provider.readAccessErr = core.Conflict("GoHighLevel access was rejected; check the connection token and permissions")
+	_, err = f.service.Check(t.Context(), admin, "loc-1")
+	require.Error(t, err)
+	accounts, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	require.Len(t, accounts, 1, "no fixture account appears when the real one fails")
+	assert.Equal(t, connections.HealthNeedsPermission, accounts[0].Health)
+	assert.Equal(t, "needs_permission", accounts[0].Capabilities[0].State)
+	assert.Contains(t, *accounts[0].Capabilities[0].LastError, "rejected")
+	assert.NotNil(t, accounts[0].Capabilities[0].VerifiedAt, "the last success is kept")
+
+	f.provider.readAccessErr = errors.New("dial tcp: connection refused to https://token-in-url")
+	_, err = f.service.Check(t.Context(), admin, "loc-1")
+	require.Error(t, err)
+	accounts, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	assert.Equal(t, connections.HealthFailed, accounts[0].Health)
+	assert.Equal(t, "the provider request failed", *accounts[0].Capabilities[0].LastError, "raw errors never reach the screen")
+
+	f.provider.readAccessErr = nil
+	_, err = f.service.Check(t.Context(), admin, "loc-1")
+	require.NoError(t, err)
+	accounts, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	assert.Equal(t, connections.HealthConnected, accounts[0].Health)
+
+	_, err = f.service.ListAccounts(t.Context(), core.Actor{})
+	assert.ErrorIs(t, err, core.ErrForbidden)
+}

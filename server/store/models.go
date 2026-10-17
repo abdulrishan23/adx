@@ -23,6 +23,16 @@ type Account struct {
 	VerifiedAt   time.Time
 }
 
+type AccountCapability struct {
+	ID         int64
+	AccountID  int64
+	Capability string
+	State      string
+	VerifiedAt sql.NullTime
+	CheckedAt  time.Time
+	LastError  sql.NullString
+}
+
 type AuditLog struct {
 	ID           int64
 	At           time.Time
@@ -54,12 +64,30 @@ type Credential struct {
 	ConnectedAt     time.Time
 }
 
+type KillSwitch struct {
+	WorkspaceID int64
+	AccountID   int64
+	Engaged     int64
+	Reason      string
+	SetBy       sql.NullInt64
+	SetAt       time.Time
+}
+
 type Membership struct {
 	ID          int64
 	WorkspaceID int64
 	UserID      int64
 	Role        string
 	Enabled     int64
+	CreatedAt   time.Time
+}
+
+type Policy struct {
+	ID          int64
+	WorkspaceID int64
+	Version     int64
+	Document    string
+	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
 }
 

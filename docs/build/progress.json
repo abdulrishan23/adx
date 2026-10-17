@@ -196,13 +196,62 @@
       "depends_on": [
         "B0.3"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00007_policies_and_capabilities.sql",
+        "server/store/queries/policies.sql",
+        "server/core/policies/",
+        "server/core/connections/accounts.go",
+        "server/core/connections/gohighlevel.go (capability recording)",
+        "server/api/policies.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/accounts.ts",
+        "web/src/routes/connections.tsx",
+        "web/src/routes/policies.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "A token existing does not imply permission to write",
+          "result": "pass",
+          "evidence": "policies TestNoPolicyDeniesEverythingEvenWithAVerifiedToken, TestScopeAndEnablementGateTheChecklist"
+        },
+        {
+          "check": "Missing scope denies operation",
+          "result": "pass",
+          "evidence": "write_capability_unverified and account_write_not_enabled reasons; role below marketer denied"
+        },
+        {
+          "check": "Credential failure never falls back to fixture accounts",
+          "result": "pass",
+          "evidence": "connections TestAccountsShowHealthFromProvenCapabilities; api empty accounts list"
+        }
+      ],
+      "remaining": [
+        "Write capability probes per provider arrive with the Google/Meta adapters (B1.1, B3.5)",
+        "Policy editor edits individual rules only through the suggested-defaults button and the API; a per-row editor is UI work for B3.4"
+      ],
+      "blockers": [
+        {
+          "capability": "any external write",
+          "unblocks": "owner sets caps (daily spend increase %, changes per day) and enables write accounts in the policy document"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "writes allowed before policy exists",
+        "checklist applied to an account nobody enabled",
+        "write on an account whose scope was never proven",
+        "kill switch missed by an entry point",
+        "policy edited in place instead of versioned",
+        "failed connection shown as connected or replaced by a fixture"
+      ]
     },
     {
       "id": "B0.5",

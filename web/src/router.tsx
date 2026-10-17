@@ -9,6 +9,8 @@ import {
 } from "@tanstack/react-router";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { ConnectionsPage } from "@/routes/connections";
+import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
 
@@ -33,6 +35,20 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Projects
+          </Link>
+          <Link
+            to="/connections"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Connections
+          </Link>
+          <Link
+            to="/settings/policies"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Policies
           </Link>
           <div className="ml-auto">
             <AccountMenu />
@@ -68,6 +84,18 @@ const projectsRoute = createRoute({
   component: ProjectsPage,
 });
 
+const connectionsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/connections",
+  component: ConnectionsPage,
+});
+
+const policiesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/settings/policies",
+  component: PoliciesPage,
+});
+
 const privacyRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/privacy",
@@ -75,7 +103,13 @@ const privacyRoute = createRoute({
   head: () => ({ meta: [{ title: "Privacy policy | ADX" }] }),
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, projectsRoute, privacyRoute]);
+const routeTree = rootRoute.addChildren([
+  indexRoute,
+  projectsRoute,
+  connectionsRoute,
+  policiesRoute,
+  privacyRoute,
+]);
 
 export const router = createRouter({ routeTree });
 

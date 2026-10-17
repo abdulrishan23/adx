@@ -60,6 +60,7 @@ type Connection struct {
 	AuthMethod     string     `json:"authMethod"`
 	ConnectedAt    time.Time  `json:"connectedAt"`
 	VerifiedAt     time.Time  `json:"verifiedAt"`
+	accountID      int64
 }
 
 type StartResult struct {
@@ -175,8 +176,12 @@ func (c *Connections) ConnectPrivate(ctx context.Context, actor core.Actor, loca
 	if err := c.ghl.ReadAccess(ctx, token, locationID); err != nil {
 		return Connection{}, err
 	}
-	return c.saveGHL(ctx, actor, kindPrivateToken, tokenSecrets{AccessToken: token},
+	conn, err := c.saveGHL(ctx, actor, kindPrivateToken, tokenSecrets{AccessToken: token},
 		strings.Join(RequiredScopes, " "), sql.NullTime{}, location)
+	if err != nil {
+		return Connection{}, err
+	}
+	return conn, c.recordCapability(ctx, conn.accountID, CapabilityReadLeads, "verified", nil)
 }
 
 func (c *Connections) saveGHL(ctx context.Context, actor core.Actor, kind string, secrets tokenSecrets,
@@ -200,7 +205,9 @@ func (c *Connections) saveGHL(ctx context.Context, actor core.Actor, kind string
 	if err != nil {
 		return Connection{}, err
 	}
-	return fromRow(account, cred), nil
+	conn := fromRow(account, cred)
+	conn.accountID = account.ID
+	return conn, nil
 }
 
 func (c *Connections) List(ctx context.Context, actor core.Actor) ([]Connection, error) {
@@ -269,15 +276,18 @@ func (c *Connections) Check(ctx context.Context, actor core.Actor, locationID st
 	}
 	location, err := c.ghl.Location(ctx, secrets.AccessToken, locationID)
 	if err != nil {
-		return Connection{}, err
+		return Connection{}, errors.Join(err, c.recordCapability(ctx, account.ID, CapabilityReadLeads, capabilityState(err), err))
 	}
 	if location.ID != locationID {
 		return Connection{}, core.Invalid("GoHighLevel returned a different location")
 	}
 	if cred.Kind == kindPrivateToken {
 		if err := c.ghl.ReadAccess(ctx, secrets.AccessToken, locationID); err != nil {
-			return Connection{}, err
+			return Connection{}, errors.Join(err, c.recordCapability(ctx, account.ID, CapabilityReadLeads, capabilityState(err), err))
 		}
+	}
+	if err := c.recordCapability(ctx, account.ID, CapabilityReadLeads, "verified", nil); err != nil {
+		return Connection{}, err
 	}
 	details, err := json.Marshal(ghlDetails{Country: location.Country})
 	if err != nil {

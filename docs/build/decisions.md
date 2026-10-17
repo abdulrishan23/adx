@@ -67,3 +67,15 @@ Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. D
 2026-10-17. `core.Actor` gains `WorkspaceID`, filled from the session's membership, never from the client. Migration 00006 creates workspace 1 "Reportage" (`core.DefaultWorkspace`) and a membership per existing user. While there is one workspace, `memberships.role` and `enabled` mirror `users.role` and `users.status`; `core/users` writes both in one transaction and ends the person's sessions when disabling them. New domains from B0.4 on scope their rows by `workspace_id` and refuse an actor whose workspace doesn't match. Existing tables (`projects`, `accounts`, `credentials`) stay unscoped until B6.1 migrates them.
 
 - **Cost.** Two columns say the same thing until B6.1 drops the mirror. Recorded so the duplication is removed, not extended.
+
+### BD-10. Policy is a versioned document; unconfigured denies every write
+2026-10-17. `core/policies` stores the permission checklist, caps and per-account write enablement as one JSON document per workspace, with a new version on every save. `Evaluate(actor, request)` returns allowed, needs_approval or denied with a stable reason code and the policy version. Denial reasons in order: no workspace, role below marketer, unknown action, no policy document, kill switch (workspace or account), account not connected, account not enabled for writes, write capability not verified for the account, action unconfigured or off, cap unconfigured. D-13's table is exposed as `SuggestedDefaults` for an admin to apply deliberately; caps and write accounts stay empty in it, so applying it alone still denies.
+
+- **Why.** The spec forbids inventing business policy and says a token existing never implies permission to write. Keeping the document versioned lets a later proposal name the version it was decided under.
+- **Cost.** Until Abdul (or the CMO) sets caps and enables accounts, no write path can run, including in a demo. That is intended.
+
+### BD-11. Capability state per account, health derived from it
+2026-10-17. `account_capabilities` records each probe (`read.leads` for GoHighLevel so far) as verified, failed or needs_permission with a safe message. The accounts screen derives health: failed if any capability failed, needs_permission if any needs permission, stale if the last verification is older than 24 hours (engineering default), else connected. Health is never stored and no fixture account is ever shown.
+
+### BD-12. Exported JSON types get unique names across core packages
+2026-10-17. `gentypes` flattens every package into one TypeScript module, so `policies.Action` and `audit.Action` would merge into one wrong union. Types that cross the wire are named uniquely (`WriteAction`, `PolicyDocument`, `PolicyState`). Internal types can keep short names.
