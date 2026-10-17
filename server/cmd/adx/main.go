@@ -35,6 +35,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
+	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
@@ -43,6 +44,7 @@ import (
 	"github.com/WokeWorks/adx/server/providers/filestore"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/providers/svgrender"
+	"github.com/WokeWorks/adx/server/providers/webfetch"
 	"github.com/WokeWorks/adx/server/store"
 
 	// Containers often ship without time zone data, and reports need Asia/Dubai.
@@ -238,11 +240,20 @@ func run() error {
 	}
 	brandService := brands.New(db, brands.Config{})
 	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService})
+	// Keyword Planner rides on the Google Ads connection; without one the
+	// keyword items of a brief fail as unconfigured.
+	var keywordProvider research.KeywordProvider
+	if p, ok := adPlatforms["google_ads"]; ok {
+		if kp, ok := p.Reader.(research.KeywordProvider); ok {
+			keywordProvider = kp
+		}
+	}
+	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
-		Executors: runExecutors(leadsService, reportingService),
+		Executors: runExecutors(leadsService, reportingService, researchService),
 		Periodic: []jobs.Periodic{
 			{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
 				started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
@@ -304,6 +315,7 @@ func run() error {
 			Assistant:   assistantService,
 			Creative:    creativeService,
 			Brands:      brandService,
+			Research:    researchService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -360,8 +372,8 @@ func configuredMailer(cfg config) (reports.Mailer, error) {
 }
 
 // runExecutors maps run kinds to the code that works them.
-func runExecutors(l *leads.Leads, r *reporting.Reporting) map[string]jobs.Executor {
-	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r}
+func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates

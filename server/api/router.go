@@ -23,6 +23,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
+	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 )
 
@@ -46,6 +47,7 @@ type Deps struct {
 	Assistant *assistant.Assistant
 	Creative  *creative.Service
 	Brands    *brands.Brands
+	Research  *research.Research
 }
 
 type handlers struct {
@@ -64,12 +66,13 @@ type handlers struct {
 	assistant   *assistant.Assistant
 	creative    *creative.Service
 	brands      *brands.Brands
+	research    *research.Research
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands}
+		creative: d.Creative, brands: d.Brands, research: d.Research}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -189,6 +192,15 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/facts/{id}/approve", h.approveFact)
 			r.Post("/api/facts/{id}/retire", h.retireFact)
 			r.Post("/api/fact-conflicts/{id}/resolve", h.resolveConflict)
+		}
+		if h.research != nil {
+			r.Get("/api/research/briefs", h.listBriefs)
+			r.Post("/api/research/briefs", h.createBrief)
+			r.Get("/api/research/briefs/{id}", h.getBrief)
+			r.Post("/api/research/briefs/{id}/runs", h.startResearchRun)
+			r.Post("/api/research/briefs/{id}/competitors", h.resolveCompetitor)
+			r.Get("/api/research/briefs/{id}/findings", h.listFindings)
+			r.Get("/api/research/evidence/{id}", h.researchEvidence)
 		}
 	})
 

@@ -189,6 +189,21 @@ func (s *Store) Lookup(ctx context.Context, actor core.Actor, f Filter) ([]Evide
 	return out, nil
 }
 
+// Get is one evidence row in the actor's workspace, for drill-down.
+func (s *Store) Get(ctx context.Context, actor core.Actor, id int64) (Evidence, error) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
+		return Evidence{}, core.ErrForbidden
+	}
+	row, err := s.db.Reader().GetEvidenceByID(ctx, store.GetEvidenceByIDParams{ID: id, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Evidence{}, core.NotFound("evidence %d not found", id)
+	}
+	if err != nil {
+		return Evidence{}, err
+	}
+	return fromRow(row), nil
+}
+
 // Count is how many rows (all versions) exist for a source and kind.
 func (s *Store) Count(ctx context.Context, actor core.Actor, source, kind string) (int64, error) {
 	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {

@@ -191,6 +191,12 @@ export interface BrandProject {
     name: string;
 }
 
+// From research/research.go
+export interface BrandRef {
+    id: number;
+    name: string;
+}
+
 // From brands/brands.go
 export interface BrandSummary extends Brand {
     projectCount: number;
@@ -201,6 +207,49 @@ export interface BrandSummary extends Brand {
 export interface BrandsResponse {
     brands: BrandSummary[];
     unassigned: BrandProject[];
+}
+
+// From research/research.go
+export interface Brief {
+    id: number;
+    brandId: number;
+    projectId: number | null;
+    title: string;
+    question: string;
+    geography: string;
+    language: string;
+    googleAdsAccountId: number | null;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From research/research.go
+export interface BriefDetail {
+    brief: Brief;
+    items: Item[];
+    findings: Finding[];
+    competitors: CompetitorStatus[];
+    runs: number;
+}
+
+// From research/research.go
+export interface BriefInput {
+    brandId: number;
+    projectId: number;
+    title: string;
+    question: string;
+    geography: string;
+    language: string;
+    urls: string[];
+    competitors: CompetitorInput[];
+    keywordSeeds: string[];
+    googleAdsAccountId: number;
+    auditAccount: boolean;
+}
+
+// From api/research.go
+export interface BriefsResponse {
+    briefs: Brief[];
 }
 
 // From reports/reports.go
@@ -257,6 +306,20 @@ export interface ClaimSet {
 
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
+
+// From research/research.go
+export interface CompetitorInput {
+    name: string;
+    urls: string[];
+}
+
+// From research/research.go
+export interface CompetitorStatus {
+    name: string;
+    state: IdentityState;
+    brandId: number | null;
+    candidates: BrandRef[];
+}
 
 // From runs/runs.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
@@ -502,10 +565,40 @@ export interface FactsResponse {
     facts: Fact[];
 }
 
+// From research/research.go
+export type FetchKind = "refused" | "unavailable" | "unsupported";
+
 // From leads/funnel.go
 export interface FieldLocation {
     kind: string;
     ref: string;
+}
+
+// From research/research.go
+export interface Finding {
+    id: number;
+    briefId: number;
+    itemId: number;
+    scope: Scope;
+    subjectBrandId: number | null;
+    kind: FindingKind;
+    class: Class;
+    label: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    payload: string;
+    sourceUrl: string;
+    sourceObservedAt: string;
+    geography: string;
+    evidenceId: number | null;
+    createdAt: string;
+}
+
+// From research/research.go
+export type FindingKind = "audit_metric" | "audit_note" | "keyword" | "page_text";
+
+// From api/research.go
+export interface FindingsResponse {
+    findings: Finding[];
 }
 
 // From assets/brand.go
@@ -571,6 +664,9 @@ export interface GenerateReportResponse {
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
 
+// From research/research.go
+export type IdentityState = "ambiguous" | "n/a" | "resolved" | "unknown";
+
 // From assets/assets.go
 export interface Image {
     ref: Ref;
@@ -600,6 +696,41 @@ export interface ImportProgress {
     pages: number;
     contacts: number;
     total: number | null;
+}
+
+// From research/research.go
+export interface Item {
+    id: number;
+    briefId: number;
+    kind: ItemKind;
+    target: string;
+    competitorName: string;
+    competitorBrandId: number | null;
+    identityState: IdentityState;
+    candidates: BrandRef[];
+    state: ItemState;
+    error: string;
+    attempts: number;
+    fetchedAt: string | null;
+    runId: number | null;
+    evidenceId: number | null;
+    createdAt: string;
+}
+
+// From research/research.go
+export type ItemKind = "account_audit" | "competitor_page" | "keywords" | "web_page";
+
+// From research/research.go
+export type ItemState = "failed" | "fetched" | "needs_identity" | "pending" | "refused";
+
+// From research/research.go
+export interface KeywordIdea {
+    text: string;
+    avgMonthlySearches: number | null;
+    competition: string;
+    competitionIndex: number | null;
+    lowTopOfPageBidMinor: number | null;
+    highTopOfPageBidMinor: number | null;
 }
 
 // From policies/policies.go
@@ -1097,6 +1228,15 @@ export interface ReportsResponse {
     reports: Report[];
 }
 
+// From research/research.go
+export const ResearchRunKind = "research.run";
+
+// From api/research.go
+export interface ResolveCompetitorInput {
+    name: string;
+    brandId: number;
+}
+
 // From api/brands.go
 export interface ResolveConflictInput {
     winnerId: number;
@@ -1160,6 +1300,20 @@ export interface Run {
 // From leads/leads.go
 export const RunKind = "ghl.import";
 
+// From research/research.go
+export interface RunParams {
+    briefId: number;
+}
+
+// From research/research.go
+export interface RunProgress {
+    total: number;
+    done: number;
+    failed: number;
+    refused: number;
+    waiting: number;
+}
+
 // From api/runs.go
 export interface RunsResponse {
     runs: Run[];
@@ -1174,6 +1328,9 @@ export interface SaveDocumentInput {
 export interface SchedulesResponse {
     schedules: ReportSchedule[];
 }
+
+// From research/research.go
+export type Scope = "account" | "public";
 
 // From voice/voice.go
 export interface Segment {

@@ -159,3 +159,7 @@ The API docs defer to the Google Ads Help article https://support.google.com/goo
 - Use `googleAds:searchStream`; decode a JSON array of `{results, fieldMask, requestId}` batches; int64 as strings; micros ÷ 1,000,000.
 - Treat 429 + `quotaError` as retryable with backoff (and `retryDelay` if present); 401/403 auth codes as non-retryable "reconnect" conditions; 5xx retry with backoff.
 - Hierarchy: `customers:listAccessibleCustomers` → for each manager, `customer_client` with `level <= 1` BFS.
+
+## Keyword ideas (B2.2)
+
+`POST /v26/customers/{customerId}:generateKeywordIdeas` with `{"keywordSeed":{"keywords":[...]},"geoTargetConstants":["geoTargetConstants/2784"],"language":"languageConstants/1000","keywordPlanNetwork":"GOOGLE_SEARCH","includeAdultKeywords":false,"pageSize":200}`. Country constants are 2000 plus the ISO 3166-1 numeric code (UAE 784 → 2784); languages: English 1000, Arabic 1019. Each result is `{"text":"...","keywordIdeaMetrics":{"avgMonthlySearches":"12100","competition":"HIGH","competitionIndex":"87","lowTopOfPageBidMicros":"...","highTopOfPageBidMicros":"..."}}`, int64s as strings, bids in micros of the customer's currency; `keywordIdeaMetrics` is absent when Google has no figure. The request shape is from the published reference and `providers/googleads/keywords_test.go`; it is not verified against the live API because no OAuth client exists here. The same login-customer-id and token rules as the read adapter apply.

@@ -474,6 +474,57 @@ type ReportSchedule struct {
 	UpdatedAt   time.Time
 }
 
+type ResearchBrief struct {
+	ID                 int64
+	WorkspaceID        int64
+	BrandID            int64
+	ProjectID          sql.NullInt64
+	Title              string
+	Question           string
+	Geography          string
+	Language           string
+	GoogleAdsAccountID sql.NullInt64
+	CreatedBy          sql.NullInt64
+	CreatedAt          time.Time
+}
+
+type ResearchFinding struct {
+	ID               int64
+	WorkspaceID      int64
+	BriefID          int64
+	ItemID           int64
+	Scope            string
+	SubjectBrandID   sql.NullInt64
+	Kind             string
+	Class            string
+	Label            string
+	Payload          string
+	SourceUrl        string
+	SourceObservedAt time.Time
+	Geography        string
+	EvidenceID       sql.NullInt64
+	CreatedAt        time.Time
+}
+
+type ResearchItem struct {
+	ID                int64
+	WorkspaceID       int64
+	BriefID           int64
+	Kind              string
+	Target            string
+	CompetitorName    string
+	CompetitorBrandID sql.NullInt64
+	IdentityState     string
+	Candidates        string
+	State             string
+	ErrorSafe         string
+	Attempts          int64
+	FetchedAt         sql.NullTime
+	RunID             sql.NullInt64
+	EvidenceID        sql.NullInt64
+	CreatedAt         time.Time
+}
+
 type Run struct {
 	ID              int64
 	PublicID        string
