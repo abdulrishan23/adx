@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/qualification"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -50,22 +51,23 @@ type Deps struct {
 	Runs     *runs.Runs
 	Leads    *leads.Leads
 	// Reporting serves /api/analytics. Nil leaves the routes out.
-	Reporting   *reporting.Reporting
-	Reports     *reports.Reports
-	Alerts      *alerts.Alerts
-	Assistant   *assistant.Assistant
-	Creative    *creative.Service
-	Brands      *brands.Brands
-	Research    *research.Research
-	Plans       *plans.Plans
-	Pages       *pages.Pages
-	Measurement *measurement.Measurement
-	Proposals   *proposals.Proposals
-	Execution   *execution.Dispatcher
-	CRM         *crm.CRM
-	Signals     *signals.Signals
-	Outreach    *outreach.Outreach
-	Calls       *calls.Calls
+	Reporting     *reporting.Reporting
+	Reports       *reports.Reports
+	Alerts        *alerts.Alerts
+	Assistant     *assistant.Assistant
+	Creative      *creative.Service
+	Brands        *brands.Brands
+	Research      *research.Research
+	Plans         *plans.Plans
+	Pages         *pages.Pages
+	Measurement   *measurement.Measurement
+	Proposals     *proposals.Proposals
+	Execution     *execution.Dispatcher
+	CRM           *crm.CRM
+	Signals       *signals.Signals
+	Outreach      *outreach.Outreach
+	Calls         *calls.Calls
+	Qualification *qualification.Qualification
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
@@ -97,13 +99,14 @@ type handlers struct {
 	signals       *signals.Signals
 	outreach      *outreach.Outreach
 	calls         *calls.Calls
+	qualification *qualification.Qualification
 	webhookSecret string
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -128,6 +131,9 @@ func NewRouter(d Deps) http.Handler {
 		}
 		if h.calls != nil {
 			r.Post("/webhooks/voice/status", h.voiceStatusWebhook)
+			if h.qualification != nil {
+				r.Get("/webhooks/voice/stream/{id}", h.voiceStream)
+			}
 		}
 	}
 
@@ -361,6 +367,12 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/voice/calls/{id}", h.getCall)
 			r.Post("/api/voice/calls/{id}/hangup", h.hangupCall)
 			r.Post("/api/voice/calls/{id}/reconcile", h.reconcileCall)
+			if h.qualification != nil {
+				r.Get("/api/voice/calls/{id}/evidence", h.callEvidence)
+				r.Post("/api/voice/calls/{id}/confirm", h.confirmReading)
+				r.Post("/api/voice/calls/{id}/outcome", h.correctReading)
+				r.Get("/api/voice/calls/{id}/recording", h.callRecording)
+			}
 		}
 	})
 

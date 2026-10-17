@@ -10,6 +10,7 @@ import {
 import { useSession } from "@/api/session";
 import type { CallPolicyDocument } from "@/api/types.gen";
 import { Button } from "@/components/ui/button";
+import { CallEvidencePanel } from "@/routes/call-evidence";
 
 // Calls: the policy that allows calling at all, whether a live call can be
 // placed on this server and why not, and every call with its state, its
@@ -117,7 +118,12 @@ export function CallsPage() {
                     </Button>
                   )}
               </p>
-              {open === c.id && <CallEvents id={c.id} />}
+              {open === c.id && (
+                <>
+                  <CallEvents id={c.id} />
+                  <CallEvidencePanel id={c.id} canEdit={canEdit} />
+                </>
+              )}
             </div>
           ))}
           {(hangup.error || reconcile.error) && (

@@ -43,6 +43,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/qualification"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -53,6 +54,7 @@ import (
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
+	"github.com/WokeWorks/adx/server/providers/elevenlabs"
 	"github.com/WokeWorks/adx/server/providers/filestore"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/providers/svgrender"
@@ -116,6 +118,11 @@ type config struct {
 	TelecomRoute     string `env:"ADX_TELECOM_ROUTE"`
 	TwilioAccountSID string `env:"ADX_TWILIO_ACCOUNT_SID"`
 	TwilioAuthToken  string `env:"ADX_TWILIO_AUTH_TOKEN"`
+	// Speech engine for qualification calls. Both empty: conversations
+	// cannot run; the call lifecycle still works.
+	ElevenLabsAPIKey  string  `env:"ADX_ELEVENLABS_API_KEY"`
+	ElevenLabsAgentID string  `env:"ADX_ELEVENLABS_AGENT_ID"`
+	VoiceAmbienceGain float64 `env:"ADX_VOICE_AMBIENCE_GAIN" envDefault:"0"`
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
@@ -329,6 +336,15 @@ func run() error {
 		return fmt.Errorf("ADX_TELECOM_ROUTE %q is not a known route", cfg.TelecomRoute)
 	}
 	callService := calls.New(db, calls.Config{Telephony: telephony, Policies: policyService, Outreach: outreachService, CRM: crmService, PublicURL: cfg.PublicURL})
+	var speech voice.Speech
+	if cfg.ElevenLabsAPIKey != "" || cfg.ElevenLabsAgentID != "" {
+		sp, err := elevenlabs.New(elevenlabs.Config{APIKey: cfg.ElevenLabsAPIKey, AgentID: cfg.ElevenLabsAgentID})
+		if err != nil {
+			return fmt.Errorf("ADX_ELEVENLABS_*: %w", err)
+		}
+		speech = sp
+	}
+	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -494,6 +510,9 @@ func run() error {
 			Execution:     executionService,
 			CRM:           crmService,
 			Signals:       signalService,
+			Outreach:      outreachService,
+			Calls:         callService,
+			Qualification: qualificationService,
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

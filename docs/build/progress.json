@@ -1514,13 +1514,53 @@
         "B4.4",
         "B4.2"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00028_call_sessions.sql",
+        "server/store/queries/qualification.sql",
+        "server/core/voice/audio.go",
+        "server/core/voice/audio_test.go",
+        "server/core/qualification/qualification.go",
+        "server/core/qualification/qualification_test.go",
+        "server/providers/twilio/stream.go",
+        "server/providers/twilio/stream_test.go",
+        "server/providers/elevenlabs/elevenlabs.go",
+        "server/providers/elevenlabs/elevenlabs_test.go",
+        "server/api/qualification.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "server/go.mod",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "web/src/api/calls.ts",
+        "web/src/routes/call-evidence.tsx",
+        "web/src/routes/calls.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/qualification/ ./core/voice/... ./providers/elevenlabs/ ./providers/twilio/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "an interruption clears queued speech once, with 20 ms frames",
+        "an uncertain figure or low confidence applies nothing until a person confirms; held answers are named",
+        "repeated completion and a second run add no signal, task or stage write; corrections re-apply as a new version with the old event discarded",
+        "recording access needs the policy role and stops after retention"
+      ],
+      "remaining": [
+        "live conversation on a real route and agent",
+        "GoHighLevel stage mapping for qualification outcomes",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "ElevenLabs API key and an agent configured for ulaw_8000; the B4.4 route",
+          "unblocks": "live qualification calls"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-46."
     },
     {
       "id": "B4.6",

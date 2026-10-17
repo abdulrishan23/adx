@@ -233,6 +233,16 @@ type Call struct {
 	UnknownSince       sql.NullTime
 }
 
+type CallCorrection struct {
+	ID        int64
+	SessionID int64
+	Outcome   string
+	Answers   string
+	Note      string
+	CreatedBy sql.NullInt64
+	CreatedAt time.Time
+}
+
 type CallEvent struct {
 	ID         int64
 	CallID     int64
@@ -252,6 +262,35 @@ type CallPolicy struct {
 	Document    string
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
+}
+
+type CallSession struct {
+	ID                   int64
+	WorkspaceID          int64
+	CallID               int64
+	SpeechProvider       string
+	State                string
+	EndedBy              string
+	Error                string
+	Interruptions        int64
+	FramesDropped        int64
+	Transcript           string
+	TranscriptEvidenceID sql.NullInt64
+	Summary              string
+	Answers              string
+	Outcome              string
+	Confidence           string
+	RequestedHuman       int64
+	CallbackAt           string
+	ReviewStatus         string
+	ReviewReason         string
+	AppliedKey           string
+	AppliedVersion       int64
+	AppliedAt            sql.NullTime
+	AppliedDetail        string
+	StartedAt            time.Time
+	EndedAt              sql.NullTime
+	UpdatedAt            time.Time
 }
 
 type CampaignDailyMetric struct {

@@ -436,3 +436,21 @@ make check && make test
 - Web: `/calls` with the policy editor, live-calling state and reasons, call list with events, reconcile and hang up; a "Call now" control on the sales brief that lists every blocker first. Typecheck and biome clean. Not browser-tested.
 
 Live: no call was placed. Needs `ADX_TELECOM_ROUTE=twilio` with credentials, a calling policy naming twilio with written authorization, and Reportage's reversal of "not open to automated calls" in writing.
+
+## B4.5 Conversational qualification and corrected outcomes
+
+Local:
+
+```
+cd server && go test ./core/qualification/ ./core/voice/... ./providers/elevenlabs/ ./providers/twilio/   # ok
+make check && make test
+```
+
+- `core/voice`: µ-law round-trips within G.711 tolerance; 500 bytes split into four frames (160, 160, 160, 20); a deterministic ambience loop; silence mixed at 0.5 is audible but under 1,200 and framed; gain 0 leaves audio untouched; the bridge over the ambience wrapper clears once on interruption and marks `end-of-call`.
+- `providers/twilio` stream: a start for another call SID is refused before media; a matching start accepts media (base64 µ-law decoded), sends media, clear and mark in Twilio's shapes, delivers echoed marks, closes incoming on stop; a non-µ-law or 16 kHz stream is refused.
+- `providers/elevenlabs`: the API key header and agent id are sent; the initiation message overrides prompt and first message; a `pcm_16000` agent is refused with the fix named; non-µ-law input is refused; audio, agent and user transcripts, interruption and close arrive in order with speakers right; both pings are answered; the audio chunk is sent as `user_audio_chunk`.
+- `core/qualification`: the brief quotes the approved price and forbids others; a 640-byte burst is framed, the interruption clears once, the transcript has two lines and an evidence id, the high-confidence reading applies `purchase_timeline`, stage `qualified` and one signal; the model received the transcript with the forced tool; a second conversation for the call is refused. A low-confidence reading with an uncertain budget is `pending`: stage untouched, no attribute, no signal, the price objection recorded with `call:` as its source; confirming writes `purpose`, holds `budget` by name and sets the stage; a second confirm is refused. A high-confidence `interested` applies version 1 with intent 25; two provider `completed` callbacks and a second run attempt add nothing; correcting to `callback` needs a reason and a marketer, records version 2 with stage `callback`, discards the old event (two on the timeline, one scoring) and lists the correction. Without a model the reading is `pending` saying so, confirm is refused, recording access is refused to a marketer and granted to an admin, refused again after retention deletes it, and a correction still applies without a model.
+- `api`: evidence, confirm, outcome (correction), recording routes; `GET /webhooks/voice/stream/{id}` public websocket, validated by call SID and occurrence before audio.
+- Web: an evidence panel per call with reading, confidence, answers (uncertain ones flagged), applied/held, transcript, confirm and correct controls, corrections and recording state. Typecheck and biome clean. Not browser-tested.
+
+Live: no conversation has run with a real speech engine or phone; needs `ADX_ELEVENLABS_API_KEY`, `ADX_ELEVENLABS_AGENT_ID` with an agent set to `ulaw_8000`, and the B4.4 route.

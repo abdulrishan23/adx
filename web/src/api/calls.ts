@@ -3,12 +3,15 @@ import { getJSON, postJSON, putJSON } from "./client";
 import type {
   Call,
   CallDetail,
+  CallEvidence,
   CallInput,
   CallPolicy,
   CallPolicyDocument,
   CallPolicyState,
+  CallSession,
   CallsResponse,
   Contactability,
+  CorrectionInput,
 } from "./types.gen";
 
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
@@ -76,6 +79,31 @@ export function useReconcile() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: number) => postJSON<Call>(`/api/voice/calls/${id}/reconcile`, {}),
+    onSuccess: invalidate(qc),
+  });
+}
+
+export function useEvidence(id: number | null) {
+  return useQuery({
+    queryKey: ["calls", "evidence", id],
+    queryFn: () => getJSON<CallEvidence>(`/api/voice/calls/${id}/evidence`),
+    enabled: id !== null,
+  });
+}
+
+export function useConfirmReading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => postJSON<CallSession>(`/api/voice/calls/${id}/confirm`, {}),
+    onSuccess: invalidate(qc),
+  });
+}
+
+export function useCorrectReading() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...input }: { id: number } & CorrectionInput) =>
+      postJSON<CallSession>(`/api/voice/calls/${id}/outcome`, input),
     onSuccess: invalidate(qc),
   });
 }

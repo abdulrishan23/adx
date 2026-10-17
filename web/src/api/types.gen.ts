@@ -152,6 +152,16 @@ export interface AllocationChange {
     change: string;
 }
 
+// From qualification/qualification.go
+export interface AppliedDetail {
+    signalEventId: number | null;
+    stage: string;
+    attributes: string[];
+    objections: number;
+    held: string[];
+    note: string;
+}
+
 // From proposals/proposals.go
 export interface Approval {
     id: number;
@@ -399,6 +409,16 @@ export interface CallEvent {
     receivedAt: string;
 }
 
+// From qualification/qualification.go
+export interface CallEvidence {
+    call: Call;
+    session: CallSession | null;
+    corrections: ReadingCorrection[];
+    recordingAccess: boolean;
+    recordingReason: string;
+    recordingRef: string;
+}
+
 // From calls/calls.go
 export interface CallInput {
     enquiryId: number;
@@ -435,6 +455,34 @@ export interface CallPolicyState {
     liveCalling: boolean;
     reasons: string[];
     suggested: CallPolicyDocument;
+}
+
+// From qualification/qualification.go
+export interface CallSession {
+    id: number;
+    callId: number;
+    speechProvider: string;
+    state: string;
+    endedBy: string;
+    error: string;
+    interruptions: number;
+    framesDropped: number;
+    transcript: Segment[];
+    transcriptEvidenceId: number | null;
+    summary: string;
+    answers: Record<string, ReadingAnswer> | null;
+    outcome: string;
+    confidence: string;
+    requestedHuman: boolean;
+    callbackAt: string;
+    reviewStatus: string;
+    reviewReason: string;
+    appliedKey: string;
+    appliedVersion: number;
+    appliedAt: string | null;
+    applied: AppliedDetail;
+    startedAt: string;
+    endedAt: string | null;
 }
 
 // From voice/voice.go
@@ -691,6 +739,13 @@ export interface CorrectSignalInput {
     action: string;
     personId: number;
     reason: string;
+}
+
+// From qualification/qualification.go
+export interface CorrectionInput {
+    outcome: string;
+    answers: Record<string, ReadingAnswer> | null;
+    note: string;
 }
 
 // From alerts/alerts.go
@@ -1151,6 +1206,9 @@ export type Format = "1.91:1" | "1:1" | "4:5" | "9:16";
 // From reporting/metrics.go
 export const FormulaVersion = "v1";
 
+// From voice/audio.go
+export const FrameBytes = 160;
+
 // From reporting/ingest.go
 export interface Freshness {
     accountId: number;
@@ -1227,6 +1285,12 @@ export interface GenerationNote {
 
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
+
+// From qualification/qualification.go
+export interface HeardObjection {
+    kind: string;
+    text: string;
+}
 
 // From research/schedules.go
 export interface Hypothesis {
@@ -1690,6 +1754,12 @@ export interface Money {
     minor: number | null;
     currency: string;
 }
+
+// From voice/audio.go
+export const MulawBytesPerMs = 8;
+
+// From voice/audio.go
+export const MulawCodec = "mulaw_8000";
 
 // From outreach/outreach.go
 export interface NextStep {
@@ -2342,6 +2412,13 @@ export interface PutPolicyInput {
     document: PolicyDocument;
 }
 
+// From qualification/qualification.go
+export interface QualificationState {
+    speechAdapter: string;
+    modelReady: boolean;
+    reasons: string[];
+}
+
 // From api/outreach.go
 export interface QueueFieldInput {
     personId: number;
@@ -2379,6 +2456,35 @@ export interface Readiness {
 export interface ReadinessIssue {
     code: string;
     message: string;
+}
+
+// From qualification/qualification.go
+export interface Reading {
+    summary: string;
+    outcome: string;
+    answers: Record<string, ReadingAnswer> | null;
+    objections: HeardObjection[];
+    requestedHuman: boolean;
+    callbackAt: string;
+    confidence: string;
+}
+
+// From qualification/qualification.go
+export interface ReadingAnswer {
+    value: string;
+    uncertain: boolean;
+    quote: string;
+}
+
+// From qualification/qualification.go
+export interface ReadingCorrection {
+    id: number;
+    sessionId: number;
+    outcome: string;
+    answers: Record<string, ReadingAnswer> | null;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
 }
 
 // From policies/policies.go
@@ -2427,6 +2533,11 @@ export interface RecordingPolicy {
     enabled: boolean;
     retentionDays: number;
     accessRole: string;
+}
+
+// From api/qualification.go
+export interface RecordingResponse {
+    ref: string;
 }
 
 // From assets/assets.go
