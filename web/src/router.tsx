@@ -23,6 +23,7 @@ import { PlansPage } from "@/routes/plans";
 import { PoliciesPage } from "@/routes/policies";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
+import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
 import { ResearchPage } from "@/routes/research";
 import { RunsPage } from "@/routes/runs";
@@ -97,6 +98,13 @@ function Layout() {
             activeProps={{ className: "text-foreground" }}
           >
             Launch
+          </Link>
+          <Link
+            to="/proposals"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Proposals
           </Link>
           <Link
             to="/creatives"
@@ -242,6 +250,12 @@ const launchRoute = createRoute({
   component: LaunchPage,
 });
 
+const proposalsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/proposals",
+  component: ProposalsPage,
+});
+
 const creativesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/creatives",
@@ -297,6 +311,7 @@ const routeTree = rootRoute.addChildren([
   plansRoute,
   pagesRoute,
   launchRoute,
+  proposalsRoute,
   creativesRoute,
   reportsRoute,
   alertsRoute,

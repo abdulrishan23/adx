@@ -23,6 +23,10 @@ const (
 	ViaMCP     Via = "mcp"
 	ViaJob     Via = "job"
 	ViaStartup Via = "startup"
+	// ViaAssistant marks a call the language model asked for through a tool.
+	// Core functions that change money or accounts refuse it: the assistant
+	// reads, people decide.
+	ViaAssistant Via = "assistant"
 )
 
 // DefaultWorkspace is Reportage, the one workspace phase 0 bootstraps

@@ -96,6 +96,18 @@ type AlertConfig struct {
 	CreatedAt   time.Time
 }
 
+type Approval struct {
+	ID            int64
+	WorkspaceID   int64
+	ProposalID    int64
+	TargetVersion string
+	Decision      string
+	PolicyVersion sql.NullInt64
+	Note          string
+	DecidedBy     int64
+	DecidedAt     time.Time
+}
+
 type Asset struct {
 	ID          int64
 	WorkspaceID int64
@@ -167,6 +179,29 @@ type BrandKit struct {
 	Document    string
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
+}
+
+type BudgetEnvelope struct {
+	ID          int64
+	WorkspaceID int64
+	PlanID      int64
+	PlanVersion int64
+	Channel     string
+	AccountID   sql.NullInt64
+	Currency    string
+	AmountMinor int64
+	OpenedBy    sql.NullInt64
+	OpenedAt    time.Time
+}
+
+type BudgetReservation struct {
+	ID          int64
+	EnvelopeID  int64
+	ProposalID  int64
+	AmountMinor int64
+	State       string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }
 
 type CampaignDailyMetric struct {
@@ -288,6 +323,25 @@ type Evidence struct {
 	Completeness   string
 	RetainUntil    sql.NullTime
 	SupersededBy   sql.NullInt64
+}
+
+type ExecutionIntent struct {
+	ID             int64
+	WorkspaceID    int64
+	ProposalID     int64
+	AccountID      int64
+	IdempotencyKey string
+	ReservationID  sql.NullInt64
+	State          string
+	Attempts       int64
+	ProviderRefs   string
+	LastErrorSafe  string
+	ReconcileAfter sql.NullTime
+	AuthorizedBy   sql.NullInt64
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	DispatchedAt   sql.NullTime
+	ConfirmedAt    sql.NullTime
 }
 
 type Fact struct {
@@ -563,6 +617,32 @@ type Project struct {
 	Name      string
 	CreatedAt time.Time
 	BrandID   sql.NullInt64
+}
+
+type Proposal struct {
+	ID              int64
+	WorkspaceID     int64
+	AccountID       int64
+	Action          string
+	TargetKind      string
+	TargetRef       string
+	TargetVersion   string
+	ExpectedCurrent string
+	Proposed        string
+	Reason          string
+	EvidenceRefs    string
+	AmountMinor     sql.NullInt64
+	Currency        sql.NullString
+	EnvelopeID      sql.NullInt64
+	PolicyVersion   sql.NullInt64
+	PolicyOutcome   string
+	PolicyReason    string
+	State           string
+	IdempotencyKey  string
+	ProposedBy      sql.NullInt64
+	ProposedVia     string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Report struct {

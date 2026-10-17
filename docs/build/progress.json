@@ -1160,13 +1160,43 @@
         "B3.3",
         "B0.4"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00022_proposals_and_executions.sql",
+        "server/store/queries/proposals.sql",
+        "server/core/proposals/",
+        "server/core/core.go",
+        "server/core/assistant/assistant.go",
+        "server/api/proposals.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/proposals.ts",
+        "web/src/routes/proposals.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/proposals/ ./core/assistant/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "two reservations cannot both take the same remaining budget (sequential and ten racing goroutines)",
+        "missing policy, account enablement, capability or approval denies execution; a kill switch refuses at execution time",
+        "a changed target marks the approved proposal stale and execution is refused while the approval stays on file",
+        "the assistant's actor is refused on every write path and its allowlist is read-only"
+      ],
+      "remaining": [
+        "dispatch, provider refs and reconciliation (B3.5)",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "decision",
+          "what": "approved budgets and write privileges per account (unresolved rule)",
+          "unblocks": "any real proposal passing policy"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-39."
     },
     {
       "id": "B3.5",

@@ -311,6 +311,16 @@ func (a *Assistant) Send(ctx context.Context, actor core.Actor, conversationID i
 // runTool executes one call if, and only if, its name is in the allowlist
 // and its input fits the schema. The actor is the person asking; a tool
 // never runs with more than they have.
+// ToolNames lists the allowlisted tools. Every one of them reads; the list
+// is what a test checks when it asserts the assistant cannot execute.
+func (a *Assistant) ToolNames() []string {
+	out := make([]string, 0, len(a.tools))
+	for _, t := range a.tools {
+		out = append(out, t.spec.Name)
+	}
+	return out
+}
+
 func (a *Assistant) runTool(ctx context.Context, actor core.Actor, call ToolCall) ToolResult {
 	for _, t := range a.tools {
 		if t.spec.Name != call.Name {
@@ -320,7 +330,11 @@ func (a *Assistant) runTool(ctx context.Context, actor core.Actor, call ToolCall
 		if err != nil {
 			return ToolResult{Error: "invalid input for " + call.Name + ": " + err.Error()}
 		}
-		result, err := t.run(ctx, actor, a.services, in)
+		// The tool runs as the person, but marked as the model's request, so
+		// anything that writes can tell the difference and refuse.
+		asModel := actor
+		asModel.Via = core.ViaAssistant
+		result, err := t.run(ctx, asModel, a.services, in)
 		if err != nil {
 			return ToolResult{Error: "the tool failed; see the server log"}
 		}

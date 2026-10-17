@@ -326,3 +326,18 @@ make check && make test
 - Web: `/launch` with plan and version pickers, the verdict line ("not live" always), six areas with ok/blocked/unsupported/note items, run-a-check controls (form, conversion action, account, pixel as unsupported), the checks list with evidence drill-down, tracked links and the catalog of what ADX can and cannot measure. Typecheck and biome clean. Not browser-tested.
 
 Live: nothing external. Readiness cannot reach ready here: no ad account is connected.
+
+## B3.4 Proposal authority, budget reservation and outbox
+
+Local:
+
+```
+cd server && go test ./core/proposals/ ./core/assistant/   # ok
+make check && make test
+```
+
+- `core/proposals`: envelopes refuse an unaccepted plan and open one per deployable allocation with the amount and remaining shown; an admin's allowed budget raise is self-approved; executing the first 6,000 of a 10,000 envelope reserves, the second 6,000 is refused as insufficient, the same key returns the same intent, the envelope shows reserved and remaining, cancelling releases and the second then reserves; ten goroutines racing for 3,000 each against 4,000 remaining get exactly one reservation. Without a policy a proposal is denied `policy_unconfigured`; with a policy but the account not enabled, `account_write_not_enabled`; a marketer's budget raise is `proposed` and cannot execute without approval; a marketer cannot approve; an admin's approval binds the target version; a workspace kill switch engaged after approval refuses execution with `kill_switch` and reserves nothing, and clearing it lets it through with no reservation when no amount is involved; an action whose write capability is unproven is denied `write_capability_unverified`; approving while an account kill switch is engaged is refused. A refresh observing the target's budget changed marks the approved proposal stale, keeps the approval on file, and execution is refused; the same observation again changes nothing; a proposal at the new version is unaffected; the same idempotency key returns the first proposal. An actor marked `ViaAssistant` is refused on propose, approve, execute and envelopes; the assistant's tool names contain nothing that writes.
+- `api`: routes for proposals, approve, reject, execute, executions, cancel and envelopes are wired; covered by compile and core tests.
+- Web: `/proposals` with envelopes (open from an accepted plan with accounts per platform, remaining shown), the proposal list by state, a new-proposal form from the policy catalog, the proposal view with now/proposed, policy then and now, approvals bound to target versions, approve/reject/execute, and the outbox with cancel before dispatch. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external; no account is enabled for writes anywhere, so every real proposal would be denied `account_write_not_enabled` until an admin enables one in Policies.

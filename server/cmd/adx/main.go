@@ -38,6 +38,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -261,6 +262,8 @@ func run() error {
 	formSalt := make([]byte, 16)
 	_, _ = rand.Read(formSalt)
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
+	policyService := policies.New(db)
+	proposalService := proposals.New(db, policyService, planService, proposals.Config{})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
@@ -338,7 +341,7 @@ func run() error {
 			Connections: connections,
 			Ops:         readiness,
 			Identity:    sessions,
-			Policies:    policies.New(db),
+			Policies:    policyService,
 			Runs:        runsService,
 			Leads:       leadsService,
 			Reporting:   reportingService,
@@ -351,6 +354,7 @@ func run() error {
 			Plans:       planService,
 			Pages:       pageService,
 			Measurement: measurementService,
+			Proposals:   proposalService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

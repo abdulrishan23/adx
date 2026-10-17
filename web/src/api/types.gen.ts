@@ -152,6 +152,17 @@ export interface AllocationChange {
     change: string;
 }
 
+// From proposals/proposals.go
+export interface Approval {
+    id: number;
+    targetVersion: string;
+    decision: string;
+    policyVersion: number | null;
+    note: string;
+    decidedBy: number;
+    decidedAt: string;
+}
+
 // From creative/creative.go
 export interface Asset {
     id: number;
@@ -324,6 +335,11 @@ export type Cadence = "daily" | "monthly" | "quarterly" | "weekly";
 // From voice/voice.go
 export type CallState = "busy" | "canceled" | "completed" | "failed" | "in_progress" | "no_answer" | "queued" | "ringing";
 
+// From api/proposals.go
+export interface CancelInput {
+    reason: string;
+}
+
 // From creative/production.go
 export interface Capabilities {
     renderer: string;
@@ -449,7 +465,7 @@ export interface CompetitorStatus {
     candidates: BrandRef[];
 }
 
-// From evidence/evidence.go
+// From runs/runs.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -595,6 +611,11 @@ export interface DateRange {
 // From reporting/ingest.go
 export type Day = string;
 
+// From api/proposals.go
+export interface DecisionInput {
+    note: string;
+}
+
 // From core/core.go
 export const DefaultWorkspace = 1;
 
@@ -632,6 +653,27 @@ export interface Document {
     background: string;
     image: Image | null;
     layers: Layer[];
+}
+
+// From proposals/proposals.go
+export interface Envelope {
+    id: number;
+    planId: number;
+    planVersion: number;
+    channel: string;
+    accountId: number | null;
+    currency: string;
+    amountMinor: number;
+    reservedMinor: number;
+    consumedMinor: number;
+    remainingMinor: number;
+    openedBy: number | null;
+    openedAt: string;
+}
+
+// From api/proposals.go
+export interface EnvelopesResponse {
+    envelopes: Envelope[];
 }
 
 // From api/respond.go
@@ -676,6 +718,16 @@ export interface ExactTemplateState {
     available: boolean;
     reason: string;
     unblocks: string;
+}
+
+// From api/proposals.go
+export interface ExecuteInput {
+    idempotencyKey: string;
+}
+
+// From api/proposals.go
+export interface ExecutionsResponse {
+    executions: Intent[];
 }
 
 // From pages/pages.go
@@ -948,6 +1000,25 @@ export interface ImportProgress {
     pages: number;
     contacts: number;
     total: number | null;
+}
+
+// From proposals/proposals.go
+export interface Intent {
+    id: number;
+    proposalId: number;
+    accountId: number;
+    idempotencyKey: string;
+    reservationId: number | null;
+    state: string;
+    attempts: number;
+    providerRefs: ProviderRef[];
+    lastError: string;
+    reconcileAfter: string | null;
+    authorizedBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    dispatchedAt: string | null;
+    confirmedAt: string | null;
 }
 
 // From plans/diff.go
@@ -1301,6 +1372,13 @@ export interface OfferVersion {
     approvedAt: string | null;
 }
 
+// From api/proposals.go
+export interface OpenEnvelopesInput {
+    planId: number;
+    planVersion: number;
+    accountByPlatform: Record<string, number> | null;
+}
+
 // From pages/pages.go
 export interface Page {
     id: number;
@@ -1626,6 +1704,66 @@ export interface ProjectsResponse {
     projects: Project[];
 }
 
+// From proposals/proposals.go
+export interface Proposal {
+    id: number;
+    accountId: number;
+    action: WriteAction;
+    targetKind: string;
+    targetRef: string;
+    targetVersion: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    expectedCurrent: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    proposed: string;
+    reason: string;
+    evidenceRefs: number[];
+    amountMinor: number | null;
+    currency: string | null;
+    envelopeId: number | null;
+    policyVersion: number | null;
+    policyOutcome: string;
+    policyReason: string;
+    state: string;
+    idempotencyKey: string;
+    proposedBy: number | null;
+    proposedVia: string;
+    createdAt: string;
+    updatedAt: string;
+    approvals: Approval[];
+    intent: Intent | null;
+}
+
+// From proposals/proposals.go
+export interface ProposalInput {
+    accountId: number;
+    action: WriteAction;
+    targetKind: string;
+    targetRef: string;
+    targetVersion: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    expectedCurrent: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    proposed: string;
+    reason: string;
+    evidenceRefs: number[];
+    amountMinor: number;
+    currency: string;
+    envelopeId: number;
+    idempotencyKey: string;
+}
+
+// From api/proposals.go
+export interface ProposalResponse {
+    proposal: Proposal;
+    authority: PolicyDecision;
+}
+
+// From api/proposals.go
+export interface ProposalsResponse {
+    proposals: Proposal[];
+}
+
 // From connections/gohighlevel.go
 export const Provider = "gohighlevel";
 
@@ -1634,6 +1772,14 @@ export const ProviderGoogleAds = "google_ads";
 
 // From connections/ads.go
 export const ProviderMeta = "meta";
+
+// From proposals/proposals.go
+export interface ProviderRef {
+    platform: string;
+    kind: string;
+    externalId: string;
+    at: string;
+}
 
 // From api/pages.go
 export interface PublishPageInput {
@@ -2296,7 +2442,7 @@ export interface VersionInput {
 }
 
 // From core/core.go
-export type Via = "job" | "mcp" | "startup" | "web";
+export type Via = "assistant" | "job" | "mcp" | "startup" | "web";
 
 // From policies/policies.go
 export type WriteAction = "ad.pause" | "adset.pause" | "audiences.upsert" | "bids.change" | "budget.lower" | "budget.raise" | "campaign.create_paused" | "campaign.pause" | "conversions.upload" | "exclusions.update" | "launch" | "ghl.lead_fields.set" | "organic.post" | "targeting.change";

@@ -24,6 +24,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
+	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/core/reports"
 	"github.com/WokeWorks/adx/server/core/research"
@@ -54,6 +55,7 @@ type Deps struct {
 	Plans       *plans.Plans
 	Pages       *pages.Pages
 	Measurement *measurement.Measurement
+	Proposals   *proposals.Proposals
 }
 
 type handlers struct {
@@ -76,12 +78,13 @@ type handlers struct {
 	plans       *plans.Plans
 	pages       *pages.Pages
 	measurement *measurement.Measurement
+	proposals   *proposals.Proposals
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -257,6 +260,19 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/measurement/readiness", h.launchReadiness)
 			r.Get("/api/measurement/events", h.measurementEvents)
 			r.Post("/api/measurement/tracked-url", h.trackedURL)
+		}
+		if h.proposals != nil {
+			r.Get("/api/proposals", h.listProposals)
+			r.Post("/api/proposals", h.createProposal)
+			r.Get("/api/proposals/{id}", h.getProposal)
+			r.Post("/api/proposals/{id}/approve", h.decideProposal("approve"))
+			r.Post("/api/proposals/{id}/reject", h.decideProposal("reject"))
+			r.Post("/api/proposals/{id}/execute", h.executeProposal)
+			r.Get("/api/executions", h.listExecutions)
+			r.Get("/api/executions/{id}", h.getExecution)
+			r.Post("/api/executions/{id}/cancel", h.cancelExecution)
+			r.Get("/api/budgets/envelopes", h.listEnvelopes)
+			r.Post("/api/budgets/envelopes", h.openEnvelopes)
 		}
 	})
 
