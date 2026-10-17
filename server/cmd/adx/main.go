@@ -54,6 +54,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/signals"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/voice"
+	"github.com/WokeWorks/adx/server/core/workflows"
 	"github.com/WokeWorks/adx/server/jobs"
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
@@ -126,6 +127,9 @@ type config struct {
 	ElevenLabsAPIKey  string  `env:"ADX_ELEVENLABS_API_KEY"`
 	ElevenLabsAgentID string  `env:"ADX_ELEVENLABS_AGENT_ID"`
 	VoiceAmbienceGain float64 `env:"ADX_VOICE_AMBIENCE_GAIN" envDefault:"0"`
+	// WorkflowDefaultBudget caps a workflow run's model tokens when the
+	// definition and the start name none. Zero is no limit.
+	WorkflowDefaultBudget int64 `env:"ADX_WORKFLOW_DEFAULT_BUDGET" envDefault:"200000"`
 
 	// Report delivery (B1.4). Optional: without a host, reports are
 	// generated and shown but never sent.
@@ -350,6 +354,15 @@ func run() error {
 	evaluationService := evaluation.New(db, evaluation.Config{})
 	pipelineService := pipeline.New(db, evidenceStore, pipeline.Config{})
 	registryService := registry.New(db, registry.Config{Accounts: connectedAccounts{connections}})
+	// Workflows run registry definitions. Reads come from core; the only
+	// write is propose_change, which is a proposal under policy. With no
+	// model the runner is absent and ready tasks are held with the reason.
+	workflowDispatch := &workflows.CoreDispatcher{Proposals: proposalService, Reads: workflowReads(reportingService, leadsService, alertsService, connections)}
+	var workflowRunner workflows.Runner
+	if model != nil {
+		workflowRunner = &workflows.ModelRunner{Model: model}
+	}
+	workflowService := workflows.New(db, workflows.Config{Registry: registryService, Runner: workflowRunner, Dispatch: workflowDispatch, External: workflowDispatch, Owner: hostname(), DefaultBudget: cfg.WorkflowDefaultBudget})
 	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
 	measurementService := measurement.New(db, evidenceStore, pageService, creativeService, planService, connections, measurement.Config{})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
@@ -426,6 +439,15 @@ func run() error {
 					log.WarnContext(ctx, "recording retention failed", "error", err)
 				} else if n > 0 {
 					log.InfoContext(ctx, "deleted recordings past retention", "count", n)
+				}
+				return nil
+			}},
+			{Kind: "workflows.tick", Every: 30 * time.Second, Run: func(ctx context.Context) error {
+				n, err := workflowService.Tick(ctx)
+				if err != nil {
+					log.WarnContext(ctx, "workflow tick failed", "error", err)
+				} else if n > 0 {
+					log.InfoContext(ctx, "workflow tasks worked", "count", n)
 				}
 				return nil
 			}},
@@ -522,6 +544,7 @@ func run() error {
 			Evaluation:    evaluationService,
 			Pipeline:      pipelineService,
 			Registry:      registryService,
+			Workflows:     workflowService,
 			WebhookSecret: cfg.WebhookSecret,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,

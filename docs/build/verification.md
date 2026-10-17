@@ -500,3 +500,18 @@ make check && make test
 - Web: `/settings/agents` with the three kinds, versions and their state, validation problems, activate and retire, a JSON editor with validate-only for workflows, and the capability catalogue. Typecheck and biome clean. Not browser-tested.
 
 Live: none needed.
+
+## B5.3 Durable workflow graph and task orchestration
+
+Local:
+
+```
+cd server && go test ./core/workflows/ ./core/registry/   # ok
+make check && make test
+```
+
+- `core/workflows`: a two-step run reads spend (the dispatcher's read answers with the figure), then the proposing step creates the proposal and the runner "dies"; the task is back to ready with `proposal:1` kept and the operation key `wf:1:suggest:0`; the retry does not run the step again (a `not_repeated` event) and waits on the proposal; exactly one proposal exists and it is `proposed`, not self-approved; an admin's approval and execution complete the step and the run with 50 tokens spent; a done run can't be paused. In a chain a→b→c with external d, correcting a's output (viewer refused) bumps its version, re-queues b and c, blocks d with "a person decides", re-runs b with the new input and a new hash and version, leaves one proposal, and refuses to retry d. A loop bounded at 3 runs three passes and logs the bound; a 10-token budget blocks the second pass with the reason and the run; a cyclic definition cannot be activated or started; a viewer can't start; a paused run leases nothing and a resumed one finishes. With no policy the proposing step's proposal is denied with `policy_unconfigured`, the step and run fail, and no execution intent exists; a read-only skill calling `propose_change` is refused "not permitted for skill"; an output that does not fit the schema is rejected and fails after the attempts; a retry with a fixed runner finishes the run.
+- `api`: runs (list/start/graph), pause/resume/cancel, task retry and correct, a manual tick.
+- Web: `/workflows` with runs, graphs, task states and reasons, retry (never for a task that acted externally), output correction with a reason, and events. Typecheck and biome clean. Not browser-tested.
+
+Live: no model-run workflow has executed; the model runner is tested only through the scripted runner's contract.

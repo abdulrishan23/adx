@@ -729,7 +729,7 @@ export interface CompleteTaskInput {
     canceled: boolean;
 }
 
-// From evidence/evidence.go
+// From runs/runs.go
 export type Completeness = "complete" | "partial" | "complete" | "partial" | "unknown";
 
 // From brands/facts.go
@@ -808,6 +808,13 @@ export interface Copy {
 export interface CorrectSignalInput {
     action: string;
     personId: number;
+    reason: string;
+}
+
+// From api/workflows.go
+export interface CorrectTaskInput {
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    output: string;
     reason: string;
 }
 
@@ -3761,6 +3768,52 @@ export interface WorkflowDocument {
     budgetTokens: number;
 }
 
+// From workflows/workflows.go
+export interface WorkflowEvent {
+    id: number;
+    taskId: number | null;
+    kind: string;
+    detail: string;
+    at: string;
+}
+
+// From workflows/workflows.go
+export interface WorkflowGraph {
+    run: WorkflowRun;
+    tasks: WorkflowTask[];
+    events: WorkflowEvent[];
+}
+
+// From workflows/workflows.go
+export interface WorkflowRun {
+    id: number;
+    definitionKey: string;
+    definitionVersion: number;
+    state: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    params: string;
+    budgetTokens: number;
+    spentTokens: number;
+    reason: string;
+    createdBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+    finishedAt: string | null;
+}
+
+// From api/workflows.go
+export interface WorkflowRunsResponse {
+    runs: WorkflowRun[];
+}
+
+// From workflows/workflows.go
+export interface WorkflowStartInput {
+    definition: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    params: string;
+    budgetTokens: number;
+}
+
 // From registry/registry.go
 export interface WorkflowStep {
     key: string;
@@ -3770,6 +3823,40 @@ export interface WorkflowStep {
     inputs: Record<string, string> | null;
     loop: LoopSpec | null;
     external: boolean;
+}
+
+// From workflows/workflows.go
+export interface WorkflowTask {
+    id: number;
+    runId: number;
+    key: string;
+    iteration: number;
+    skill: string;
+    agent: string;
+    dependsOn: string[];
+    state: string;
+    attempt: number;
+    maxAttempts: number;
+    leaseOwner: string | null;
+    leaseUntil: string | null;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    input: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    resolvedInput: string;
+    inputHash: string;
+    // this is likely an enum in an external package "encoding/json/jsontext.Value"
+    output: string;
+    outputVersion: number;
+    external: boolean;
+    operationKey: string | null;
+    externalRef: string;
+    loopMax: number;
+    budgetTokens: number;
+    spentTokens: number;
+    reason: string;
+    createdAt: string;
+    startedAt: string | null;
+    finishedAt: string | null;
 }
 
 // From policies/policies.go

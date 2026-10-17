@@ -1697,13 +1697,40 @@
         "B3.4",
         "B5.1"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00032_workflows.sql",
+        "server/store/queries/workflows.sql",
+        "server/core/workflows/workflows.go",
+        "server/core/workflows/runner.go",
+        "server/core/workflows/dispatch.go",
+        "server/core/workflows/workflows_test.go",
+        "server/api/workflows.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "server/cmd/adx/workflows.go",
+        "web/src/api/workflows.ts",
+        "web/src/routes/workflows.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/workflows/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a restart or retry never repeats a recorded external action",
+        "a corrected upstream output invalidates downstream results; external dependents wait for a person",
+        "cycles, unbounded loops and over-budget runs are refused or blocked",
+        "every proposing call goes through proposals and policy; forbidden tools are refused"
+      ],
+      "remaining": [
+        "domain read tools beyond the four Ask ADX reads",
+        "browser inspection"
+      ],
       "blockers": [],
-      "commit": null
+      "commit": null,
+      "notes": "BD-50."
     },
     {
       "id": "B5.4",

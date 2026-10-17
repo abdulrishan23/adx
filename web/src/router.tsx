@@ -34,6 +34,7 @@ import { ReportsPage } from "@/routes/reports";
 import { ResearchPage } from "@/routes/research";
 import { RunsPage } from "@/routes/runs";
 import { ScoringPage } from "@/routes/scoring";
+import { WorkflowsPage } from "@/routes/workflows";
 
 // Routes are declared in code instead of generated from files, so the whole
 // route tree is readable in one place.
@@ -156,6 +157,13 @@ function Layout() {
             Calls
           </Link>
           <Link
+            to="/workflows"
+            className="text-muted-foreground"
+            activeProps={{ className: "text-foreground" }}
+          >
+            Workflows
+          </Link>
+          <Link
             to="/settings/agents"
             className="text-muted-foreground"
             activeProps={{ className: "text-foreground" }}
@@ -262,6 +270,12 @@ const outreachRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/outreach",
   component: OutreachPage,
+});
+
+const workflowsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workflows",
+  component: WorkflowsPage,
 });
 
 const agentsRoute = createRoute({
@@ -402,6 +416,7 @@ const routeTree = rootRoute.addChildren([
   projectsRoute,
   connectionsRoute,
   outreachRoute,
+  workflowsRoute,
   agentsRoute,
   evaluationRoute,
   scoringRoute,

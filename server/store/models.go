@@ -1269,6 +1269,62 @@ type User struct {
 	LastSignInAt  sql.NullTime
 }
 
+type WorkflowEvent struct {
+	ID     int64
+	RunID  int64
+	TaskID sql.NullInt64
+	Kind   string
+	Detail string
+	At     time.Time
+}
+
+type WorkflowRun struct {
+	ID                int64
+	WorkspaceID       int64
+	DefinitionKey     string
+	DefinitionVersion int64
+	State             string
+	Params            string
+	BudgetTokens      int64
+	SpentTokens       int64
+	Reason            string
+	CreatedBy         sql.NullInt64
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+	FinishedAt        sql.NullTime
+}
+
+type WorkflowTask struct {
+	ID            int64
+	RunID         int64
+	Key           string
+	Iteration     int64
+	Skill         string
+	Agent         string
+	DependsOn     string
+	State         string
+	Attempt       int64
+	MaxAttempts   int64
+	LeaseOwner    sql.NullString
+	LeaseUntil    sql.NullTime
+	Input         string
+	ResolvedInput string
+	InputHash     string
+	Output        string
+	OutputVersion int64
+	External      int64
+	OperationKey  sql.NullString
+	ExternalRef   string
+	LoopMax       int64
+	BudgetTokens  int64
+	SpentTokens   int64
+	Reason        string
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	StartedAt     sql.NullTime
+	FinishedAt    sql.NullTime
+}
+
 type Workspace struct {
 	ID        int64
 	Slug      string
