@@ -296,3 +296,18 @@ make check && make test
 - Web: queue board by state with render failures shown, capability line, new creative with plan and offer binding, drag canvas with text and size editing, render as a run with refresh while queued, review board actions, side-by-side compare with reviews, readiness panel with claims. Typecheck and biome clean. Not browser-tested; the drag canvas has not been exercised by hand.
 
 Live: nothing external.
+
+## B3.2 Landing page lifecycle and form path
+
+Local:
+
+```
+cd server && go test ./core/pages/ ./api/   # ok
+make check && make test
+```
+
+- `core/pages`: a page's public URL and test token (hidden from viewers); a post before publishing is `not_published`; after publishing, a post naming another project is rejected, recorded as rejected and against the page's own project; a missing required phone, an invalid phone, an invalid email and an unknown select choice are each rejected with their field; a good post is trimmed, keeps only known fields and attribution keys, records evidence and the page's project; a honeypot post is recorded as rejected and answered with a thank-you; three posts a minute per address pass and the fourth is rate-limited, a minute later it passes; the per-page daily cap counts rejected rows too; the test token bypasses limits and marks the row; a wrong token is an ordinary visitor. Readiness: unpublished blocks; a published page with a form lacking a required contact field, no test, an unapproved offer and two unapproved figures lists each; after fixing the form, publishing version 2, approving the offer and the price fact, a rejected test blocks as `test_failed` and a received test makes it ready with the published version and last test shown; an offer revision blocks as `offer_changed`; a newer draft is a warning and its test does not count for the live version. Rollback with nothing to go to is refused; after two versions the rollback republishes version 1, names deployment and version it rolled back from, reproduces the first deployment's checksum, the live page follows, and the earlier deployments read `superseded`. Script in a headline, an attribute escape, markup in bullets and in a field label and in the success message all arrive escaped; the page has no `<script>`; the honeypot and the form action are present; path-like and spaced slugs, an unknown language, an unknown section kind, reserved field names and an unknown image key are refused; the publishing gate reports local only.
+- `api`: the public page is 404 before publishing and 200 after with `default-src 'none'` and no `script-src`; editor text is escaped on the public page and the preview carries `sandbox`; a visitor's post without any session is refused for the wrong project and redirected to thanks for the right one; JSON callers get the submission with `test: true` under the token and the reason code on a rejection; readiness reads ready and the submissions list shows the rejection.
+- Web: `/pages` with the page list, new page, version tabs with the live marker, the readiness panel with "send test submission to live version", the document editor (sections, offer binding, form fields, consent, success text), the sandboxed preview frame, publish and rollback with the deployment history and checksums, and the submissions list with test and rejection markers. Typecheck and biome clean. Not browser-tested.
+
+Live: nothing external. A real host adapter is blocked on knowing the hosts and having access (gate in the UI).

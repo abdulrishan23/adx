@@ -19,6 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
@@ -50,6 +51,7 @@ type Deps struct {
 	Brands    *brands.Brands
 	Research  *research.Research
 	Plans     *plans.Plans
+	Pages     *pages.Pages
 }
 
 type handlers struct {
@@ -70,12 +72,13 @@ type handlers struct {
 	brands      *brands.Brands
 	research    *research.Research
 	plans       *plans.Plans
+	pages       *pages.Pages
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -88,6 +91,13 @@ func NewRouter(d Deps) http.Handler {
 	})
 	if h.ops != nil {
 		r.Get("/api/ready", h.ready)
+	}
+
+	// Public landing pages and their forms: what a visitor's browser calls.
+	if h.pages != nil {
+		r.Get("/p/{slug}", h.publicPage)
+		r.Get("/p/{slug}/thanks", h.publicThanks)
+		r.Post("/p/{slug}/form", h.publicForm)
 	}
 
 	// Sign-in happens before there is a session.
@@ -225,6 +235,17 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/plans/{id}/import", h.importPlanVersion)
 			r.Post("/api/plans/{id}/versions/{version}/accept", h.acceptPlanVersion)
 			r.Get("/api/plans/{id}/versions/{version}/export", h.exportPlanVersion)
+		}
+		if h.pages != nil {
+			r.Get("/api/pages", h.listPages)
+			r.Post("/api/pages", h.createPage)
+			r.Get("/api/pages/{id}", h.getPage)
+			r.Post("/api/pages/{id}/versions", h.savePageVersion)
+			r.Get("/api/pages/{id}/versions/{version}/preview", h.previewPage)
+			r.Post("/api/pages/{id}/publish", h.publishPage)
+			r.Post("/api/pages/{id}/rollback", h.rollbackPage)
+			r.Get("/api/pages/{id}/readiness", h.pageReadiness)
+			r.Get("/api/pages/{id}/submissions", h.pageSubmissions)
 		}
 	})
 

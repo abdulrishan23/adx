@@ -5,6 +5,8 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -31,6 +33,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/ops"
+	"github.com/WokeWorks/adx/server/core/pages"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/projects"
@@ -252,6 +255,11 @@ func run() error {
 			keywordProvider = kp
 		}
 	}
+	// ADX hosts landing pages itself at /p/{slug}; no outside publisher is
+	// wired (decisions.md). The address-hash salt is per process.
+	formSalt := make([]byte, 16)
+	_, _ = rand.Read(formSalt)
+	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
 	researchService := research.New(db, evidenceStore, brandService, research.Config{Fetcher: webfetch.New(webfetch.Config{}), Keywords: keywordProvider, Tokens: adTokens, Analytics: reportingService})
 	assistantService := assistant.New(db, model, assistant.Services{Reporting: reportingService, Leads: leadsService, Alerts: alertsService, Connections: connections},
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
@@ -329,6 +337,7 @@ func run() error {
 			Brands:      brandService,
 			Research:    researchService,
 			Plans:       planService,
+			Pages:       pageService,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

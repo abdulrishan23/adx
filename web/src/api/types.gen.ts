@@ -375,23 +375,24 @@ export const CheckStaleIngestion = "stale_ingestion";
 // From alerts/alerts.go
 export const CheckZeroLeads = "zero_leads";
 
-// From creative/production.go
-export interface ClaimBindings {
-    brandId: number;
-    offerId: number | null;
-    offerVersion: number | null;
-    offerState: string;
-    factIds: number[];
-    claims: ClaimCheck[];
-}
-
-// From creative/production.go
+// From brands/claims.go
 export interface ClaimCheck {
     text: string;
     kind: string;
     status: string;
     factId: number | null;
     detail: string;
+}
+
+// From brands/claims.go
+export interface ClaimReport {
+    brandId: number;
+    offerId: number | null;
+    offerVersion: number | null;
+    offerState: string;
+    offerCurrent: number | null;
+    factIds: number[];
+    claims: ClaimCheck[];
 }
 
 // From brands/facts.go
@@ -592,6 +593,23 @@ export type Day = string;
 // From core/core.go
 export const DefaultWorkspace = 1;
 
+// From pages/pages.go
+export interface Deployment {
+    id: number;
+    pageId: number;
+    versionId: number;
+    version: number;
+    adapter: string;
+    state: string;
+    url: string;
+    outputSha256: string;
+    rolledBackFromId: number | null;
+    rolledBackFromVersion: number | null;
+    error: string;
+    deployedBy: number | null;
+    deployedAt: string;
+}
+
 // From plans/diff.go
 export interface DiffChange {
     path: string;
@@ -650,6 +668,13 @@ export interface EvidenceRef {
 
 // From plans/plans.go
 export interface ExactTemplateState {
+    available: boolean;
+    reason: string;
+    unblocks: string;
+}
+
+// From pages/pages.go
+export interface ExternalPublishingState {
     available: boolean;
     reason: string;
     unblocks: string;
@@ -757,6 +782,23 @@ export interface FindingsResponse {
 export interface FontSpec {
     family: string;
     file: Ref | null;
+}
+
+// From pages/pages.go
+export interface FormConfig {
+    fields: FormField[];
+    consentText: string;
+    submitLabel: string;
+    successMessage: string;
+}
+
+// From pages/pages.go
+export interface FormField {
+    name: string;
+    label: string;
+    kind: string;
+    required: boolean;
+    options: string[];
 }
 
 // From assets/assets.go
@@ -984,7 +1026,7 @@ export interface LaunchReadiness {
     blockers: ReadinessIssue[];
     warnings: ReadinessIssue[];
     claims: ClaimCheck[];
-    bindings: ClaimBindings;
+    bindings: ClaimReport;
 }
 
 // From assets/assets.go
@@ -1176,6 +1218,21 @@ export interface OfferVersion {
     approvedAt: string | null;
 }
 
+// From pages/pages.go
+export interface Page {
+    id: number;
+    brandId: number;
+    projectId: number | null;
+    planId: number | null;
+    planVersion: number | null;
+    slug: string;
+    name: string;
+    language: string;
+    createdBy: number | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
 // From research/schedules.go
 export interface PageComparison {
     itemId: number;
@@ -1190,6 +1247,58 @@ export interface PageComparison {
     previousObservedAt: string | null;
 }
 
+// From pages/pages.go
+export interface PageDetail {
+    page: Page;
+    versions: PageVersion[];
+    deployments: Deployment[];
+    current: Deployment | null;
+    publicUrl: string;
+    testToken: string;
+}
+
+// From pages/pages.go
+export interface PageDocument {
+    title: string;
+    headline: string;
+    subheadline: string;
+    sections: Section[];
+    offerId: number | null;
+    offerVersion: number | null;
+    form: FormConfig | null;
+    footer: string;
+}
+
+// From pages/pages.go
+export interface PageInput {
+    brandId: number;
+    projectId: number;
+    planId: number;
+    planVersion: number;
+    slug: string;
+    name: string;
+    language: string;
+    document: PageDocument;
+}
+
+// From pages/pages.go
+export interface PageReadiness {
+    pageId: number;
+    publishedVersion: number | null;
+    latestVersion: number;
+    ready: boolean;
+    blockers: PageReadinessIssue[];
+    warnings: PageReadinessIssue[];
+    claims: ClaimCheck[];
+    lastTest: Submission | null;
+}
+
+// From pages/pages.go
+export interface PageReadinessIssue {
+    code: string;
+    message: string;
+}
+
 // From plans/plans.go
 export interface PageRequirement {
     kind: string;
@@ -1197,6 +1306,29 @@ export interface PageRequirement {
     url: string;
     formPath: string;
     note: string;
+}
+
+// From pages/pages.go
+export interface PageVersion {
+    id: number;
+    pageId: number;
+    version: number;
+    document: PageDocument;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From pages/pages.go
+export interface PageVersionInput {
+    document: PageDocument;
+    note: string;
+}
+
+// From api/pages.go
+export interface PagesResponse {
+    pages: Page[];
+    publishing: PublishingGate;
 }
 
 // From plans/plans.go
@@ -1408,6 +1540,17 @@ export const ProviderGoogleAds = "google_ads";
 
 // From connections/ads.go
 export const ProviderMeta = "meta";
+
+// From api/pages.go
+export interface PublishPageInput {
+    version: number;
+}
+
+// From pages/pages.go
+export interface PublishingGate {
+    local: string;
+    external: ExternalPublishingState;
+}
 
 // From api/reports.go
 export interface PutAlertConfigInput {
@@ -1745,7 +1888,7 @@ export interface ReviewInput {
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
 // From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+export type Role = "assistant" | "user" | "admin" | "marketer" | "viewer";
 
 // From runs/runs.go
 export interface Run {
@@ -1823,6 +1966,15 @@ export interface SchedulesResponse {
 // From research/research.go
 export type Scope = "account" | "public";
 
+// From pages/pages.go
+export interface Section {
+    kind: string;
+    text: string;
+    items: string[];
+    imageKey: string;
+    alt: string;
+}
+
 // From voice/voice.go
 export interface Segment {
     speaker: string;
@@ -1883,6 +2035,26 @@ export type State = "failed" | "interrupted" | "partial" | "queued" | "running" 
 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
+
+// From pages/pages.go
+export interface Submission {
+    id: number;
+    pageId: number;
+    versionId: number;
+    projectId: number | null;
+    state: string;
+    reason: string;
+    test: boolean;
+    fields: Record<string, string> | null;
+    attribution: Record<string, string> | null;
+    evidenceId: number | null;
+    receivedAt: string;
+}
+
+// From api/pages.go
+export interface SubmissionsResponse {
+    submissions: Submission[];
+}
 
 // From plans/plans.go
 export interface TemplateGate {
@@ -1947,8 +2119,8 @@ export interface TurnsResponse {
 
 // From assistant/model.go
 export interface Usage {
-    InputTokens: number;
-    OutputTokens: number;
+    inputTokens: number;
+    outputTokens: number;
 }
 
 // From users/users.go
@@ -1989,7 +2161,7 @@ export interface Version {
     checks: LayoutCheck[];
     reviews: Review[];
     acceptance: ContentAcceptance | null;
-    bindings: ClaimBindings;
+    bindings: ClaimReport;
     renderError: string;
     renderRunId: number | null;
     createdAt: string;

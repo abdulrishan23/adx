@@ -1068,13 +1068,44 @@
         "B2.4",
         "B3.1"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00020_pages_and_forms.sql",
+        "server/store/queries/pages.sql",
+        "server/core/pages/",
+        "server/core/brands/claims.go",
+        "server/core/creative/production.go",
+        "server/api/pages.go",
+        "server/api/router.go",
+        "server/cmd/adx/main.go",
+        "web/src/api/pages.ts",
+        "web/src/routes/pages.tsx"
+      ],
+      "commands": [
+        "cd server && go test ./core/pages/ ./api/",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "a form without a required contact field, untested or with a failed test cannot pass readiness",
+        "a submission naming another project is rejected and recorded against the page's project",
+        "a rollback names the deployment and version it rolled back from and reproduces the old checksum",
+        "editor content is escaped and pages carry a no-script CSP; the editor preview is sandboxed"
+      ],
+      "remaining": [
+        "external host adapter (Wix/WordPress) blocked on hosts and access",
+        "public asset route for image sections (B3.3)",
+        "browser inspection"
+      ],
+      "blockers": [
+        {
+          "kind": "external",
+          "what": "which host each page family lives on and deploy access",
+          "unblocks": "an external publishing adapter"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-37. Claim checking moved to brands.CheckCopy and shared with creatives."
     },
     {
       "id": "B3.3",

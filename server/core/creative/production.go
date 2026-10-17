@@ -6,9 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
-	"strings"
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/assets"
@@ -172,38 +170,11 @@ func (s *Service) renderVersion(ctx context.Context, actor core.Actor, crow stor
 
 // Claims in copy.
 
-// ClaimCheck is one figure found in the copy and how it stands against the
-// brand's approved facts and the creative's offer.
-type ClaimCheck struct {
-	Text   string `json:"text"`
-	Kind   string `json:"kind"`   // percent, price
-	Status string `json:"status"` // approved, unapproved, no_brand
-	FactID *int64 `json:"factId"`
-	Detail string `json:"detail"`
-}
-
-// ClaimBindings is what a render was checked against.
-type ClaimBindings struct {
-	BrandID      int64        `json:"brandId"`
-	OfferID      *int64       `json:"offerId"`
-	OfferVersion *int64       `json:"offerVersion"`
-	OfferState   string       `json:"offerState"`
-	FactIDs      []int64      `json:"factIds"`
-	Claims       []ClaimCheck `json:"claims"`
-}
-
-var (
-	rePercent = regexp.MustCompile(`(\d{1,3}(?:\.\d+)?)\s*[%٪]`)
-	rePrice   = regexp.MustCompile(`(?i)(?:AED|د\.إ|درهم)\s*([\d,]+(?:\.\d+)?)\s*(M|million|K|k|مليون)?|([\d,]+(?:\.\d+)?)\s*(M|million|مليون)\b`)
-	arDigits  = strings.NewReplacer("٠", "0", "١", "1", "٢", "2", "٣", "3", "٤", "4", "٥", "5", "٦", "6", "٧", "7", "٨", "8", "٩", "9", "٫", ".", "٬", ",")
-)
-
-// bindClaims finds the figures in the copy and checks each against the
-// brand's approved claims and the offer the creative was built on. It is
-// deterministic text matching: a figure it can't read is not a claim it
-// can judge, and that is said in the readiness check.
-func (s *Service) bindClaims(ctx context.Context, actor core.Actor, crow store.Creative, doc assets.Document) ClaimBindings {
-	b := ClaimBindings{FactIDs: []int64{}, Claims: []ClaimCheck{}}
+// bindClaims reads the figures in the layout's text layers and checks them
+// against the brand's approved claims and the offer the creative was built
+// on (brands.CheckCopy). A project under no brand yields an empty report.
+func (s *Service) bindClaims(ctx context.Context, actor core.Actor, crow store.Creative, doc assets.Document) brands.ClaimReport {
+	b := brands.ClaimReport{FactIDs: []int64{}, Claims: []brands.ClaimCheck{}}
 	if s.brands == nil || !crow.ProjectID.Valid {
 		return b
 	}
@@ -211,103 +182,18 @@ func (s *Service) bindClaims(ctx context.Context, actor core.Actor, crow store.C
 	if err != nil || brandID == 0 {
 		return b
 	}
-	b.BrandID = brandID
-	claims, err := s.brands.Claims(ctx, actor, brandID, crow.ProjectID.Int64, s.clock.Now())
-	if err != nil {
-		return b
-	}
-	approvedPct := map[string]int64{}
-	approvedPrice := map[int64]int64{}
-	for _, c := range claims.Claims {
-		b.FactIDs = append(b.FactIDs, c.ID)
-		switch c.Kind {
-		case brands.KindPercent:
-			approvedPct[normNumber(c.Value)] = c.ID
-		case brands.KindMoney:
-			if n, err := strconv.ParseInt(c.Value, 10, 64); err == nil {
-				approvedPrice[n] = c.ID
-			}
-		}
-	}
-	var offerPct *float64
-	if crow.OfferID.Valid {
-		oid := crow.OfferID.Int64
-		b.OfferID = &oid
-		if crow.OfferVersion.Valid {
-			ov := crow.OfferVersion.Int64
-			b.OfferVersion = &ov
-		}
-		if _, versions, err := s.brands.OfferVersions(ctx, actor, oid); err == nil {
-			for _, v := range versions {
-				if crow.OfferVersion.Valid && v.Version == crow.OfferVersion.Int64 {
-					b.OfferState = string(v.State)
-					if v.State == brands.OfferApproved {
-						offerPct = v.Document.DiscountPct
-						if v.Document.PriceFrom != nil {
-							approvedPrice[v.Document.PriceFrom.Minor] = 0
-						}
-					}
-				}
-			}
-		}
-	}
 	text := ""
 	for _, l := range doc.Layers {
 		if l.Kind == "text" {
-			text += " " + arDigits.Replace(l.Text)
+			text += " " + l.Text
 		}
 	}
-	for _, m := range rePercent.FindAllStringSubmatch(text, -1) {
-		cc := ClaimCheck{Text: strings.TrimSpace(m[0]), Kind: "percent", Status: "unapproved", Detail: "no approved fact or approved offer states this percentage"}
-		if id, ok := approvedPct[normNumber(m[1])]; ok {
-			cc.Status, cc.FactID, cc.Detail = "approved", &id, "matches an approved fact"
-		} else if offerPct != nil && normNumber(m[1]) == normNumber(strconv.FormatFloat(*offerPct, 'f', -1, 64)) {
-			cc.Status, cc.Detail = "approved", "matches the approved offer"
-		}
-		b.Claims = append(b.Claims, cc)
-	}
-	for _, m := range rePrice.FindAllStringSubmatch(text, -1) {
-		num, unit := m[1], m[2]
-		if num == "" {
-			num, unit = m[3], m[4]
-		}
-		minor, ok := priceMinor(num, unit)
-		cc := ClaimCheck{Text: strings.TrimSpace(m[0]), Kind: "price", Status: "unapproved", Detail: "no approved price fact or approved offer states this amount"}
-		if ok {
-			if id, found := approvedPrice[minor]; found {
-				cc.Status, cc.Detail = "approved", "matches an approved price"
-				if id != 0 {
-					cc.FactID = &id
-				}
-			}
-		} else {
-			cc.Detail = "the amount could not be read"
-		}
-		b.Claims = append(b.Claims, cc)
-	}
-	return b
-}
-
-func normNumber(s string) string {
-	f, err := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(s), ",", ""), 64)
+	report, err := s.brands.CheckCopy(ctx, actor, brandID, crow.ProjectID.Int64, crow.OfferID.Int64, crow.OfferVersion.Int64, text)
 	if err != nil {
-		return strings.TrimSpace(s)
+		b.BrandID = brandID
+		return b
 	}
-	return strconv.FormatFloat(f, 'f', -1, 64)
-}
-
-func priceMinor(num, unit string) (int64, bool) {
-	f, err := strconv.ParseFloat(strings.ReplaceAll(num, ",", ""), 64)
-	if err != nil {
-		return 0, false
-	}
-	switch strings.ToLower(unit) {
-	case "m", "million", "مليون":
-		f *= 1_000_000
-	case "k":
-		f *= 1_000
-	}
-	return int64(f*100 + 0.5), true
+	return report
 }
 
 // Readiness.
@@ -322,13 +208,13 @@ type ReadinessIssue struct {
 // figure in the copy an approved claim. Ready says nothing about delivery;
 // phase 3's measurement and proposals add their own gates.
 type LaunchReadiness struct {
-	CreativeID int64            `json:"creativeId"`
-	Version    int64            `json:"version"`
-	Ready      bool             `json:"ready"`
-	Blockers   []ReadinessIssue `json:"blockers"`
-	Warnings   []ReadinessIssue `json:"warnings"`
-	Claims     []ClaimCheck     `json:"claims"`
-	Bindings   ClaimBindings    `json:"bindings"`
+	CreativeID int64               `json:"creativeId"`
+	Version    int64               `json:"version"`
+	Ready      bool                `json:"ready"`
+	Blockers   []ReadinessIssue    `json:"blockers"`
+	Warnings   []ReadinessIssue    `json:"warnings"`
+	Claims     []brands.ClaimCheck `json:"claims"`
+	Bindings   brands.ClaimReport  `json:"bindings"`
 }
 
 func (s *Service) Readiness(ctx context.Context, actor core.Actor, creativeID int64) (LaunchReadiness, error) {
@@ -339,7 +225,7 @@ func (s *Service) Readiness(ctx context.Context, actor core.Actor, creativeID in
 	if err != nil {
 		return LaunchReadiness{}, err
 	}
-	r := LaunchReadiness{CreativeID: creativeID, Version: latest.Version, Blockers: []ReadinessIssue{}, Warnings: []ReadinessIssue{}, Claims: []ClaimCheck{}}
+	r := LaunchReadiness{CreativeID: creativeID, Version: latest.Version, Blockers: []ReadinessIssue{}, Warnings: []ReadinessIssue{}, Claims: []brands.ClaimCheck{}}
 	block := func(code, msg string) { r.Blockers = append(r.Blockers, ReadinessIssue{code, msg}) }
 	warn := func(code, msg string) { r.Warnings = append(r.Warnings, ReadinessIssue{code, msg}) }
 	v := s.versionFromRow(ctx, latest)

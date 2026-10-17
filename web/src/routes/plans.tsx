@@ -252,12 +252,16 @@ function PlanView({
 }) {
   const plan = usePlan(id);
   const [version, setVersion] = useState<number | null>(null);
+  const [diffFrom, setDiffFrom] = useState<number | null>(null);
   if (plan.isPending) return <p className="text-muted-foreground">Loading…</p>;
   if (plan.error) return <p className="text-destructive">{plan.error.message}</p>;
   const d = plan.data;
   const latest = d.versions[d.versions.length - 1];
   const shown = d.versions.find((v) => v.version === version) ?? latest;
   if (!shown) return null;
+  const supersededAccepted = d.versions.some(
+    (v) => v.state === "accepted" && v.version < (latest?.version ?? 0),
+  );
   return (
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -276,6 +280,37 @@ function PlanView({
           ))}
         </div>
       </div>
+      {supersededAccepted && (
+        <p className="rounded-lg border border-destructive/40 p-2 text-destructive">
+          An accepted version is older than the latest. Its acceptance stands for its own content;
+          anything built from it has to be re-checked against the newer version.
+        </p>
+      )}
+      {canEdit && (
+        <GeneratePanel planId={id} brandId={d.plan.brandId} onGenerated={(v) => setVersion(v)} />
+      )}
+      {d.versions.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-muted-foreground">Compare v{shown.version} with</span>
+          <select
+            className="rounded-md border bg-background px-2 py-1"
+            value={diffFrom ?? ""}
+            onChange={(e) => setDiffFrom(e.target.value === "" ? null : Number(e.target.value))}
+          >
+            <option value="">none</option>
+            {d.versions
+              .filter((v) => v.version !== shown.version)
+              .map((v) => (
+                <option key={v.id} value={v.version}>
+                  v{v.version}
+                </option>
+              ))}
+          </select>
+        </div>
+      )}
+      {diffFrom !== null && diffFrom !== shown.version && (
+        <DiffView planId={id} from={diffFrom} to={shown.version} />
+      )}
       <VersionEditor
         key={shown.id}
         planId={id}
@@ -286,6 +321,129 @@ function PlanView({
         isAdmin={isAdmin}
       />
     </div>
+  );
+}
+
+// The model proposes the next version from research the team names; code
+// pins the budget, drops uncited evidence and uncited costs, and validates.
+// The notes say what was corrected. Nothing generated is accepted.
+function GeneratePanel({
+  planId,
+  brandId,
+  onGenerated,
+}: {
+  planId: number;
+  brandId: number;
+  onGenerated: (version: number) => void;
+}) {
+  const briefs = useBriefs();
+  const generate = useGeneratePlan(planId);
+  const [selected, setSelected] = useState<number[]>([]);
+  const [instructions, setInstructions] = useState("");
+  const mine = briefs.data?.briefs.filter((b) => b.brandId === brandId) ?? [];
+  return (
+    <details className="rounded-lg border p-3">
+      <summary className="cursor-pointer font-medium">Draft the next version from research</summary>
+      <div className="mt-2 space-y-2">
+        <p className="text-muted-foreground">
+          The model distributes the plan's budget across channels ADX can deploy and cites only the
+          research, claims and offers listed. Figures it can't source are recorded as unavailable.
+          The result is a new version with its validation; a person still accepts it.
+        </p>
+        {mine.length === 0 && (
+          <p className="text-muted-foreground">
+            No research briefs for this brand yet; the model will see approved claims and offers
+            only.
+          </p>
+        )}
+        {mine.map((b) => (
+          <label key={b.id} className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={selected.includes(b.id)}
+              onChange={(e) =>
+                setSelected(
+                  e.target.checked ? [...selected, b.id] : selected.filter((x) => x !== b.id),
+                )
+              }
+            />
+            {b.title}{" "}
+            <span className="text-muted-foreground">
+              · {b.geography} · {b.language}
+            </span>
+          </label>
+        ))}
+        <Input
+          placeholder="Instructions for the model (optional)"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+        />
+        <Button
+          size="sm"
+          disabled={generate.isPending}
+          onClick={() =>
+            generate.mutate(
+              { briefIds: selected, instructions },
+              { onSuccess: (g) => onGenerated(g.version.version) },
+            )
+          }
+        >
+          {generate.isPending ? "Asking the model…" : "Propose next version"}
+        </Button>
+        {generate.error && <p className="text-destructive">{generate.error.message}</p>}
+        {generate.data && (
+          <div className="rounded-md border p-2">
+            <p>
+              Saved as version {generate.data.version.version} ({generate.data.version.state}) ·{" "}
+              {generate.data.model} ·{" "}
+              {generate.data.usage.inputTokens + generate.data.usage.outputTokens} tokens
+            </p>
+            {generate.data.notes.length > 0 && (
+              <ul className="mt-1 text-muted-foreground">
+                {generate.data.notes.map((n) => (
+                  <li key={`${n.code}:${n.message}`}>Corrected: {n.message}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </details>
+  );
+}
+
+function DiffView({ planId, from, to }: { planId: number; from: number; to: number }) {
+  const diff = usePlanDiff(planId, from, to);
+  if (diff.isPending) return <p className="text-muted-foreground">Comparing…</p>;
+  if (diff.error) return <p className="text-destructive">{diff.error.message}</p>;
+  const d = diff.data;
+  const empty = d.fields.length + d.allocations.length + d.sections.length === 0;
+  return (
+    <section className="space-y-1 rounded-lg border p-3">
+      <h3 className="font-medium">
+        Changes from v{d.from} to v{d.to}
+      </h3>
+      {empty && <p className="text-muted-foreground">No differences.</p>}
+      {d.invalidates && <p className="text-destructive">{d.invalidates.reason}</p>}
+      {d.fields.map((f) => (
+        <p key={f.path}>
+          <span className="font-medium">{f.path}</span>: {f.before || "—"} → {f.after || "—"}
+        </p>
+      ))}
+      {d.allocations.map((a) => (
+        <p key={`${a.channel}|${a.objective}`}>
+          <span className="font-medium">{a.channel}</span> ({a.objective}): {a.change}
+          {a.beforeMinor !== null && ` ${major(a.beforeMinor)}`}
+          {a.beforeMinor !== null && a.afterMinor !== null && " →"}
+          {a.afterMinor !== null && ` ${major(a.afterMinor)}`}
+        </p>
+      ))}
+      {d.sections.map((s) => (
+        <p key={s.path} className="text-muted-foreground">
+          {s.path}: {s.before} → {s.after} rows
+        </p>
+      ))}
+    </section>
   );
 }
 

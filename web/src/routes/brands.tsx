@@ -782,6 +782,20 @@ function OfferDetail({
           </p>
         </div>
       )}
+      {history.data && history.data.affectedPlans.length > 0 && (
+        <div className="rounded-md border border-destructive/40 p-2">
+          <p className="font-medium">
+            Plans citing this offer ({history.data.affectedPlans.length})
+          </p>
+          <ul>
+            {history.data.affectedPlans.map((p) => (
+              <li key={`${p.planId}-${p.version}`}>
+                {p.planTitle} · v{p.version} · {p.state}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {history.data && (
         <details>
           <summary className="cursor-pointer text-muted-foreground">

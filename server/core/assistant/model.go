@@ -61,8 +61,8 @@ type Request struct {
 }
 
 type Usage struct {
-	InputTokens  int64
-	OutputTokens int64
+	InputTokens  int64 `json:"inputTokens"`
+	OutputTokens int64 `json:"outputTokens"`
 }
 
 // Response is what the model returned: blocks, why it stopped, and usage.

@@ -83,7 +83,7 @@ type Version struct {
 	// version's exact output. It grants no delivery.
 	Acceptance *assets.ContentAcceptance `json:"acceptance"`
 	// Bindings is what the copy was checked against when rendered.
-	Bindings ClaimBindings `json:"bindings"`
+	Bindings brands.ClaimReport `json:"bindings"`
 	// RenderError is the last render failure's safe message, if any.
 	RenderError string    `json:"renderError"`
 	RenderRunID *int64    `json:"renderRunId"`
@@ -629,14 +629,14 @@ func (s *Service) latest(ctx context.Context, actor core.Actor, creativeID int64
 }
 
 func (s *Service) versionFromRow(ctx context.Context, r store.CreativeVersion) Version {
-	v := Version{ID: r.ID, CreativeID: r.CreativeID, Version: r.Version, ReviewState: assets.ReviewState(r.ReviewState), CreatedAt: r.CreatedAt.UTC(), Reviews: []Review{}, RenderError: r.RenderError, RenderRunID: idPtrOf(r.RenderRunID), Bindings: ClaimBindings{FactIDs: []int64{}, Claims: []ClaimCheck{}}}
+	v := Version{ID: r.ID, CreativeID: r.CreativeID, Version: r.Version, ReviewState: assets.ReviewState(r.ReviewState), CreatedAt: r.CreatedAt.UTC(), Reviews: []Review{}, RenderError: r.RenderError, RenderRunID: idPtrOf(r.RenderRunID), Bindings: brands.ClaimReport{FactIDs: []int64{}, Claims: []brands.ClaimCheck{}}}
 	_ = json.Unmarshal([]byte(r.Document), &v.Document)
 	_ = json.Unmarshal([]byte(r.Bindings), &v.Bindings)
 	if v.Bindings.FactIDs == nil {
 		v.Bindings.FactIDs = []int64{}
 	}
 	if v.Bindings.Claims == nil {
-		v.Bindings.Claims = []ClaimCheck{}
+		v.Bindings.Claims = []brands.ClaimCheck{}
 	}
 	v.Checks = assets.CheckDocument(v.Document, false)
 	if r.Renderer.Valid {

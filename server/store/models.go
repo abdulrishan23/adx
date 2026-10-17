@@ -330,6 +330,23 @@ type FactConflict struct {
 	Resolution  string
 }
 
+type FormSubmission struct {
+	ID          int64
+	WorkspaceID int64
+	PageID      int64
+	VersionID   int64
+	ProjectID   sql.NullInt64
+	State       string
+	Reason      string
+	Test        int64
+	Fields      string
+	Attribution string
+	IpHash      string
+	UserAgent   string
+	EvidenceID  sql.NullInt64
+	ReceivedAt  time.Time
+}
+
 type FunnelMapping struct {
 	ID          int64
 	WorkspaceID int64
@@ -429,6 +446,46 @@ type OfferVersion struct {
 	CreatedAt     time.Time
 	ApprovedBy    sql.NullInt64
 	ApprovedAt    sql.NullTime
+}
+
+type Page struct {
+	ID          int64
+	WorkspaceID int64
+	BrandID     int64
+	ProjectID   sql.NullInt64
+	PlanID      sql.NullInt64
+	PlanVersion sql.NullInt64
+	Slug        string
+	Name        string
+	Language    string
+	TestToken   string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type PageDeployment struct {
+	ID               int64
+	PageID           int64
+	VersionID        int64
+	Adapter          string
+	State            string
+	Url              string
+	OutputSha256     string
+	RolledBackFromID sql.NullInt64
+	ErrorSafe        string
+	DeployedBy       sql.NullInt64
+	DeployedAt       time.Time
+}
+
+type PageVersion struct {
+	ID        int64
+	PageID    int64
+	Version   int64
+	Document  string
+	Note      string
+	CreatedBy sql.NullInt64
+	CreatedAt time.Time
 }
 
 type Plan struct {
