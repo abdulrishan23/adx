@@ -220,6 +220,24 @@ func (q *Queries) ListConversations(ctx context.Context, arg ListConversationsPa
 	return items, nil
 }
 
+const sumAssistantCostSince = `-- name: SumAssistantCostSince :one
+SELECT CAST(COALESCE(sum(cost_micros), 0) AS INTEGER) AS cost_micros
+FROM assistant_messages m JOIN assistant_conversations c ON c.id = m.conversation_id
+WHERE c.workspace_id = ? AND m.created_at >= ?
+`
+
+type SumAssistantCostSinceParams struct {
+	WorkspaceID int64
+	CreatedAt   time.Time
+}
+
+func (q *Queries) SumAssistantCostSince(ctx context.Context, arg SumAssistantCostSinceParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, sumAssistantCostSince, arg.WorkspaceID, arg.CreatedAt)
+	var cost_micros int64
+	err := row.Scan(&cost_micros)
+	return cost_micros, err
+}
+
 const sumAssistantTokensSince = `-- name: SumAssistantTokensSince :one
 SELECT COALESCE(sum(input_tokens), 0) AS input_tokens, COALESCE(sum(output_tokens), 0) AS output_tokens
 FROM assistant_messages m JOIN assistant_conversations c ON c.id = m.conversation_id

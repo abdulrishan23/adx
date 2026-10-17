@@ -31,9 +31,12 @@ type Readiness struct {
 }
 
 type Ops struct {
-	log    *slog.Logger
-	checks []Check
-	now    func() time.Time
+	log     *slog.Logger
+	db      *store.DB
+	checks  []Check
+	now     func() time.Time
+	budgets Budgets
+	running string
 }
 
 // New builds the readiness checks for db plus any extra checks the caller
@@ -55,7 +58,7 @@ func New(log *slog.Logger, db *store.DB, extra ...Check) *Ops {
 			return nil
 		}},
 	}
-	return &Ops{log: log, checks: append(checks, extra...), now: time.Now}
+	return &Ops{log: log, db: db, checks: append(checks, extra...), now: time.Now}
 }
 
 type constError string

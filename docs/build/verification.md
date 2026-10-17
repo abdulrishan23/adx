@@ -581,3 +581,22 @@ make check && make test
 - `api`: `GET /api/connections/capabilities`. Web: the connections page explains what connecting does and does not do and shows the matrix per connector (wired, supported but not wired, not supported, with the reason). Typecheck and biome clean. Not browser-tested.
 
 Live: none run. A WhatsApp or email send needs ADX_LIVE_WRITES, the adapter configuration, the channel mode on and the messaging policy, none of which are supplied.
+
+## B6.3 Reliability, cost and model release evaluation
+
+Local:
+
+```
+cd server && go test ./core/ops/ ./core/evaluation/ ./core/qualification/ ./cmd/...   # ok
+cd server && go build -o /tmp/adx ./cmd/adx && ADX_ENV=dev ADX_DB_PATH=/tmp/load/adx.db ADX_ASSETS_DIR=/tmp/load/assets /tmp/adx loadtest 10s 8
+make check && make test
+```
+
+- `core/ops`: two 500-token calls reach a 1,000-token cap, the third is refused with a non-retryable model error naming the cap and the model is never called for it; the cost view shows 800 in, 200 out, 2 calls, 1 refused, remaining 0, exhausted, no cost figure without a price, no load measurement; the next day a call goes through; an actor without a workspace is refused. The load harness counts every operation into the mix, counts failures, carries host, CPUs, Go version and percentiles; recording needs an admin and conditions; the latest measurement reads back; an empty plan is refused.
+- `core/evaluation`: four labelled calls with transcripts and one unlabelled; a viewer cannot evaluate, an unknown model is refused; the "good" candidate replays exactly four calls, agrees on all, and no call session changed; a marketer and a job cannot promote, an admin can; "worse" at 50% is refused below the 60% requirement; "bad" at 25% is rejected; "worse" re-evaluated at 75% is refused as a regression against the approved 100%; the report names the approved release and warns that the running model differs; a rejected candidate cannot be promoted; a 50-label requirement refuses promotion naming the count.
+- `core/qualification`: unchanged behaviour through the extracted reader (full package suite passes).
+- `cmd/adx`: pruning with retention off removes nothing; with 30 days it removes the 46-day-old backup and keeps the 16-day-old one, today's and a `notes` directory. A backup taken with a leased run in flight restores a person whose enquiry, opportunity (same enquiry id), evidence scope and asset bytes all still link; an hour later run recovery interrupts that run rather than losing or completing it. The scratch load workload runs 300 ms with 2 workers with no errors and a five-operation mix.
+- Measured load, this machine only: Apple M3 Pro, 11 CPUs, go1.27.2, 8 workers, 10 s: 21,163 operations, 2,115 ops/s, p50 1.0 ms, p95 15.2 ms, max 70.7 ms, 0 errors; recorded in the scratch database and shown by `/ops`. Not a production figure.
+- `api`: `/api/ops/cost`, `/api/ops/load`, `/api/ops/releases` (list, evaluate, promote, reject). Web: `/ops` with readiness, usage against limits, releases with promote/reject for admins and evaluation for marketers, and the load measurement with its conditions or the note that none exists. Typecheck and biome clean. Not browser-tested.
+
+Live: none. A release evaluation against a real candidate needs ADX_MODEL_API_KEY and labelled calls, neither of which exists yet.

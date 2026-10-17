@@ -309,48 +309,13 @@ func (q *Qualification) read(ctx context.Context, actor core.Actor, sessionID in
 	if q.cfg.Model == nil {
 		return pending("no model is configured to read the transcript")
 	}
-	var tb strings.Builder
-	for _, s := range segs {
-		fmt.Fprintf(&tb, "%s: %s\n", s.Speaker, s.Text)
-	}
-	schema := map[string]any{"type": "object", "additionalProperties": false, "required": []string{"summary", "outcome", "answers", "objections", "requestedHuman", "callbackAt", "confidence"},
-		"properties": map[string]any{
-			"summary":        map[string]any{"type": "string"},
-			"outcome":        map[string]any{"type": "string", "enum": Outcomes},
-			"answers":        map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "object", "required": []string{"value", "uncertain", "quote"}, "properties": map[string]any{"value": map[string]any{"type": "string"}, "uncertain": map[string]any{"type": "boolean"}, "quote": map[string]any{"type": "string"}}}},
-			"objections":     map[string]any{"type": "array", "items": map[string]any{"type": "object", "required": []string{"kind", "text"}, "properties": map[string]any{"kind": map[string]any{"type": "string", "enum": []string{"price", "location", "timing", "payment", "trust", "unit", "other"}}, "text": map[string]any{"type": "string"}}}},
-			"requestedHuman": map[string]any{"type": "boolean"},
-			"callbackAt":     map[string]any{"type": "string"},
-			"confidence":     map[string]any{"type": "string", "enum": []string{"high", "low"}},
-		}}
-	system := "You read call transcripts for a property developer. Record only what was said. For every answer quote the words it came from. Mark an answer uncertain when the transcript could be misheard, especially numbers, prices and dates. Confidence is low when the outcome is not plainly stated by the customer. Never infer nationality or anything personal beyond the questions."
-	req := assistant.Request{System: system, Messages: []assistant.Message{{Role: assistant.RoleUser, Content: []assistant.Block{{Type: "text", Text: "Transcript:\n" + tb.String() + "\nQuestions: " + strings.Join(Questions, ", ")}}}},
-		Tools: []assistant.ToolSpec{{Name: readTool, Description: "Record the structured reading of the call.", InputSchema: schema}}, ToolChoice: readTool, MaxTokens: 1500}
-	resp, err := q.cfg.Model.Complete(ctx, req)
+	r, err := ReadTranscript(ctx, q.cfg.Model, segs)
 	if err != nil {
-		return pending("the model did not answer: " + safe(err))
-	}
-	var r Reading
-	found := false
-	for _, b := range resp.Content {
-		if b.Type == "tool_use" && b.ToolName == readTool {
-			if err := json.Unmarshal(b.Input, &r); err != nil {
-				return pending("the model's reading was not valid")
-			}
-			found = true
+		var re *ReadError
+		if errors.As(err, &re) {
+			return pending(re.Reason)
 		}
-	}
-	if !found {
-		return pending("the model returned no reading")
-	}
-	if !contains(Outcomes, r.Outcome) {
-		return pending(fmt.Sprintf("the model named an unknown outcome %q", r.Outcome))
-	}
-	if r.Confidence != "high" && r.Confidence != "low" {
-		r.Confidence = "low"
-	}
-	if r.Answers == nil {
-		r.Answers = map[string]ReadingAnswer{}
+		return pending("the model did not answer: " + safe(err))
 	}
 	review, reason := "auto", ""
 	if r.Confidence == "low" {
@@ -368,6 +333,64 @@ func (q *Qualification) read(ctx context.Context, actor core.Actor, sessionID in
 		}
 	}
 	return nil
+}
+
+// ReadError says why a transcript produced no usable reading: the model
+// answered, but not with a reading ADX can apply.
+type ReadError struct{ Reason string }
+
+func (e *ReadError) Error() string { return e.Reason }
+
+// ReadTranscript asks a model for the structured reading of a transcript
+// with a forced tool call and validates it. It is the one reading prompt,
+// shared by live calls and by release evaluation, so a candidate model is
+// measured on exactly what the running one does. A model failure is returned
+// as is; an unusable answer is a ReadError.
+func ReadTranscript(ctx context.Context, model assistant.Model, segs []voice.Segment) (Reading, error) {
+	var tb strings.Builder
+	for _, s := range segs {
+		fmt.Fprintf(&tb, "%s: %s\n", s.Speaker, s.Text)
+	}
+	schema := map[string]any{"type": "object", "additionalProperties": false, "required": []string{"summary", "outcome", "answers", "objections", "requestedHuman", "callbackAt", "confidence"},
+		"properties": map[string]any{
+			"summary":        map[string]any{"type": "string"},
+			"outcome":        map[string]any{"type": "string", "enum": Outcomes},
+			"answers":        map[string]any{"type": "object", "additionalProperties": map[string]any{"type": "object", "required": []string{"value", "uncertain", "quote"}, "properties": map[string]any{"value": map[string]any{"type": "string"}, "uncertain": map[string]any{"type": "boolean"}, "quote": map[string]any{"type": "string"}}}},
+			"objections":     map[string]any{"type": "array", "items": map[string]any{"type": "object", "required": []string{"kind", "text"}, "properties": map[string]any{"kind": map[string]any{"type": "string", "enum": []string{"price", "location", "timing", "payment", "trust", "unit", "other"}}, "text": map[string]any{"type": "string"}}}},
+			"requestedHuman": map[string]any{"type": "boolean"},
+			"callbackAt":     map[string]any{"type": "string"},
+			"confidence":     map[string]any{"type": "string", "enum": []string{"high", "low"}},
+		}}
+	system := "You read call transcripts for a property developer. Record only what was said. For every answer quote the words it came from. Mark an answer uncertain when the transcript could be misheard, especially numbers, prices and dates. Confidence is low when the outcome is not plainly stated by the customer. Never infer nationality or anything personal beyond the questions."
+	req := assistant.Request{System: system, Messages: []assistant.Message{{Role: assistant.RoleUser, Content: []assistant.Block{{Type: "text", Text: "Transcript:\n" + tb.String() + "\nQuestions: " + strings.Join(Questions, ", ")}}}},
+		Tools: []assistant.ToolSpec{{Name: readTool, Description: "Record the structured reading of the call.", InputSchema: schema}}, ToolChoice: readTool, MaxTokens: 1500}
+	resp, err := model.Complete(ctx, req)
+	if err != nil {
+		return Reading{}, err
+	}
+	var r Reading
+	found := false
+	for _, b := range resp.Content {
+		if b.Type == "tool_use" && b.ToolName == readTool {
+			if err := json.Unmarshal(b.Input, &r); err != nil {
+				return Reading{}, &ReadError{Reason: "the model's reading was not valid"}
+			}
+			found = true
+		}
+	}
+	if !found {
+		return Reading{}, &ReadError{Reason: "the model returned no reading"}
+	}
+	if !contains(Outcomes, r.Outcome) {
+		return Reading{}, &ReadError{Reason: fmt.Sprintf("the model named an unknown outcome %q", r.Outcome)}
+	}
+	if r.Confidence != "high" && r.Confidence != "low" {
+		r.Confidence = "low"
+	}
+	if r.Answers == nil {
+		r.Answers = map[string]ReadingAnswer{}
+	}
+	return r, nil
 }
 
 // apply writes the reading to the enquiry once per version: the scoring

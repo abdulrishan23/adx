@@ -61,3 +61,8 @@ INSERT INTO workflow_events (run_id, task_id, kind, detail, at) VALUES (?, ?, ?,
 
 -- name: ListWorkflowEvents :many
 SELECT * FROM workflow_events WHERE run_id = ? ORDER BY id;
+
+-- name: SumWorkflowSpendSince :one
+SELECT CAST(COALESCE(sum(spent_tokens), 0) AS INTEGER) AS spent_tokens,
+       CAST(COALESCE(sum(CASE WHEN state = 'blocked' AND reason = 'budget spent' THEN 1 ELSE 0 END), 0) AS INTEGER) AS blocked_on_budget
+FROM workflow_runs WHERE workspace_id = ? AND created_at >= ?;

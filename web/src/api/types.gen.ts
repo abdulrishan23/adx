@@ -279,6 +279,16 @@ export interface Assignment {
     endedAt: string | null;
 }
 
+// From ops/cost.go
+export interface AssistantUsage {
+    inputTokens: number;
+    outputTokens: number;
+    costMicros: number | null;
+    budget: number;
+    remaining: number | null;
+    exhausted: boolean;
+}
+
 // From plans/plans.go
 export interface Assumption {
     key: string;
@@ -434,6 +444,15 @@ export interface BriefInput {
 // From api/research.go
 export interface BriefsResponse {
     briefs: Brief[];
+}
+
+// From ops/cost.go
+export interface Budgets {
+    assistantDailyTokens: number;
+    modelDailyTokenCap: number;
+    workflowDefaultBudget: number;
+    inputPriceMicros: number;
+    outputPriceMicros: number;
 }
 
 // From reports/reports.go
@@ -864,6 +883,18 @@ export interface CorrectionInput {
     note: string;
 }
 
+// From ops/cost.go
+export interface CostReport {
+    workspace: AssistantUsage;
+    server: ServerUsage;
+    workflows: WorkflowUsage;
+    budgets: Budgets;
+    pricing: boolean;
+    running: string;
+    load: LoadMeasurement | null;
+    generatedAt: string;
+}
+
 // From alerts/alerts.go
 export interface CostSpikeConfig {
     thresholdPct: number | null;
@@ -1074,6 +1105,11 @@ export interface ErrorResponse {
 // From api/reports.go
 export interface EvaluateAlertsInput {
     day: Day;
+}
+
+// From api/ops.go
+export interface EvaluateReleaseInput {
+    model: string;
 }
 
 // From evaluation/evaluation.go
@@ -1948,6 +1984,30 @@ export interface Link {
     reversalReason: string;
 }
 
+// From ops/load.go
+export interface LoadMeasurement {
+    ranAt: string;
+    host: string;
+    cpus: number;
+    goVersion: string;
+    durationMs: number;
+    concurrency: number;
+    operations: number;
+    errors: number;
+    p50Ms: number;
+    p95Ms: number;
+    maxMs: number;
+    mix: Record<string, number> | null;
+    notes: string;
+    opsPerSecond: number;
+}
+
+// From api/ops.go
+export interface LoadResponse {
+    measurement: LoadMeasurement | null;
+    note: string;
+}
+
 // From registry/registry.go
 export interface LoopSpec {
     max: number;
@@ -2178,6 +2238,18 @@ export interface Milestones {
     readyToDeliveryHours: number | null;
     withinOneHour: boolean;
     note: string;
+}
+
+// From evaluation/release.go
+export interface ModelRelease {
+    model: string;
+    state: string;
+    labels: number;
+    agreements: number;
+    agreement: number | null;
+    note: string;
+    evaluatedAt: string;
+    decidedAt: string | null;
 }
 
 // From reporting/metrics.go
@@ -3180,6 +3252,15 @@ export interface RegistryEntry {
     retiredAt: string | null;
 }
 
+// From evaluation/release.go
+export interface ReleaseReport {
+    running: string;
+    approved: ModelRelease | null;
+    releases: ModelRelease[];
+    requirements: Requirements;
+    warning: string;
+}
+
 // From creative/production.go
 export interface RenderParams {
     creativeId: number;
@@ -3640,6 +3721,18 @@ export interface Segment {
 // From api/assistant.go
 export interface SendMessageInput {
     text: string;
+}
+
+// From ops/cost.go
+export interface ServerUsage {
+    day: string;
+    inputTokens: number;
+    outputTokens: number;
+    calls: number;
+    refused: number;
+    cap: number;
+    remaining: number | null;
+    exhausted: boolean;
 }
 
 // From identity/identity.go
@@ -4177,6 +4270,13 @@ export interface WorkflowTask {
     createdAt: string;
     startedAt: string | null;
     finishedAt: string | null;
+}
+
+// From ops/cost.go
+export interface WorkflowUsage {
+    spentTokens: number;
+    blockedOnBudget: number;
+    defaultBudget: number;
 }
 
 // From workspaces/workspaces.go

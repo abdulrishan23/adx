@@ -44,6 +44,7 @@ One Linux host (D-21: WokeWorks' Hostinger server), Caddy in front, the Go serve
 | Speech | `ADX_ELEVENLABS_API_KEY`, `ADX_ELEVENLABS_AGENT_ID`, `ADX_VOICE_AMBIENCE_GAIN` | optional; both ElevenLabs values or neither. The agent must be set to `ulaw_8000` in and out. Ambience gain 0 (default) mixes nothing |
 | Webhooks | `ADX_WEBHOOK_SECRET` | optional; the shared secret GoHighLevel must send in `X-ADX-Webhook-Secret` to `POST /webhooks/ghl`. Empty keeps the adapter off (503) |
 | Outreach channels | `ADX_WHATSAPP_ACCESS_TOKEN`, `ADX_WHATSAPP_PHONE_NUMBER_ID`, `ADX_OUTREACH_EMAIL_SUBJECT` | optional; wired only with `ADX_LIVE_WRITES=1`. WhatsApp Cloud serves the whatsapp channel, the SMTP relay serves email. `/api/connections/capabilities` shows what is wired |
+| Limits | `ADX_MODEL_DAILY_TOKEN_CAP`, `ADX_ASSISTANT_DAILY_TOKEN_BUDGET`, `ADX_WORKFLOW_DEFAULT_BUDGET`, `ADX_BACKUP_RETENTION_DAYS` | the server-wide daily model cap (default ten million tokens; reached, every model call is refused until the UTC day turns), the per-workspace assistant budget, the per-run workflow budget and backup pruning. `/ops` shows usage against each |
 | Storage | `ADX_DB_PATH`, `ADX_ASSETS_DIR`, `ADX_CONNECTION_KEY_FILE` | directories must exist in production |
 | Provider | `ADX_GHL_CREDENTIALS_FILE` (optional), `ADX_GOOGLE_OAUTH_CLIENT_ID`, `ADX_GOOGLE_OAUTH_CLIENT_SECRET`, `ADX_GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `ADX_META_APP_ID`, `ADX_META_APP_SECRET`, `ADX_ADS_REFRESH_TRAILING_DAYS` | a platform without its pair of settings can't be connected and says so |
 | Reports | `ADX_SMTP_HOST`, `ADX_SMTP_PORT`, `ADX_SMTP_USERNAME`, `ADX_SMTP_PASSWORD`, `ADX_SMTP_FROM` | optional; without a host reports are generated, not delivered |
@@ -51,3 +52,11 @@ One Linux host (D-21: WokeWorks' Hostinger server), Caddy in front, the Go serve
 | Deployment | `ADX_ADDR`, `ADX_ENV` | Caddy owns the public domain |
 
 Later phases add their own groups to this table and to `deploy/adx.env.example`.
+
+## Load measurement
+
+`adx loadtest DURATION CONCURRENCY` (for example `adx loadtest 10s 8`) runs a fixed mix of person creates, person lists, signal ingests, evidence records and 64 KB asset writes against a fresh scratch database for the duration, prints operations per second with p50, p95 and max latency, and records the result with the host, CPU count, Go version, worker count and mix in the configured database. `/ops` shows the latest measurement with those conditions, or says that none was recorded. Run it on the production host before quoting any throughput; a figure from another machine is not that host's figure.
+
+## Model releases
+
+`/ops` lists model releases. A marketer evaluates a candidate model by name: ADX replays every labelled qualification call's transcript through it with the live reading prompt and records agreement with the team's labels; no call is changed. An admin promotes a candidate only when it has at least the required labelled calls, agreement at or above the requirement, and agreement not below the approved release; a regression is refused with the figures. Promotion records the decision; changing what the server runs is still `ADX_MODEL_NAME`, and `/ops` warns when the running model is not the approved release.

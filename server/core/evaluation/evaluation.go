@@ -89,12 +89,19 @@ type EvaluationReport struct {
 type Config struct {
 	Clock        core.Clock
 	Requirements Requirements
+	// Models builds a candidate model by name for release evaluation. Nil
+	// means releases cannot be evaluated on this server.
+	Models ModelFactory
+	// Running is the model this server is configured with.
+	Running string
 }
 
 type Evaluation struct {
-	db    *store.DB
-	clock core.Clock
-	req   Requirements
+	db      *store.DB
+	clock   core.Clock
+	req     Requirements
+	models  ModelFactory
+	running string
 }
 
 func New(db *store.DB, cfg Config) *Evaluation {
@@ -107,7 +114,7 @@ func New(db *store.DB, cfg Config) *Evaluation {
 	if cfg.Requirements.MinAgreement == 0 {
 		cfg.Requirements.MinAgreement = 0.8
 	}
-	return &Evaluation{db: db, clock: cfg.Clock, req: cfg.Requirements}
+	return &Evaluation{db: db, clock: cfg.Clock, req: cfg.Requirements, models: cfg.Models, running: cfg.Running}
 }
 
 // Label records the team's agreed reading of a call. One label per call;

@@ -180,6 +180,10 @@ func NewRouter(d Deps) http.Handler {
 		r.Get("/api/settings/industry/versions/{version}", h.getIndustryVersion)
 		r.Get("/api/accounts", h.listAccounts)
 		r.Get("/api/connections/capabilities", h.capabilityMatrix)
+		if h.ops != nil {
+			r.Get("/api/ops/cost", h.opsCost)
+			r.Get("/api/ops/load", h.opsLoad)
+		}
 		if h.policies != nil {
 			r.Get("/api/policies", h.getPolicies)
 			r.Put("/api/policies", h.putPolicies)
@@ -412,6 +416,10 @@ func NewRouter(d Deps) http.Handler {
 		}
 		if h.evaluation != nil {
 			r.Get("/api/evaluation", h.evaluationReport)
+			r.Get("/api/ops/releases", h.listReleases)
+			r.Post("/api/ops/releases/evaluate", h.evaluateRelease)
+			r.Post("/api/ops/releases/{model}/promote", h.promoteRelease)
+			r.Post("/api/ops/releases/{model}/reject", h.rejectRelease)
 			r.Post("/api/evaluation/labels", h.labelCall)
 		}
 		if h.pipeline != nil {

@@ -1929,13 +1929,52 @@
         "B6.1",
         "B5.5"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/migrations/00036_operations.sql",
+        "server/store/queries/operations.sql",
+        "server/core/ops/meter.go",
+        "server/core/ops/cost.go",
+        "server/core/ops/load.go",
+        "server/core/evaluation/release.go",
+        "server/core/qualification/qualification.go",
+        "server/cmd/adx/backup.go",
+        "server/cmd/adx/loadtest.go",
+        "server/cmd/adx/main.go",
+        "server/api/ops.go",
+        "server/api/router.go",
+        "web/src/api/ops.ts",
+        "web/src/routes/ops.tsx",
+        "deploy/adx.env.example",
+        "docs/runbooks/deploy.md",
+        "docs/runbooks/backup-restore.md"
+      ],
+      "commands": [
+        "cd server && go test ./core/ops/ ./core/evaluation/ ./cmd/...",
+        "adx loadtest 10s 8",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        "the server-wide daily model cap refuses every model call once reached and the per-workspace and per-run budgets are reported against usage",
+        "a candidate model below the required labels, below the required agreement or below the approved release is never promoted; promotion is an admin's act",
+        "a restore reproduces person, enquiry, opportunity, evidence and asset links and run recovery interrupts the run a dead host held",
+        "throughput is shown only from a recorded measurement with host, CPUs, workers and mix; none recorded says so"
+      ],
+      "remaining": [
+        "load measurement on the production host",
+        "a release evaluation against a real candidate once a model key and labelled calls exist",
+        "browser inspection of /ops"
+      ],
+      "blockers": [
+        {
+          "kind": "policy",
+          "what": "backup retention period from Reportage",
+          "unblocks": "setting ADX_BACKUP_RETENTION_DAYS above 0"
+        }
+      ],
+      "commit": null,
+      "notes": "BD-55. Measured 2,115 ops/s on the build laptop; not a production figure."
     },
     {
       "id": "B6.4",

@@ -755,6 +755,23 @@ type LearningRecord struct {
 	CreatedAt         time.Time
 }
 
+type LoadMeasurement struct {
+	ID          int64
+	RanAt       time.Time
+	Host        string
+	Cpus        int64
+	GoVersion   string
+	DurationMs  int64
+	Concurrency int64
+	Operations  int64
+	Errors      int64
+	P50Ms       float64
+	P95Ms       float64
+	MaxMs       float64
+	Mix         string
+	Notes       string
+}
+
 type MatchCandidate struct {
 	ID          int64
 	WorkspaceID int64
@@ -831,6 +848,30 @@ type MessageDraft struct {
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	SentAt         sql.NullTime
+}
+
+type ModelRelease struct {
+	ID          int64
+	WorkspaceID int64
+	Model       string
+	State       string
+	Labels      int64
+	Agreements  int64
+	Agreement   sql.NullFloat64
+	Note        string
+	EvaluatedBy sql.NullInt64
+	EvaluatedAt time.Time
+	DecidedBy   sql.NullInt64
+	DecidedAt   sql.NullTime
+}
+
+type ModelUsageDay struct {
+	Day          string
+	Model        string
+	InputTokens  int64
+	OutputTokens int64
+	Calls        int64
+	Refused      int64
 }
 
 type Objection struct {

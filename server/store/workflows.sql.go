@@ -719,3 +719,26 @@ func (q *Queries) SetWorkflowTaskState(ctx context.Context, arg SetWorkflowTaskS
 	}
 	return result.RowsAffected()
 }
+
+const sumWorkflowSpendSince = `-- name: SumWorkflowSpendSince :one
+SELECT CAST(COALESCE(sum(spent_tokens), 0) AS INTEGER) AS spent_tokens,
+       CAST(COALESCE(sum(CASE WHEN state = 'blocked' AND reason = 'budget spent' THEN 1 ELSE 0 END), 0) AS INTEGER) AS blocked_on_budget
+FROM workflow_runs WHERE workspace_id = ? AND created_at >= ?
+`
+
+type SumWorkflowSpendSinceParams struct {
+	WorkspaceID int64
+	CreatedAt   time.Time
+}
+
+type SumWorkflowSpendSinceRow struct {
+	SpentTokens     int64
+	BlockedOnBudget int64
+}
+
+func (q *Queries) SumWorkflowSpendSince(ctx context.Context, arg SumWorkflowSpendSinceParams) (SumWorkflowSpendSinceRow, error) {
+	row := q.db.QueryRowContext(ctx, sumWorkflowSpendSince, arg.WorkspaceID, arg.CreatedAt)
+	var i SumWorkflowSpendSinceRow
+	err := row.Scan(&i.SpentTokens, &i.BlockedOnBudget)
+	return i, err
+}

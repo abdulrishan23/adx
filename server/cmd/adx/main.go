@@ -118,6 +118,9 @@ type config struct {
 	// LiveWrites registers the ad-platform write adapters. Off, every
 	// execution intent is held in the outbox and nothing is sent.
 	LiveWrites bool `env:"ADX_LIVE_WRITES" envDefault:"false"`
+	// BackupRetentionDays prunes older backups after a new one succeeds.
+	// Zero keeps everything.
+	BackupRetentionDays int `env:"ADX_BACKUP_RETENTION_DAYS" envDefault:"0"`
 	// WebhookSecret is required in X-ADX-Webhook-Secret by the public
 	// webhook adapters. Empty keeps them off.
 	WebhookSecret string `env:"ADX_WEBHOOK_SECRET"`
@@ -162,13 +165,19 @@ type config struct {
 	AssistantDailyTokens   int64  `env:"ADX_ASSISTANT_DAILY_TOKEN_BUDGET" envDefault:"2000000"`
 	ModelInputPriceMicros  int64  `env:"ADX_MODEL_INPUT_PRICE_MICROS"`
 	ModelOutputPriceMicros int64  `env:"ADX_MODEL_OUTPUT_PRICE_MICROS"`
+	// ModelDailyTokenCap is the server-wide runaway guard across every
+	// model consumer. Zero disables it.
+	ModelDailyTokenCap int64 `env:"ADX_MODEL_DAILY_TOKEN_CAP" envDefault:"10000000"`
 }
 
 func main() {
 	var err error
-	if len(os.Args) > 1 && os.Args[1] == "backup" {
+	switch {
+	case len(os.Args) > 1 && os.Args[1] == "backup":
 		err = runBackup(os.Args[2:])
-	} else {
+	case len(os.Args) > 1 && os.Args[1] == "loadtest":
+		err = runLoadtest(os.Args[2:])
+	default:
 		err = run()
 	}
 	if err != nil {
@@ -311,6 +320,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	// Every model consumer goes through one meter, so one server-wide daily
+	// cap bounds a runaway anywhere.
+	if model != nil {
+		model = ops.NewMeter(db, model, cfg.ModelDailyTokenCap, nil)
+	}
 	assetStore, err := filestore.New(cfg.AssetsDir)
 	if err != nil {
 		return err
@@ -378,7 +392,7 @@ func run() error {
 		}
 		speech = sp
 	}
-	evaluationService := evaluation.New(db, evaluation.Config{})
+	evaluationService := evaluation.New(db, evaluation.Config{Running: runningModelName(cfg), Models: candidateModels(db, cfg)})
 	pipelineService := pipeline.New(db, evidenceStore, pipeline.Config{})
 	registryService := registry.New(db, registry.Config{Accounts: connectedAccounts{connections}})
 	// Workflows run registry definitions. Reads come from core; the only
@@ -550,6 +564,8 @@ func run() error {
 			return nil
 		}
 	}})
+	readiness.WithBudgets(ops.Budgets{AssistantDailyTokens: cfg.AssistantDailyTokens, ModelDailyTokenCap: cfg.ModelDailyTokenCap, WorkflowDefaultBudget: cfg.WorkflowDefaultBudget,
+		InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}, runningModelName(cfg))
 
 	srv := &http.Server{
 		Handler: api.NewRouter(api.Deps{
@@ -823,4 +839,30 @@ func wiring(cfg config, platforms map[string]connections.AdsPlatform, ghl bool, 
 		w.Providers = append(w.Providers, "gohighlevel")
 	}
 	return w
+}
+
+// runningModelName is the model this server generates with, or empty when
+// no key is configured.
+func runningModelName(cfg config) string {
+	if cfg.ModelAPIKey == "" {
+		return ""
+	}
+	return cfg.ModelName
+}
+
+// candidateModels builds a metered client for a named model, for release
+// evaluation. Without a key there is nothing to build with.
+func candidateModels(db *store.DB, cfg config) evaluation.ModelFactory {
+	if cfg.ModelAPIKey == "" {
+		return nil
+	}
+	return func(name string) (assistant.Model, error) {
+		c := cfg
+		c.ModelName = name
+		m, err := configuredModel(c)
+		if err != nil {
+			return nil, err
+		}
+		return ops.NewMeter(db, m, cfg.ModelDailyTokenCap, nil), nil
+	}
 }

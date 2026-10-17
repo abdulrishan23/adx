@@ -28,12 +28,50 @@ func runBackup(args []string) error {
 	if err != nil {
 		return err
 	}
-	dir, err := backup(context.Background(), cfg.DBPath, cfg.AssetsDir, args[0], time.Now().UTC())
+	now := time.Now().UTC()
+	dir, err := backup(context.Background(), cfg.DBPath, cfg.AssetsDir, args[0], now)
 	if err != nil {
 		return err
 	}
 	fmt.Println(dir)
+	pruned, err := prune(args[0], now, cfg.BackupRetentionDays)
+	if err != nil {
+		return fmt.Errorf("backup written, pruning failed: %w", err)
+	}
+	for _, p := range pruned {
+		fmt.Println("pruned", p)
+	}
 	return nil
+}
+
+// prune removes backup directories older than days, by the UTC stamp in
+// their name. Zero days keeps everything; a directory whose name is not a
+// stamp is never touched. Pruning runs only after a new backup succeeded, so
+// retention never leaves fewer backups than it found.
+func prune(dest string, now time.Time, days int) ([]string, error) {
+	if days <= 0 {
+		return nil, nil
+	}
+	entries, err := os.ReadDir(dest)
+	if err != nil {
+		return nil, err
+	}
+	cutoff := now.Add(-time.Duration(days) * 24 * time.Hour)
+	var pruned []string
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		stamp, err := time.Parse("20060102T150405Z", e.Name())
+		if err != nil || !stamp.Before(cutoff) {
+			continue
+		}
+		if err := os.RemoveAll(filepath.Join(dest, e.Name())); err != nil {
+			return pruned, err
+		}
+		pruned = append(pruned, e.Name())
+	}
+	return pruned, nil
 }
 
 func backup(ctx context.Context, dbPath, assetsDir, dest string, now time.Time) (string, error) {
