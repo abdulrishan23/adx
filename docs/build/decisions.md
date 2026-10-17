@@ -43,3 +43,15 @@ Supplied by Abdul (Reportage CEO, owner of this build) or by whoever he names. D
 | Retention periods | B0.5, B6.3 | unconfigured; nothing deleted automatically |
 | Reporting recipients | B1.4 | unconfigured; nothing delivered |
 | Exact Excel media-plan template and marketing skill file | B2.3 | missing; exact-template adapter blocked |
+
+### BD-05. Production never creates its storage directories
+2026-10-17. `checkStorage` in `cmd/adx` requires the directories of `ADX_DB_PATH` and `ADX_ASSETS_DIR` to exist outside dev. Dev creates them.
+
+- **Why.** A missing directory on a server means the volume isn't mounted. Creating it would start a fresh, empty ADX on a disk that disappears at the next reboot, and nobody would notice until the data was gone.
+- **Cost.** First install has one more manual step, listed in `docs/runbooks/deploy.md`.
+
+### BD-06. Readiness reports check names, never causes
+2026-10-17. `GET /api/ready` answers 200 or 503 with `{ready, checks[{name, ok}]}`. The cause of a failure goes to the server log. The route needs no session because the proxy and the deploy script call it.
+
+### BD-07. Backups hold sealed credentials, the key travels separately
+2026-10-17. `adx backup DIR` copies the database (SQLite `VACUUM INTO`) and the assets tree. The encryption key is never copied. The restore runbook rehearses in an isolated directory first. This is also the stance for every later secret: a copy of the data alone must be useless.

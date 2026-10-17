@@ -12,6 +12,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/projects"
 )
 
@@ -20,23 +21,32 @@ type Deps struct {
 	Dev         bool
 	Projects    *projects.Projects
 	Connections *connections.Connections
+	// Ops answers /api/ready. Nil leaves the route out, which tests do.
+	Ops *ops.Ops
 }
 
 type handlers struct {
 	log         *slog.Logger
 	projects    *projects.Projects
 	connections *connections.Connections
+	ops         *ops.Ops
 }
 
 func NewRouter(d Deps) http.Handler {
-	h := &handlers{log: d.Log, projects: d.Projects, connections: d.Connections}
+	h := &handlers{log: d.Log, projects: d.Projects, connections: d.Connections, ops: d.Ops}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
 
+	// Liveness: the process answers. Readiness: it can serve. The proxy and
+	// the deploy script use the second one and never route traffic to a
+	// server that isn't ready.
 	r.Get("/api/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	if h.ops != nil {
+		r.Get("/api/ready", h.ready)
+	}
 
 	r.Group(func(r chi.Router) {
 		r.Use(withActor(d.Dev))
@@ -70,4 +80,14 @@ func logRequests(log *slog.Logger) func(http.Handler) http.Handler {
 			)
 		})
 	}
+}
+
+func (h *handlers) ready(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	result := h.ops.Readiness(r.Context())
+	status := http.StatusOK
+	if !result.Ready {
+		status = http.StatusServiceUnavailable
+	}
+	writeJSON(w, status, result)
 }

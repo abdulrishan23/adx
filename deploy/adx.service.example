@@ -1,0 +1,25 @@
+# /etc/systemd/system/adx.service
+# The API and the River workers run in this one process.
+[Unit]
+Description=ADX server
+After=network-online.target
+Wants=network-online.target
+# The data volume must be mounted first; the server also checks for it.
+RequiresMountsFor=/var/lib/adx
+
+[Service]
+User=adx
+Group=adx
+EnvironmentFile=/etc/adx/adx.env
+ExecStart=/srv/adx/server/current/adx
+Restart=on-failure
+RestartSec=3
+# Give in-flight requests and jobs time to finish (the server waits 15s).
+TimeoutStopSec=25
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/adx
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

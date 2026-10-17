@@ -9,6 +9,12 @@ export interface AddInput {
     role: Role;
 }
 
+// From ops/ops.go
+export interface CheckResult {
+    name: string;
+    ok: boolean;
+}
+
 // From connections/gohighlevel.go
 export interface Connection {
     provider: string;
@@ -54,6 +60,13 @@ export interface ProjectsResponse {
 
 // From connections/gohighlevel.go
 export const Provider = "gohighlevel";
+
+// From ops/ops.go
+export interface Readiness {
+    ready: boolean;
+    checks: CheckResult[];
+    checkedAt: string;
+}
 
 // From core/core.go
 export type Role = "admin" | "marketer" | "viewer";

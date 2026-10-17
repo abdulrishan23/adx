@@ -7,6 +7,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
+import { ServerStatus } from "@/components/server-status";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectsPage } from "@/routes/projects";
 
@@ -38,10 +39,11 @@ function Layout() {
         <Outlet />
       </main>
       <footer className="border-t">
-        <div className="mx-auto max-w-5xl px-6 py-4 text-sm text-muted-foreground">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-sm text-muted-foreground">
           <Link to="/privacy" className="underline underline-offset-4">
             Privacy and data deletion
           </Link>
+          <ServerStatus />
         </div>
       </footer>
     </div>

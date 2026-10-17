@@ -1,6 +1,7 @@
 package store_test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -64,4 +65,34 @@ func TestMigrationsKeepExistingData(t *testing.T) {
 
 	// Migrating again is a no-op, so a restart never re-runs a migration.
 	require.NoError(t, db.Migrate(ctx))
+}
+
+// Catches: a backup that is missing rows written just before it, that
+// silently overwrites an existing file, or that can't be opened and
+// migrated on its own.
+func TestBackupToCopiesEveryCommittedRow(t *testing.T) {
+	ctx := t.Context()
+	dir := t.TempDir()
+	db, err := store.Open(filepath.Join(dir, "live.db"))
+	require.NoError(t, err)
+	t.Cleanup(func() { db.Close() })
+	require.NoError(t, db.Migrate(ctx))
+	_, err = db.Writer().CreateProject(ctx, store.CreateProjectParams{Name: "Verdana", CreatedAt: time.Now().UTC()})
+	require.NoError(t, err)
+
+	target := filepath.Join(dir, "backup", "adx.db")
+	require.NoError(t, os.MkdirAll(filepath.Dir(target), 0o755))
+	require.NoError(t, db.BackupTo(ctx, target))
+	require.Error(t, db.BackupTo(ctx, target), "a second backup must not overwrite the first")
+
+	copied, err := store.Open(target)
+	require.NoError(t, err)
+	t.Cleanup(func() { copied.Close() })
+	pending, err := copied.Pending(ctx)
+	require.NoError(t, err)
+	assert.False(t, pending)
+	projects, err := copied.Reader().ListProjects(ctx)
+	require.NoError(t, err)
+	require.Len(t, projects, 1)
+	assert.Equal(t, "Verdana", projects[0].Name)
 }

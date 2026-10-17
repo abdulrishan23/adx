@@ -9,7 +9,9 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"runtime"
+	"strings"
 
 	"github.com/pressly/goose/v3"
 	"modernc.org/sqlite"
@@ -103,6 +105,36 @@ func (db *DB) Tx(ctx context.Context, fn func(tx *sql.Tx, q *Queries) error) err
 		return errors.Join(err, tx.Rollback())
 	}
 	return tx.Commit()
+}
+
+// Pending reports whether any migration hasn't run yet. Readiness uses it so
+// a server started against an older database file says so instead of
+// failing on the first query.
+func (db *DB) Pending(ctx context.Context) (bool, error) {
+	p, err := db.migrator()
+	if err != nil {
+		return false, err
+	}
+	return p.HasPending(ctx)
+}
+
+// BackupTo writes a consistent copy of the whole database to path using
+// SQLite's VACUUM INTO, which works while the server keeps running. path must
+// not exist yet. The copy holds the sealed credentials but not the key, so a
+// restore needs the key file from its own backup.
+func (db *DB) BackupTo(ctx context.Context, path string) error {
+	if _, err := os.Stat(path); err == nil {
+		return fmt.Errorf("backup target %s already exists", path)
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	// VACUUM INTO takes a filename literal, so it can't be a bound parameter.
+	// The path is escaped as an SQL string.
+	_, err := db.Write.ExecContext(ctx, "VACUUM INTO '"+strings.ReplaceAll(path, "'", "''")+"'")
+	if err != nil {
+		return fmt.Errorf("backup to %s: %w", path, err)
+	}
+	return nil
 }
 
 // Optimize refreshes the statistics SQLite uses to plan queries. SQLite

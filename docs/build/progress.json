@@ -68,13 +68,61 @@
       "depends_on": [
         "B0.1"
       ],
-      "state": "pending",
-      "changed_paths": [],
-      "commands": [],
-      "acceptance": [],
-      "remaining": [],
-      "blockers": [],
-      "commit": null
+      "state": "implemented_local",
+      "changed_paths": [
+        "server/store/store.go (Pending, BackupTo)",
+        "server/core/ops/",
+        "server/api/router.go (/api/ready)",
+        "server/api/ops_test.go",
+        "server/cmd/adx/main.go (checkStorage, ADX_ASSETS_DIR, readiness wiring)",
+        "server/cmd/adx/backup.go",
+        "server/cmd/adx/backup_test.go",
+        "deploy/*.example",
+        "deploy/release.sh",
+        "docs/runbooks/deploy.md",
+        "docs/runbooks/backup-restore.md",
+        "web/src/api/ops.ts",
+        "web/src/components/server-status.tsx",
+        "web/src/router.tsx"
+      ],
+      "commands": [
+        "go test ./...",
+        "make check",
+        "make test"
+      ],
+      "acceptance": [
+        {
+          "check": "Missing persistent storage is a visible startup error",
+          "result": "pass",
+          "evidence": "cmd/adx TestProductionNeedsExistingStorage"
+        },
+        {
+          "check": "Restore reproduces sample records and encrypted credential usability with the separately supplied key",
+          "result": "pass (local)",
+          "evidence": "cmd/adx TestBackupRestoresRecordsAndCredentialsWithTheKey; store TestBackupToCopiesEveryCommittedRow"
+        },
+        {
+          "check": "Failure of a build does not replace the last working deployment",
+          "result": "documented, not executed",
+          "evidence": "deploy/release.sh builds into a release dir, swaps symlinks only after /api/ready passes, rolls back otherwise. Not run on the Hostinger host."
+        }
+      ],
+      "remaining": [
+        "Run deploy/release.sh on the real host once access and Reportage's written hosting approval (D-21, #35) exist"
+      ],
+      "blockers": [
+        {
+          "capability": "live deployment",
+          "unblocks": "server access and Reportage's written approval of the hosting location"
+        }
+      ],
+      "commit": null,
+      "tests_catch": [
+        "production starting empty on an unmounted disk",
+        "readiness 200 while a check fails or leaking a path",
+        "a backup missing committed rows or overwriting an earlier one",
+        "a restore whose credentials don't open with the key"
+      ]
     },
     {
       "id": "B0.3",

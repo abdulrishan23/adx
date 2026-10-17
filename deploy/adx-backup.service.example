@@ -1,0 +1,11 @@
+# /etc/systemd/system/adx-backup.service, run by adx-backup.timer daily.
+# Writes /var/backups/adx/<timestamp>/{adx.db,assets/}. Ship that directory
+# off the machine; the key in /etc/adx/connections.key is backed up on its own.
+[Unit]
+Description=ADX backup
+
+[Service]
+Type=oneshot
+User=adx
+EnvironmentFile=/etc/adx/adx.env
+ExecStart=/srv/adx/server/current/adx backup /var/backups/adx

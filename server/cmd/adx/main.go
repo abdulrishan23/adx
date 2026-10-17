@@ -1,5 +1,6 @@
 // Command adx runs the ADX server: the HTTP API and the background workers in
-// one process.
+// one process. `adx backup DIR` copies the database and assets instead of
+// serving; see docs/runbooks/backup-restore.md.
 package main
 
 import (
@@ -22,6 +23,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/api"
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/ops"
 	"github.com/WokeWorks/adx/server/core/projects"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/jobs"
@@ -35,9 +37,13 @@ import (
 type config struct {
 	// Env is "dev" only when set so explicitly. Anything else runs as
 	// production, because dev hands every request an admin without sign-in.
-	Env                string `env:"ADX_ENV" envDefault:"production"`
-	Addr               string `env:"ADX_ADDR" envDefault:"localhost:8080"`
+	Env  string `env:"ADX_ENV" envDefault:"production"`
+	Addr string `env:"ADX_ADDR" envDefault:"localhost:8080"`
+	// DBPath and AssetsDir are the persistent state. Outside dev their
+	// directories must already exist, so a missing mount stops the server
+	// instead of starting it empty on a disk that goes away.
 	DBPath             string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
+	AssetsDir          string `env:"ADX_ASSETS_DIR" envDefault:"data/assets"`
 	GHLCredentialsFile string `env:"ADX_GHL_CREDENTIALS_FILE"`
 	ConnectionKeyFile  string `env:"ADX_CONNECTION_KEY_FILE"`
 	// BootstrapAdmin becomes an admin at startup if ADX has no enabled admin.
@@ -50,7 +56,13 @@ type config struct {
 }
 
 func main() {
-	if err := run(); err != nil {
+	var err error
+	if len(os.Args) > 1 && os.Args[1] == "backup" {
+		err = runBackup(os.Args[2:])
+	} else {
+		err = run()
+	}
+	if err != nil {
 		slog.Error("adx stopped", "error", err)
 		os.Exit(1)
 	}
@@ -62,6 +74,9 @@ func run() error {
 		return err
 	}
 	dev := cfg.Env == "dev"
+	if err := checkStorage(cfg, dev); err != nil {
+		return err
+	}
 
 	var log *slog.Logger
 	if dev {
@@ -79,6 +94,7 @@ func run() error {
 		return err
 	}
 	defer db.Close()
+	log.Info("storage", "db", cfg.DBPath, "assets", cfg.AssetsDir, "env", cfg.Env)
 
 	accounts, err := authentikAccounts(cfg, dev)
 	if err != nil {
@@ -125,12 +141,22 @@ func run() error {
 		return err
 	}
 
+	readiness := ops.New(log, db, ops.Check{Name: "jobs", Run: func(context.Context) error {
+		select {
+		case <-worker.Stopped():
+			return errors.New("job worker stopped")
+		default:
+			return nil
+		}
+	}})
+
 	srv := &http.Server{
 		Handler: api.NewRouter(api.Deps{
 			Log:         log,
 			Dev:         dev,
 			Projects:    projects.New(db),
 			Connections: connections,
+			Ops:         readiness,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -154,10 +180,32 @@ func run() error {
 	return errors.Join(failed, srv.Shutdown(shutdownCtx), worker.Stop(shutdownCtx))
 }
 
-func openDB(ctx context.Context, cfg config) (*store.DB, error) {
-	if err := os.MkdirAll(filepath.Dir(cfg.DBPath), 0o755); err != nil {
-		return nil, err
+// checkStorage makes sure the persistent directories are there. Dev creates
+// them, because a developer's data/ directory is throwaway. Production refuses
+// to, because a missing directory means the volume isn't mounted and a fresh
+// database would quietly start from nothing.
+func checkStorage(cfg config, dev bool) error {
+	for name, dir := range map[string]string{
+		"ADX_DB_PATH": filepath.Dir(cfg.DBPath), "ADX_ASSETS_DIR": cfg.AssetsDir,
+	} {
+		info, err := os.Stat(dir)
+		switch {
+		case errors.Is(err, os.ErrNotExist) && dev:
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return err
+			}
+		case errors.Is(err, os.ErrNotExist):
+			return fmt.Errorf("%s: directory %s does not exist; mount the persistent storage before starting", name, dir)
+		case err != nil:
+			return fmt.Errorf("%s: %w", name, err)
+		case !info.IsDir():
+			return fmt.Errorf("%s: %s is not a directory", name, dir)
+		}
 	}
+	return nil
+}
+
+func openDB(ctx context.Context, cfg config) (*store.DB, error) {
 	db, err := store.Open(cfg.DBPath)
 	if err != nil {
 		return nil, err

@@ -1,0 +1,21 @@
+# Caddy in front of ADX: one domain, static web build plus the Go API.
+# The web build is a release directory behind a `current` symlink that
+# deploy/release.sh swaps only after a successful build and a passing
+# readiness check, so a broken build never replaces the last working one.
+
+adx.example.com {
+	encode zstd gzip
+
+	# API and health. /api/ready is what the deploy script polls.
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8080
+	}
+
+	# Public privacy page is pre-rendered HTML; everything else falls back to
+	# the React app. try_files must try {path}/index.html before /index.html.
+	handle {
+		root * /srv/adx/web/current
+		try_files {path} {path}/index.html /index.html
+		file_server
+	}
+}
