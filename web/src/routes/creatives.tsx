@@ -92,7 +92,7 @@ export function CreativesPage() {
           );
         })}
       </div>
-      <div className="grid gap-6 md:grid-cols-[18rem_1fr]">
+      <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <aside>{canEdit && <NewCreative onCreated={setCurrent} />}</aside>
         <div>
           {current === null ? (
@@ -348,7 +348,7 @@ function CreativeDetail({
         </p>
       )}
 
-      <div className="grid gap-4 md:grid-cols-[1fr_22rem]">
+      <div className="space-y-4">
         <div className="space-y-2">
           {canEdit &&
           (latest.reviewState === "draft" ||
