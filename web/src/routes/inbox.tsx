@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ChevronDown, MessageSquareText } from "lucide-react";
+import { ChevronDown, LayoutGrid, List, MessageSquareText } from "lucide-react";
 import { useState } from "react";
 import { type Card, type Door, needsYou, useHomeDesk, type WorkItem } from "@/api/fronts";
 import { CardView, DOOR_LABEL } from "@/components/front/card";
@@ -81,8 +81,8 @@ export function InboxPage() {
             value={view}
             onChange={pickView}
             options={[
-              { value: "cards", label: "Cards" },
-              { value: "list", label: "List" },
+              { value: "cards", label: "Cards", icon: LayoutGrid },
+              { value: "list", label: "List", icon: List },
             ]}
           />
         }
