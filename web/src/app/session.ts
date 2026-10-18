@@ -6,7 +6,7 @@ import type { Role } from "@/api/types.legacy";
 export type Session = { name: string; email: string; role: Role };
 
 export function useSession(): Session {
-  return { name: "Hisham Ahamad", email: "admin@localhost", role: "admin" };
+  return { name: "Abdul", email: "admin@localhost", role: "admin" };
 }
 
 export const ROLE_LABEL: Record<Role, string> = {

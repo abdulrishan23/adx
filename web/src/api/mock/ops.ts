@@ -227,7 +227,7 @@ export function updateGuardrails(input: {
     if (!a) throw new Error("That account isn't connected any more");
     if (input.account.killed !== undefined) {
       a.killed = input.account.killed;
-      a.killedBy = a.killed ? "Hisham Ahamad" : null;
+      a.killedBy = a.killed ? "Abdul" : null;
       a.killedAt = a.killed ? new Date().toISOString() : null;
     }
     if (input.account.monthlyBudgetMinor !== undefined) {
@@ -322,7 +322,7 @@ export function updateScoring(input: {
       throw new Error("Warm has to start below hot");
     scoring.thresholds = input.thresholds;
   }
-  scoring.lastChangedBy = "Hisham Ahamad";
+  scoring.lastChangedBy = "Abdul";
   scoring.lastChangedAt = new Date().toISOString();
   return scoringSettings();
 }

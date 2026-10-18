@@ -42,7 +42,7 @@ export function proposeChange(req: ChangeRequest): Proposal {
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + g.proposalHours * 3_600_000).toISOString(),
     source: "marketer" as const,
-    requestedBy: "Hisham Ahamad",
+    requestedBy: "Abdul",
     evidence: [] as Proposal["evidence"],
     reversible: true,
   };
@@ -105,7 +105,7 @@ export function proposeChange(req: ChangeRequest): Proposal {
     };
   }
   p.log = [
-    { at: p.createdAt, text: "Proposed by Hisham Ahamad" },
+    { at: p.createdAt, text: "Proposed by Abdul" },
     ...(p.status === "applied"
       ? [{ at: p.createdAt, text: "Applied: allowed by the checklist" }]
       : []),

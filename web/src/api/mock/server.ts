@@ -201,13 +201,13 @@ export function decide(id: string, decision: "approve" | "reject", note?: string
   const p = PROPOSALS.find((x) => x.id === id);
   if (!p) throw new Error("That proposal no longer exists");
   if (p.status !== "pending") throw new Error("That proposal was already decided");
-  p.decidedBy = "Hisham Ahamad";
+  p.decidedBy = "Abdul";
   if (note) p.note = note;
   if (decision === "reject") {
     p.status = "rejected";
-    log(p, `Rejected by Hisham Ahamad${note ? `: ${note}` : ""}`);
+    log(p, `Rejected by Abdul${note ? `: ${note}` : ""}`);
   } else {
-    log(p, `Approved by Hisham Ahamad${note ? `: ${note}` : ""}`);
+    log(p, `Approved by Abdul${note ? `: ${note}` : ""}`);
     startApplying(p);
   }
   return p;
@@ -218,7 +218,7 @@ export function retry(id: string): Proposal {
   const p = PROPOSALS.find((x) => x.id === id);
   if (!p) throw new Error("That proposal no longer exists");
   if (p.status !== "failed") throw new Error("Only a failed change can be retried");
-  log(p, "Retried by Hisham Ahamad");
+  log(p, "Retried by Abdul");
   startApplying(p);
   return p;
 }
@@ -230,7 +230,7 @@ export function undo(id: string): Proposal {
   if (p.status !== "applied") throw new Error("Only an applied change can be undone");
   if (!p.reversible) throw new Error("This change can't be undone automatically");
   p.status = "undone";
-  log(p, "Undone by Hisham Ahamad. The previous values are back.");
+  log(p, "Undone by Abdul. The previous values are back.");
   return p;
 }
 
