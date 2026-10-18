@@ -54,7 +54,7 @@ function Layout() {
     <div className="min-h-screen">
       <HeadContent />
       <header className="border-b">
-        <nav className="mx-auto flex max-w-5xl items-center gap-6 px-6 py-4">
+        <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
           <span className="font-semibold">ADX</span>
           <Link
             to="/projects"
@@ -259,7 +259,7 @@ function Layout() {
           >
             Runs
           </Link>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
             <WorkspaceSwitcher />
             <AccountMenu />
           </div>
