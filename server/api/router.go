@@ -21,6 +21,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/evaluation"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
+	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/measurement"
@@ -63,18 +64,21 @@ type Deps struct {
 	Runs     *runs.Runs
 	Leads    *leads.Leads
 	// Reporting serves /api/analytics. Nil leaves the routes out.
-	Reporting     *reporting.Reporting
-	Reports       *reports.Reports
-	Alerts        *alerts.Alerts
-	Assistant     *assistant.Assistant
-	Creative      *creative.Service
-	Brands        *brands.Brands
-	Research      *research.Research
-	Plans         *plans.Plans
-	Pages         *pages.Pages
-	Measurement   *measurement.Measurement
-	Proposals     *proposals.Proposals
-	Execution     *execution.Dispatcher
+	Reporting   *reporting.Reporting
+	Reports     *reports.Reports
+	Alerts      *alerts.Alerts
+	Assistant   *assistant.Assistant
+	Creative    *creative.Service
+	Brands      *brands.Brands
+	Research    *research.Research
+	Plans       *plans.Plans
+	Pages       *pages.Pages
+	Measurement *measurement.Measurement
+	Proposals   *proposals.Proposals
+	Execution   *execution.Dispatcher
+	// Launch serves the plan-line resolution and picks (BD-58). Nil leaves
+	// the routes out.
+	Launch        *launch.Service
 	CRM           *crm.CRM
 	Signals       *signals.Signals
 	Outreach      *outreach.Outreach
@@ -117,6 +121,7 @@ type handlers struct {
 	measurement   *measurement.Measurement
 	proposals     *proposals.Proposals
 	execution     *execution.Dispatcher
+	launch        *launch.Service
 	crm           *crm.CRM
 	signals       *signals.Signals
 	outreach      *outreach.Outreach
@@ -136,7 +141,7 @@ type handlers struct {
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -361,6 +366,10 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/executions/{id}/repair", h.repairExecution)
 			r.Get("/api/executions/{id}/reversibility", h.executionReversibility)
 			r.Get("/api/executions/milestones", h.launchMilestones)
+		}
+		if h.launch != nil {
+			r.Get("/api/launch/resolution", h.launchResolution)
+			r.Post("/api/launch/picks", h.launchPick)
 		}
 		if h.crm != nil {
 			r.Get("/api/crm/people", h.listPeople)

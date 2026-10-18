@@ -1788,6 +1788,18 @@ export interface KillSwitchInput {
 // From core/core.go
 export type Kind = 4 | 2 | 1 | 3 | 5;
 
+// From launch/launch.go
+export const KindCreate = "create";
+
+// From launch/launch.go
+export const KindPick = "pick";
+
+// From launch/launch.go
+export const KindUnsupported = "unsupported";
+
+// From launch/launch.go
+export const KindUpdate = "update";
+
 // From evaluation/evaluation.go
 export interface LabelInput {
     callId: number;
@@ -1809,6 +1821,34 @@ export interface LaunchItem {
     refId: number;
 }
 
+// From launch/launch.go
+export interface LaunchLine {
+    index: number;
+    channel: string;
+    platform: string;
+    campaignType: string;
+    projectId: number;
+    budgetMinor: number;
+    currency: string;
+    objective: string;
+    geography: string;
+}
+
+// From launch/launch.go
+export interface LaunchPick {
+    campaignId: number;
+    pickedBy: number | null;
+    pickedAt: string;
+}
+
+// From api/launch.go
+export interface LaunchPickInput {
+    planId: number;
+    planVersion: number;
+    line: number;
+    campaignId: number;
+}
+
 // From creative/production.go
 export interface LaunchReadiness {
     creativeId: number;
@@ -1818,6 +1858,20 @@ export interface LaunchReadiness {
     warnings: ReadinessIssue[];
     claims: ClaimCheck[];
     bindings: ClaimReport;
+}
+
+// From launch/launch.go
+export interface LaunchResolution {
+    planId: number;
+    planVersion: number;
+    projectId: number | null;
+    today: Day;
+    monthEnd: Day;
+    daysLeft: number;
+    timeZone: string;
+    lines: LineResolution[];
+    unmatched: ProjectCampaign[];
+    note: string;
 }
 
 // From execution/execution.go
@@ -1970,6 +2024,18 @@ export interface LearningReport {
     outcomes: number;
     unattachedOutcomes: number;
     insights: Record<string, number> | null;
+    note: string;
+}
+
+// From launch/launch.go
+export interface LineResolution {
+    kind: string;
+    line: LaunchLine;
+    campaign: ProjectCampaign | null;
+    candidates: ProjectCampaign[];
+    budget: MonthBudget | null;
+    pick: LaunchPick | null;
+    paused: ProjectCampaign[];
     note: string;
 }
 
@@ -2260,6 +2326,15 @@ export interface ModelRelease {
 export interface Money {
     minor: number | null;
     currency: string;
+}
+
+// From launch/launch.go
+export interface MonthBudget {
+    spentMinor: number;
+    spendKnown: boolean;
+    remainingMinor: number;
+    dailyMinor: number;
+    daysLeft: number;
 }
 
 // From voice/audio.go
@@ -2655,6 +2730,14 @@ export interface PlanAcceptance {
     versionId: number;
     acceptedBy: number;
     acceptedAt: string;
+}
+
+// From launch/launch.go
+export interface PlanCoverage {
+    underPlan: boolean;
+    planId: number | null;
+    planVersion: number | null;
+    reason: string;
 }
 
 // From plans/plans.go
@@ -3168,6 +3251,9 @@ export const ReasonPolicyUnconfigured = "policy_unconfigured";
 
 // From policies/policies.go
 export const ReasonUnknownAction = "unknown_action";
+
+// From policies/policies.go
+export const ReasonUnplannedCampaign = "campaign_not_under_a_plan";
 
 // From policies/policies.go
 export const ReasonWorkspaceMismatch = "workspace_mismatch";
@@ -4323,7 +4409,7 @@ export interface WorkspacesResponse {
 }
 
 // From policies/policies.go
-export type WriteAction = "ad.pause" | "adset.pause" | "audiences.upsert" | "bids.change" | "budget.lower" | "budget.raise" | "campaign.create_paused" | "campaign.pause" | "conversions.upload" | "exclusions.update" | "launch" | "ghl.lead_fields.set" | "organic.post" | "targeting.change";
+export type WriteAction = "ad.pause" | "adset.pause" | "audiences.upsert" | "bids.change" | "budget.lower" | "budget.raise" | "campaign.create_paused" | "campaign.pause" | "campaign.resume" | "conversions.upload" | "exclusions.update" | "launch" | "ghl.lead_fields.set" | "organic.post" | "targeting.change";
 
 // From policies/policies.go
 export interface WriteActionInfo {

@@ -288,32 +288,6 @@ func (d *Dispatcher) prepare(ctx context.Context, row store.ExecutionIntent) (ta
 	return t, "", nil
 }
 
-func capabilityFor(a policies.WriteAction) string {
-	switch a {
-	case policies.BudgetLower, policies.BudgetRaise:
-		return "write.budget"
-	case policies.CampaignCreatePaus, policies.Launch:
-		return "write.campaign"
-	case policies.AdPause, policies.AdSetPause, policies.CampaignPause, policies.CampaignResume:
-		return "write.status"
-	case policies.AudiencesUpsert:
-		return "write.audiences"
-	case policies.ConversionsUpload:
-		return "write.conversions"
-	case policies.ExclusionsUpdate:
-		return "write.exclusions"
-	case policies.BidsChange:
-		return "write.bids"
-	case policies.TargetingChange:
-		return "write.targeting"
-	case policies.LeadFieldsSet:
-		return "write.lead_fields"
-	case policies.OrganicPost:
-		return "write.organic"
-	}
-	return ""
-}
-
 func marker(row store.ExecutionIntent) string { return fmt.Sprintf("adx:%d", row.ID) }
 
 func (d *Dispatcher) dispatch(ctx context.Context, row store.ExecutionIntent, byUser int64) error {

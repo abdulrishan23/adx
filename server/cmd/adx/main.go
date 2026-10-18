@@ -604,6 +604,7 @@ func run() error {
 			Brands:        brandService,
 			Research:      researchService,
 			Plans:         planService,
+			Launch:        launchService,
 			Pages:         pageService,
 			Measurement:   measurementService,
 			Proposals:     proposalService,
