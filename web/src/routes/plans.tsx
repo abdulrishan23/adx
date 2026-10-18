@@ -936,7 +936,7 @@ function AllocationRow({
       </td>
       <td className="py-1 pr-2">
         <Input
-          className="h-7 max-w-32"
+          className="h-7 w-32 min-w-32"
           value={major(a.budgetMinor)}
           onChange={(e) => onChange({ ...a, budgetMinor: toMinor(e.target.value) })}
           disabled={!editable}
@@ -945,7 +945,7 @@ function AllocationRow({
       </td>
       <td className="py-1 pr-2">
         <Input
-          className="h-7 max-w-16"
+          className="h-7 w-16 min-w-16"
           value={a.geography}
           onChange={(e) => onChange({ ...a, geography: e.target.value })}
           disabled={!editable}
@@ -954,7 +954,7 @@ function AllocationRow({
       </td>
       <td className="py-1 pr-2">
         <Input
-          className="h-7 max-w-24"
+          className="h-7 w-28 min-w-28"
           placeholder="Not available"
           value={a.expectedCplMinor === null ? "" : major(a.expectedCplMinor)}
           onChange={(e) =>
