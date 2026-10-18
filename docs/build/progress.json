@@ -1,6 +1,6 @@
 {
   "spec_version": 1,
-  "updated": "2026-10-17",
+  "updated": "2026-10-18",
   "states": [
     "pending",
     "in_progress",
@@ -780,7 +780,6 @@
         "files served sandboxed"
       ],
       "remaining": [
-        "browser inspection of long Arabic copy in all four formats",
         "canvas drag editor and pixel export (B3.1)"
       ],
       "blockers": [
@@ -825,8 +824,7 @@
         "a competitor's facts never appear in Reportage's claims; a competitor's offer can't be attached to a Reportage draft"
       ],
       "remaining": [
-        "inferred facts are produced by B2.2 research; only the recording path exists",
-        "browser inspection"
+        "inferred facts are produced by B2.2 research; only the recording path exists"
       ],
       "blockers": [
         {
@@ -876,7 +874,7 @@
       "remaining": [
         "live fetch and Keyword Planner call need a Google OAuth client",
         "competitor ad observation has no UAE API route; pages only",
-        "browser inspection"
+        "browser inspection of a research run and its findings (no run was started: live fetch needs the Google OAuth client)"
       ],
       "blockers": [
         {
@@ -919,8 +917,7 @@
       ],
       "remaining": [
         "exact Excel adapter once the template file arrives",
-        "HTTP test for plan routes",
-        "browser inspection"
+        "HTTP test for plan routes"
       ],
       "blockers": [
         {
@@ -969,7 +966,7 @@
       ],
       "remaining": [
         "live model call needs ADX_MODEL_API_KEY",
-        "browser inspection"
+        "browser inspection of the generate panel and a version compare with content changes (needs ADX_MODEL_API_KEY)"
       ],
       "blockers": [
         {
@@ -1013,7 +1010,7 @@
         "the next period's report carries the previous report's hypotheses and reviews forward"
       ],
       "remaining": [
-        "browser inspection",
+        "browser inspection of a generated comparative report",
         "evaluation cases live as tests, not as a stored fixture set"
       ],
       "blockers": [],
@@ -1094,8 +1091,7 @@
       ],
       "remaining": [
         "external host adapter (Wix/WordPress) blocked on hosts and access",
-        "public asset route for image sections (B3.3)",
-        "browser inspection"
+        "public asset route for image sections (B3.3)"
       ],
       "blockers": [
         {
@@ -1140,7 +1136,7 @@
       ],
       "remaining": [
         "readiness cannot reach ready without a connected ad account",
-        "browser inspection"
+        "browser inspection of a run check and its evidence (no account to check against)"
       ],
       "blockers": [
         {
@@ -1186,7 +1182,7 @@
       ],
       "remaining": [
         "dispatch, provider refs and reconciliation (B3.5)",
-        "browser inspection"
+        "browser inspection of a proposal view, approvals and the outbox (needs a connected account)"
       ],
       "blockers": [
         {
@@ -1770,7 +1766,7 @@
       ],
       "remaining": [
         "objective names from Reportage",
-        "browser inspection"
+        "browser inspection of conflicts and arbitration (none existed to show)"
       ],
       "blockers": [],
       "commit": null,
@@ -1865,7 +1861,6 @@
         "industry configuration documents cannot carry roles or permissions"
       ],
       "remaining": [
-        "browser inspection of the switcher and settings page",
         "sign-in with two memberships against a configured authentik"
       ],
       "blockers": [],
@@ -1908,7 +1903,6 @@
         "native-versus-integrate review records user value, maintenance and the decision per capability"
       ],
       "remaining": [
-        "browser inspection of the matrix",
         "a live WhatsApp or email send once the messaging policy, adapter configuration and live writes exist"
       ],
       "blockers": [
@@ -1963,8 +1957,7 @@
       ],
       "remaining": [
         "load measurement on the production host",
-        "a release evaluation against a real candidate once a model key and labelled calls exist",
-        "browser inspection of /ops"
+        "a release evaluation against a real candidate once a model key and labelled calls exist"
       ],
       "blockers": [
         {
@@ -2004,7 +1997,7 @@
         "make check and make test pass"
       ],
       "remaining": [
-        "browser journeys through the web app",
+        "browser journeys for the pages not in the 2026-10-18 walk (verification.md, \"Browser journeys 2026-10-18\")",
         "operator effort and autonomy review with real business users",
         "everything in docs/build/capability-matrix.md under what live use needs"
       ],

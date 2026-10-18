@@ -627,3 +627,44 @@ cd web && pnpm test                 # 1 file, 4 tests passed
 
 - One failure found and fixed: `core/ops` `TestMeterEnforcesTheServerCapAcrossCallsAndDays` passed on 2026-10-17 and failed on 2026-10-18 because `Ops.Cost` read the real UTC day while the `Meter` under test wrote usage under a clock pinned to 17 October. `Ops` now has `WithClock`, matching `NewMeter`, and the test pins both to the same clock. Production behaviour was unchanged; the test was only green on the day it was written. Catches: the cost view and the meter disagreeing on which day the cap counts.
 - The first `make test` pass on this machine stopped at the Go step, so the web tests had not run under `make test` until this fix; they pass.
+
+## Browser journeys 2026-10-18
+
+The first time any page of the web app was opened in a browser. Dev servers: `go run ./cmd/adx` with `ADX_ENV=dev`, a scratch `ADX_DB_PATH` and `ADX_ASSETS_DIR` under the session's temp directory, and `pnpm dev`, both from `.claude/launch.json` (`air` is not installed here). Viewport 1440×1000 unless noted. Data seeded through the API: two projects, one brand with a price conflict and an approved offer, a research brief, a plan, a page, one uploaded render and Arabic creatives in all four formats. Screenshots are in `docs/build/screenshots/`.
+
+| Page | Renders | States seen | Console | Layout | Screenshot |
+|---|---|---|---|---|---|
+| `/projects`, header | yes | dev admin label; switcher with two workspaces; switching to Bianca Holdings reloads with an empty project list | none from the page | nav was clipped (fixed, below) | `00`, `01`, `02` |
+| `/connections` | yes | no accounts; the capability matrix for all eight connectors with reasons | none | fine | `03` |
+| `/analytics` | yes | never read, 0 of 0 coverage, two dependencies missing, "No figures for this period" | none | fine | `04` |
+| `/brands` | yes | list with "1 to review"; disagree panel; approved claims empty with "Awaiting review"; facts table with in-conflict rows; record-a-fact; offers with the Arabic headline field right-aligned; keep-first with a reason resolved the conflict and retired the loser | none | fine | `05`, `11`, `12`, `13` |
+| `/research` | yes | brief list; brief with "Competitors ADX can't place", sources waiting to run, keyword ideas labelled as estimates, schedules and reports empty. No run started (live fetch) | `GET /api/runs/` 404 on every tick (fixed, below) | fine | `06`, `14` |
+| `/plans` | yes | list; v1 invalid with the unknown-channel block; live validation cleared it when the channel was picked; saved as v2 ready; accepted by the admin; compare dropdown; export gate notice | none | allocation inputs clipped (fixed, below) | `07`–`10` |
+| `/creatives` | yes | queue by state; new-creative form; editor canvas; checks; readiness with blocks; versions | none | long Arabic copy overlapped in all four formats (fixed, below) | `15`–`19` before, `23`–`26` after, `35` exports |
+| `/pages` | yes | loading state; editor with sections, offer binding, form fields; sandboxed preview; readiness blocks; publish v1 then "roll back"; deployment with checksum | none | fine | `20`, `21`, `22` |
+| `/launch` | yes | "Pick a plan"; with the plan: not ready · not live, six areas with blocks and notes, run-a-check controls, milestones, no executions | none | fine | `36`, `37` |
+| `/proposals` | yes | no envelopes, no proposals, the policy catalog in the new-proposal form, empty outbox. No account exists, so no proposal was made | none | fine | `31` |
+| `/supervisor` | yes | one inbox item (no write policy), kill switch, autonomy JSON, no conflicts | none | fine | `32` |
+| `/settings/workspaces` | yes | two clients, add client, members, industry configuration v1 | none | fine | `33` |
+| `/ops` | yes | ready; cost "Not available (no price configured)"; caps; no model; no load measurement | none | fine | `34` |
+
+Console errors other than the ones named are 502s from the proxy while the Go server was starting or restarting, and the 409 from the connect button (below).
+
+Fixed, one commit each, `make check` and `make test` green after each:
+
+- Header nav (`web/src/router.tsx`): 29 links in a non-wrapping row inside `max-w-5xl`; everything after Calls, the workspace switcher and the account menu sat at x≈2800 on a 1440 viewport, unreachable without horizontal scroll. The nav wraps now.
+- Plan allocation row (`web/src/routes/plans.tsx`): the channel select took the table's slack and the budget, geography and CPL inputs shrank below their values ("300,000" showed as "300,0", "AE" as "AI"). Minimum widths on the three inputs.
+- Run query (`web/src/api/runs.ts`): `useRun("")` polled `GET /api/runs/` (404) until a run existed. Disabled without an id.
+- Layout (`core/assets`): `Layout` counted only explicit line breaks, so a long title got a one-line height and the body, note and CTA were drawn on top of it; the SVG renderer wrote each paragraph as one `tspan`, so the exported title ran off the frame. `WrapLines` estimates lines from average glyph advances (Latin 0.6 em, Arabic 0.5 em, combining marks 0) and both the layout heights and the renderer's `tspan`s use it. `CheckDocument` measures text blocks the same way, and the 1.91:1 one-line rule now fires for a laid-out title. Catches: `TestLayoutWrapsLongCopy`, `TestRenderWrapsLongText`.
+- SVG renderer (`providers/svgrender`): right-to-left text used `text-anchor="end"` at the right edge of its box. In a `direction="rtl"` run the end is the left side, so every Arabic line started at the right edge and ran off the frame; the export of any Arabic creative was unreadable. Right-aligned RTL is `start` at the right edge now, left-aligned RTL is `end` at the left edge. The old test asserted the wrong anchor and now asserts the right one.
+
+Arabic in the four formats, after the fixes (`23`–`26` in the editor, `35` the exported SVGs rendered by the browser): the eyebrow, five-line title, three-line body, note and CTA stack without overlap, right-aligned, inside the frame, in 9:16, 4:5, 1:1 and 1.91:1. The 9:16 stack stays out of both keep-clear zones. The estimate wraps a little earlier than the browser does (five title lines where the browser's own wrapping gives four), which costs space, never overlap. The real brand fonts were not loaded (no font files), so glyph widths are the fallback font's.
+
+Found, not fixed:
+
+- `Connect Google Ads` and `Connect Meta` are plain links to `/api/connections/{provider}/start`; without the platform's app credentials the browser lands on raw JSON (`{"error":"connections are not configured on this server"}`, 409) instead of a screen state (`03b`). The API does not say which platforms are configured, so a screen state needs a Go change; left as a follow-up.
+- In dev mode `/api/session` always answers `workspace: "Reportage (dev)"`, so after switching to Bianca Holdings the account menu still reads "Reportage (dev)" while the switcher and the data are Bianca's (`02`). Dev only; left as a follow-up.
+- 1.91:1 scales type by the short side (628 px), so the body runs at 20 px and the note at 14 px on a 1200 px frame: legible in the export, small in the 360 px editor canvas. Design, not a defect.
+- The bidi order of the queue entries ("وادي الصفا 9:16 · 9:16 · ar · v1") is readable but mixes direction; cosmetic.
+
+Not checked in the browser: dragging a layer on the canvas (B3.1); a research run; a generated plan or comparative report; a proposal, envelope, execution or deployment (no account); `/people`, `/pipeline`, `/calls`, `/workflows`, `/settings/agents`, `/learning`, `/leads`, `/settings/funnel`, `/settings/policies`, `/reports`, `/alerts`, `/ask`, `/evaluation`, `/settings/outreach`, `/settings/scoring`, `/runs`, `/privacy`; any page narrower than 1440 px (at the pane's 800 px the nav wraps to five rows); dark mode; the Vite production build.

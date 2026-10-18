@@ -30,7 +30,7 @@ Taken on 2026-10-17 at the end of phase 1. The local journey is implemented and 
 
 ## Not done in phase 1
 
-- No browser session was run against the dev server in this build; the web pages pass typecheck and lint but were not inspected visually. In particular, long Arabic copy in the four formats has not been inspected visually (acceptance item of B1.6): the layout and the RTL rendering are covered by unit tests on the document and the SVG, which is not the same thing.
+- No browser session was run against the dev server in this build; the web pages pass typecheck and lint but were not inspected visually. In particular, long Arabic copy in the four formats has not been inspected visually (acceptance item of B1.6): the layout and the RTL rendering are covered by unit tests on the document and the SVG, which is not the same thing. Done on 2026-10-18: see "Browser journeys 2026-10-18" in `verification.md`. The inspection found the layout stacking wrapped lines on top of each other and the SVG anchoring Arabic off the frame; both are fixed there, with screenshots.
 - The canvas drag editor from the creative source is not ported; the pilot editor changes text and vertical position only (B3.1).
 - Pixel export (PNG/JPG) is not implemented; the output is SVG, rasterized by the browser when viewed. A server-side rasterizer or a browser export is B3.1.
 - Live calling, messaging and any ad-account write are not part of phase 1 by design.
