@@ -220,6 +220,56 @@ func (q *Queries) ListAdCampaigns(ctx context.Context, arg ListAdCampaignsParams
 	return items, nil
 }
 
+const listAdCampaignsForProject = `-- name: ListAdCampaignsForProject :many
+SELECT id, workspace_id, account_id, platform, external_id, name, status, channel_type, budget_minor, budget_period, currency, project_id, first_seen_at, last_seen_at, removed_at FROM ad_campaigns
+WHERE workspace_id = ? AND project_id = ? AND removed_at IS NULL
+ORDER BY platform, name, id
+`
+
+type ListAdCampaignsForProjectParams struct {
+	WorkspaceID int64
+	ProjectID   sql.NullInt64
+}
+
+func (q *Queries) ListAdCampaignsForProject(ctx context.Context, arg ListAdCampaignsForProjectParams) ([]AdCampaign, error) {
+	rows, err := q.db.QueryContext(ctx, listAdCampaignsForProject, arg.WorkspaceID, arg.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AdCampaign{}
+	for rows.Next() {
+		var i AdCampaign
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AccountID,
+			&i.Platform,
+			&i.ExternalID,
+			&i.Name,
+			&i.Status,
+			&i.ChannelType,
+			&i.BudgetMinor,
+			&i.BudgetPeriod,
+			&i.Currency,
+			&i.ProjectID,
+			&i.FirstSeenAt,
+			&i.LastSeenAt,
+			&i.RemovedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAllAdCampaigns = `-- name: ListAllAdCampaigns :many
 SELECT id, workspace_id, account_id, platform, external_id, name, status, channel_type, budget_minor, budget_period, currency, project_id, first_seen_at, last_seen_at, removed_at FROM ad_campaigns WHERE workspace_id = ? AND removed_at IS NULL ORDER BY id
 `
@@ -531,6 +581,56 @@ type SetAdCampaignProjectParams struct {
 func (q *Queries) SetAdCampaignProject(ctx context.Context, arg SetAdCampaignProjectParams) error {
 	_, err := q.db.ExecContext(ctx, setAdCampaignProject, arg.ProjectID, arg.ID)
 	return err
+}
+
+const sumCampaignSpendForProject = `-- name: SumCampaignSpendForProject :many
+SELECT m.campaign_id, CAST(SUM(m.cost_minor) AS INTEGER) AS spent_minor, CAST(COUNT(*) AS INTEGER) AS days
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.workspace_id = ?1 AND c.project_id = ?2
+  AND m.day >= ?3 AND m.day <= ?4
+GROUP BY m.campaign_id
+`
+
+type SumCampaignSpendForProjectParams struct {
+	WorkspaceID int64
+	ProjectID   sql.NullInt64
+	FromDay     string
+	ToDay       string
+}
+
+type SumCampaignSpendForProjectRow struct {
+	CampaignID int64
+	SpentMinor int64
+	Days       int64
+}
+
+func (q *Queries) SumCampaignSpendForProject(ctx context.Context, arg SumCampaignSpendForProjectParams) ([]SumCampaignSpendForProjectRow, error) {
+	rows, err := q.db.QueryContext(ctx, sumCampaignSpendForProject,
+		arg.WorkspaceID,
+		arg.ProjectID,
+		arg.FromDay,
+		arg.ToDay,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SumCampaignSpendForProjectRow{}
+	for rows.Next() {
+		var i SumCampaignSpendForProjectRow
+		if err := rows.Scan(&i.CampaignID, &i.SpentMinor, &i.Days); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const upsertAccountFreshness = `-- name: UpsertAccountFreshness :exec

@@ -93,3 +93,16 @@ ORDER BY accounts.type, accounts.external_id;
 
 -- name: ListAllAdCampaigns :many
 SELECT * FROM ad_campaigns WHERE workspace_id = ? AND removed_at IS NULL ORDER BY id;
+
+-- name: ListAdCampaignsForProject :many
+SELECT * FROM ad_campaigns
+WHERE workspace_id = ? AND project_id = ? AND removed_at IS NULL
+ORDER BY platform, name, id;
+
+-- name: SumCampaignSpendForProject :many
+SELECT m.campaign_id, CAST(SUM(m.cost_minor) AS INTEGER) AS spent_minor, CAST(COUNT(*) AS INTEGER) AS days
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.workspace_id = sqlc.arg(workspace_id) AND c.project_id = sqlc.arg(project_id)
+  AND m.day >= sqlc.arg(from_day) AND m.day <= sqlc.arg(to_day)
+GROUP BY m.campaign_id;

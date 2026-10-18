@@ -39,24 +39,37 @@ type ChannelInfo struct {
 	Platform  string `json:"platform"`
 	Label     string `json:"label"`
 	Supported bool   `json:"supported"`
+	// CampaignType is the platform's own type for a campaign of this
+	// channel: Google's advertising channel type or Meta's objective. A plan
+	// line matches running campaigns by project, platform and this type
+	// (BD-58). Empty for channels ADX cannot deploy. The table below is the
+	// build's reading of the channel keys and is awaiting the owner's
+	// confirmation; a wrong row is a one-line change.
+	CampaignType string `json:"campaignType"`
 }
 
 var Channels = []ChannelInfo{
-	{"google_search", "google_ads", "Google Search", true},
-	{"google_pmax", "google_ads", "Google Performance Max", true},
-	{"google_display", "google_ads", "Google Display", true},
-	{"google_youtube", "google_ads", "YouTube", true},
-	{"google_demand_gen", "google_ads", "Google Demand Gen", true},
-	{"meta_lead_form", "meta", "Meta lead form", true},
-	{"meta_traffic", "meta", "Meta traffic to landing page", true},
-	{"meta_awareness", "meta", "Meta awareness", true},
-	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true},
-	{"tiktok", "tiktok", "TikTok", false},
-	{"snapchat", "snapchat", "Snapchat", false},
-	{"linkedin", "linkedin", "LinkedIn", false},
-	{"programmatic", "other", "Programmatic display", false},
-	{"portals", "other", "Property portals (Bayut, Property Finder)", false},
-	{"print_outdoor", "other", "Print and outdoor", false},
+	{"google_search", "google_ads", "Google Search", true, "SEARCH"},
+	{"google_pmax", "google_ads", "Google Performance Max", true, "PERFORMANCE_MAX"},
+	{"google_display", "google_ads", "Google Display", true, "DISPLAY"},
+	{"google_youtube", "google_ads", "YouTube", true, "VIDEO"},
+	{"google_demand_gen", "google_ads", "Google Demand Gen", true, "DEMAND_GEN"},
+	{"meta_lead_form", "meta", "Meta lead form", true, "OUTCOME_LEADS"},
+	{"meta_traffic", "meta", "Meta traffic to landing page", true, "OUTCOME_TRAFFIC"},
+	{"meta_awareness", "meta", "Meta awareness", true, "OUTCOME_AWARENESS"},
+	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true, "OUTCOME_ENGAGEMENT"},
+	{"tiktok", "tiktok", "TikTok", false, ""},
+	{"snapchat", "snapchat", "Snapchat", false, ""},
+	{"linkedin", "linkedin", "LinkedIn", false, ""},
+	{"programmatic", "other", "Programmatic display", false, ""},
+	{"portals", "other", "Property portals (Bayut, Property Finder)", false, ""},
+	{"print_outdoor", "other", "Print and outdoor", false, ""},
+}
+
+// Channel looks a channel up by key.
+func Channel(key string) (ChannelInfo, bool) {
+	c, ok := channelByKey[key]
+	return c, ok
 }
 
 var channelByKey = func() map[string]ChannelInfo {

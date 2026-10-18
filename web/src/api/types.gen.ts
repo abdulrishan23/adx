@@ -662,6 +662,7 @@ export interface ChannelInfo {
     platform: string;
     label: string;
     supported: boolean;
+    campaignType: string;
 }
 
 // From outreach/outreach.go
@@ -2872,6 +2873,23 @@ export interface Project {
     id: number;
     name: string;
     createdAt: string;
+}
+
+// From reporting/campaigns.go
+export interface ProjectCampaign {
+    id: number;
+    accountId: number;
+    platform: string;
+    externalId: string;
+    name: string;
+    type: string;
+    status: string;
+    running: boolean;
+    projectId: number | null;
+    currency: string;
+    dailyBudgetMinor: number | null;
+    spentMinor: number | null;
+    spendDays: number;
 }
 
 // From api/brands.go
