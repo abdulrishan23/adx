@@ -772,8 +772,8 @@ export interface CompleteTaskInput {
     canceled: boolean;
 }
 
-// From evidence/evidence.go
-export type Completeness = "complete" | "partial" | "unknown" | "complete" | "partial";
+// From evidence, runs
+export type Completeness = "complete" | "partial" | "unknown";
 
 // From brands/facts.go
 export interface Conflict {
@@ -1010,6 +1010,9 @@ export interface Deployment {
 export interface DeriveResponse {
     derived: number;
 }
+
+// From users/users.go
+export const DevEmail = "dev@adx.localhost";
 
 // From plans/diff.go
 export interface DiffChange {
@@ -3513,8 +3516,8 @@ export interface ReviseInsightInput {
     scope: string;
 }
 
-// From assistant/model.go
-export type Role = "admin" | "marketer" | "viewer" | "assistant" | "user";
+// From assistant, core
+export type Role = "admin" | "assistant" | "marketer" | "user" | "viewer";
 
 // From calls/calls.go
 export interface Route {
