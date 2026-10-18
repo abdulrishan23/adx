@@ -15,6 +15,7 @@ import {
 } from "@/api/pages";
 import { useSession } from "@/api/session";
 import type { FormField, PageDetail, PageDocument, Section } from "@/api/types.gen";
+import { StatusChip, type StatusTone } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -711,8 +712,12 @@ function Deployments({ detail, canEdit }: { detail: PageDetail; canEdit: boolean
       {detail.deployments.length === 0 && <p className="text-muted-foreground">Never published.</p>}
       <ul className="space-y-1">
         {detail.deployments.map((dp) => (
-          <li key={dp.id} className={dp.state === "published" ? "" : "text-muted-foreground"}>
-            v{dp.version} · {dp.state} · {dp.adapter} · {new Date(dp.deployedAt).toLocaleString()} ·{" "}
+          <li
+            key={dp.id}
+            className={`flex flex-wrap items-center gap-x-2 gap-y-1 ${dp.state === "published" ? "" : "text-muted-foreground"}`}
+          >
+            <StatusChip tone={deploymentTone(dp.state)}>{dp.state}</StatusChip>v{dp.version} ·{" "}
+            {dp.adapter} · {new Date(dp.deployedAt).toLocaleString()} ·{" "}
             {dp.outputSha256.slice(0, 12)}…
             {dp.rolledBackFromVersion !== null &&
               ` · rolled back from v${dp.rolledBackFromVersion}`}
@@ -722,6 +727,14 @@ function Deployments({ detail, canEdit }: { detail: PageDetail; canEdit: boolean
       </ul>
     </section>
   );
+}
+
+// Published is live, failed is broken, anything else (an older deployment
+// a newer one replaced) waits in outline.
+function deploymentTone(state: string): StatusTone {
+  if (state === "published") return "ready";
+  if (state === "failed") return "error";
+  return "pending";
 }
 
 function Submissions({ pageId }: { pageId: number }) {

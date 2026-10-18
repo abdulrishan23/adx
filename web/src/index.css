@@ -14,6 +14,8 @@
   --font-heading: "Outfit Variable", "Readex Pro Variable", sans-serif;
   --font-sans: "Geist Variable", "IBM Plex Sans Arabic", sans-serif;
   --font-mono: "Geist Mono Variable", "IBM Plex Sans Arabic", monospace;
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
   --color-status-ready: var(--status-ready);
   --color-status-caution: var(--status-caution);
   --color-status-error: var(--status-error);

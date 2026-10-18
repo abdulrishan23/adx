@@ -21,16 +21,28 @@ import type {
   PlanVersion,
   TemplateGate,
 } from "@/api/types.gen";
+import { StatusChip, StatusMark, type StatusTone } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const stateLabel: Record<PlanVersion["state"], string> = {
+// "Ready" means ready for acceptance; "Accepted" is content only, and the
+// header says so in words beside the chip.
+const stateWord: Record<PlanVersion["state"], string> = {
   draft: "Draft",
   validating: "Validating",
-  ready: "Ready for acceptance",
+  ready: "Ready",
   needs_input: "Needs input",
   invalid: "Invalid",
-  accepted: "Accepted (content only; no spend authorized)",
+  accepted: "Accepted",
+};
+
+const stateTone: Record<PlanVersion["state"], StatusTone> = {
+  draft: "pending",
+  validating: "pending",
+  ready: "ready",
+  needs_input: "caution",
+  invalid: "error",
+  accepted: "ready",
 };
 
 const emptyDoc: PlanDocument = {
@@ -84,7 +96,9 @@ export function PlansPage() {
               >
                 {p.title}{" "}
                 <span className="text-muted-foreground">
-                  · v{p.latestVersion} · {p.latestState}
+                  · v{p.latestVersion} ·{" "}
+                  <StatusMark tone={stateTone[p.latestState]} className="mr-1.5 align-middle" />
+                  {stateWord[p.latestState]}
                   {p.accepted ? " · has accepted version" : ""}
                 </span>
               </button>
@@ -487,8 +501,11 @@ function VersionEditor({
 
   return (
     <div className="space-y-4">
-      <p className="text-muted-foreground">
-        Version {version.version} · {stateLabel[version.state]} · {version.source}
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground">
+        <StatusChip tone={stateTone[version.state]}>{stateWord[version.state]}</StatusChip>
+        Version {version.version} · {version.source}
+        {version.state === "ready" && " · ready for acceptance"}
+        {version.state === "accepted" && " · content only"}
         {version.note ? ` · ${version.note}` : ""}
         {version.acceptance &&
           ` · accepted by user ${version.acceptance.acceptedBy} on ${new Date(version.acceptance.acceptedAt).toLocaleDateString()}`}

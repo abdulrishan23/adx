@@ -14,17 +14,32 @@ import {
 import { usePlans } from "@/api/plans";
 import { useProjects } from "@/api/projects";
 import { useSession } from "@/api/session";
-import type { Document, Layer, QueueItem, Version } from "@/api/types.gen";
+import type { Document, Layer, QueueItem, ReviewState, Version } from "@/api/types.gen";
+import { StatusChip, StatusMark, type StatusTone } from "@/components/status";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const stateLabel: Record<string, string> = {
+// The chip word is the state; approved carries its caveat as plain text
+// beside the chip, since the chip never says more than one or two words.
+const stateWord: Record<ReviewState, string> = {
   draft: "Draft",
   rendered: "Rendered",
-  in_review: "On the review board",
-  approved: "Approved (content only; not delivered)",
+  in_review: "Review",
+  approved: "Approved",
   revise: "Sent back",
 };
+
+const stateTone: Record<ReviewState, StatusTone> = {
+  draft: "pending",
+  rendered: "ready",
+  in_review: "caution",
+  approved: "ready",
+  revise: "error",
+};
+
+function StateChip({ state }: { state: ReviewState }) {
+  return <StatusChip tone={stateTone[state]}>{stateWord[state]}</StatusChip>;
+}
 
 const queueColumns: { state: QueueItem["reviewState"]; title: string }[] = [
   { state: "draft", title: "Drafts" },
@@ -63,7 +78,8 @@ export function CreativesPage() {
           const items = queue.data?.items.filter((i) => i.reviewState === col.state) ?? [];
           return (
             <div key={col.state} className="rounded-lg border p-2 text-sm">
-              <h2 className="font-semibold">
+              <h2 className="flex items-center gap-1.5 font-semibold">
+                <StatusMark tone={stateTone[col.state]} />
                 {col.title} <span className="text-muted-foreground">{items.length}</span>
               </h2>
               <ul className="mt-1 space-y-1">
@@ -327,8 +343,10 @@ function CreativeDetail({
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-semibold tracking-tight">{c.name}</h2>
-        <p className="text-sm text-muted-foreground">
-          {c.format} · {c.language} · version {latest.version} · {stateLabel[latest.reviewState]}
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          <StateChip state={latest.reviewState} />
+          {c.format} · {c.language} · version {latest.version}
+          {latest.reviewState === "approved" && " · content only; not delivered"}
           {latest.renderer && ` · ${latest.renderer} layout`}
           {c.offerId && ` · offer ${c.offerId} v${c.offerVersion}`}
           {c.planId && ` · plan ${c.planId} v${c.planVersion}`}
@@ -367,15 +385,15 @@ function CreativeDetail({
           {other && (
             <div className="grid gap-2 md:grid-cols-2">
               <div>
-                <p className="text-sm font-medium">
-                  v{latest.version} · {stateLabel[latest.reviewState]}
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  v{latest.version} <StateChip state={latest.reviewState} />
                 </p>
                 <Output version={latest} name={c.name} />
                 <Checks version={latest} />
               </div>
               <div>
-                <p className="text-sm font-medium">
-                  v{other.version} · {stateLabel[other.reviewState]}
+                <p className="flex items-center gap-2 text-sm font-medium">
+                  v{other.version} <StateChip state={other.reviewState} />
                 </p>
                 <Output version={other} name={c.name} />
                 <Checks version={other} />
@@ -455,8 +473,8 @@ function CreativeDetail({
             <ul className="mt-1 space-y-1">
               {versions.map((v) => (
                 <li key={v.id} className="flex flex-wrap items-center gap-2">
-                  <span>
-                    v{v.version} · {stateLabel[v.reviewState]}
+                  <span className="inline-flex items-center gap-2">
+                    v{v.version} <StateChip state={v.reviewState} />
                     {v.output ? ` · ${v.output.sha256.slice(0, 12)}…` : ""}
                   </span>
                   {v.version !== latest.version && (

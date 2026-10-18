@@ -186,7 +186,11 @@ export function Sidebar() {
           </div>
         ))}
       </nav>
-      {!collapsed && (
+      {collapsed ? (
+        <div className="flex justify-center border-t py-3">
+          <ServerStatus compact />
+        </div>
+      ) : (
         <div className="space-y-2 border-t px-4 py-3 text-xs">
           <WorkspaceSwitcher />
           <AccountMenu />

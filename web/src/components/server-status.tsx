@@ -1,22 +1,41 @@
 import { useReadiness } from "@/api/ops";
+import { StatusMark, type StatusTone } from "@/components/status";
 
-// Shown in the footer. Loading, ready, not ready (naming the failed checks)
-// and unreachable are all distinct, so a stale page never looks healthy.
-export function ServerStatus() {
+// Shown in the sidebar footer. Loading, ready, not ready (naming the failed
+// checks) and unreachable are all distinct, so a stale page never looks
+// healthy. Compact shows the mark alone with the words as its title, for the
+// collapsed sidebar.
+export function ServerStatus({ compact = false }: { compact?: boolean }) {
   const ready = useReadiness();
-  if (ready.isPending) {
-    return <span className="text-muted-foreground">Checking server…</span>;
-  }
+  let tone: StatusTone = "pending";
+  let text = "Checking server…";
   if (ready.error) {
-    return <span className="text-destructive">Server unreachable</span>;
+    tone = "error";
+    text = "Server unreachable";
+  } else if (ready.data) {
+    const failed = ready.data.checks.filter((c) => !c.ok).map((c) => c.name);
+    if (ready.data.ready) {
+      tone = "ready";
+      text = "Server ready";
+    } else {
+      tone = "error";
+      text = `Server not ready${failed.length > 0 ? `: ${failed.join(", ")}` : ""}`;
+    }
   }
-  const failed = ready.data.checks.filter((c) => !c.ok).map((c) => c.name);
-  if (!ready.data.ready) {
+  if (compact) {
     return (
-      <span className="text-destructive">
-        Server not ready{failed.length > 0 ? `: ${failed.join(", ")}` : ""}
+      <span title={text} className="inline-flex">
+        <StatusMark tone={tone} />
+        <span className="sr-only">{text}</span>
       </span>
     );
   }
-  return <span className="text-muted-foreground">Server ready</span>;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 ${tone === "error" ? "text-destructive" : "text-muted-foreground"}`}
+    >
+      <StatusMark tone={tone} />
+      {text}
+    </span>
+  );
 }
