@@ -46,7 +46,10 @@ func TestRenderIsDeterministicAndSafe(t *testing.T) {
 	assert.Contains(t, s, `width="1080" height="1350"`)
 	assert.Contains(t, s, `data-renderer="template"`)
 	assert.Contains(t, s, `direction="rtl"`)
-	assert.Contains(t, s, `text-anchor="end"`)
+	// Right-aligned Arabic starts at the right edge of its box; "end" there
+	// would run the text off the frame to the right.
+	assert.Contains(t, s, `<text x="993.6" y="1150.8" font-family="Almarai, sans-serif" font-size="72.0" fill="#FFFFFF" text-anchor="start" direction="rtl"`)
+	assert.NotContains(t, s, `text-anchor="end"`)
 	assert.Contains(t, s, "&lt;b&gt;", "text is escaped, never markup")
 	assert.NotContains(t, s, "<b>")
 	assert.Contains(t, s, "data:image/jpeg;base64,", "the render is embedded so the checksum covers it")

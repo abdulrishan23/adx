@@ -96,9 +96,16 @@ func writeText(b *strings.Builder, l assets.Layer) {
 		anchor, x = "end", l.X+l.Width
 	}
 	if l.RTL {
+		// In a right-to-left run the start of the text is its right end, so
+		// the anchors swap: "start" at the right edge is right-aligned, and
+		// "end" at the left edge is left-aligned. Right-aligned is the default.
 		direction = "rtl"
-		if l.Align != "center" && l.Align != "left" {
-			anchor, x = "end", l.X+l.Width
+		switch l.Align {
+		case "center":
+		case "left":
+			anchor, x = "end", l.X
+		default:
+			anchor, x = "start", l.X+l.Width
 		}
 	}
 	lineHeight := l.LineHeight
