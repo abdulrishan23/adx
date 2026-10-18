@@ -672,6 +672,18 @@ type KillSwitch struct {
 	SetAt       time.Time
 }
 
+type LaunchPick struct {
+	ID          int64
+	WorkspaceID int64
+	PlanID      int64
+	PlanVersion int64
+	LineIndex   int64
+	Channel     string
+	CampaignID  int64
+	PickedBy    sql.NullInt64
+	PickedAt    time.Time
+}
+
 type Lead struct {
 	ID                 int64
 	WorkspaceID        int64

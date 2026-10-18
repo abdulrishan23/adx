@@ -810,6 +810,10 @@ func planFromRow(r store.Plan) Plan {
 	return Plan{ID: r.ID, BrandID: r.BrandID, ProjectID: idPtr(r.ProjectID), Title: r.Title, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
 }
 
+// VersionFromRow reads a stored version. Other domains that join
+// plan_versions themselves (launch) use it instead of a second decoder.
+func VersionFromRow(r store.PlanVersion) (PlanVersion, error) { return versionFromRow(r) }
+
 func versionFromRow(r store.PlanVersion) (PlanVersion, error) {
 	v := PlanVersion{ID: r.ID, PlanID: r.PlanID, Version: r.Version, State: PlanState(r.State), Source: r.Source, Note: r.Note, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC()}
 	if err := json.Unmarshal([]byte(r.Document), &v.Document); err != nil {
