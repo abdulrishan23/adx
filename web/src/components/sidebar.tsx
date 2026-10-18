@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Gauge,
   GraduationCap,
+  House,
   Image,
   Inbox,
   Kanban,
@@ -43,10 +44,14 @@ import { cn } from "@/lib/utils";
 // The desk (design language, 09): a 200px sidebar on its own tone with the
 // pages grouped by what they are for. Collapsed it is 48px and shows one
 // 16px icon per page; the group headings become hairlines.
-const NAV: { heading: string; items: { to: string; label: string; icon: LucideIcon }[] }[] = [
+const NAV: {
+  heading: string;
+  items: { to: string; label: string; icon: LucideIcon; exact?: boolean }[];
+}[] = [
   {
     heading: "Work",
     items: [
+      { to: "/", label: "Home", icon: House, exact: true },
       { to: "/projects", label: "Projects", icon: FolderOpen },
       { to: "/analytics", label: "Analytics", icon: ChartColumn },
       { to: "/ask", label: "Ask ADX", icon: MessageSquare },
@@ -132,7 +137,7 @@ export function Sidebar() {
         )}
       >
         <Link
-          to="/projects"
+          to="/"
           className="font-heading text-xl leading-none font-bold tracking-tight"
           aria-label="ADX home"
         >
@@ -178,6 +183,7 @@ export function Sidebar() {
                     collapsed ? "size-7 justify-center" : "h-8 gap-2 px-2",
                   )}
                   activeProps={{ className: "bg-sidebar-accent font-medium" }}
+                  activeOptions={{ exact: item.exact ?? false }}
                 >
                   <Icon size={16} strokeWidth={2} aria-hidden="true" className="shrink-0" />
                   {!collapsed && <span className="truncate">{item.label}</span>}

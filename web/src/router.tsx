@@ -5,7 +5,6 @@ import {
   HeadContent,
   Link,
   Outlet,
-  redirect,
 } from "@tanstack/react-router";
 import { Sidebar } from "@/components/sidebar";
 import { AgentsPage } from "@/routes/agents";
@@ -18,6 +17,7 @@ import { ConnectionsPage } from "@/routes/connections";
 import { CreativesPage } from "@/routes/creatives";
 import { EvaluationPage } from "@/routes/evaluation";
 import { FunnelPage } from "@/routes/funnel";
+import { HomePage } from "@/routes/home";
 import { LaunchPage } from "@/routes/launch";
 import { LeadsPage } from "@/routes/leads";
 import { LearningPage } from "@/routes/learning";
@@ -69,9 +69,7 @@ function Layout() {
 const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/projects" });
-  },
+  component: HomePage,
 });
 
 const projectsRoute = createRoute({
@@ -152,10 +150,14 @@ const analyticsRoute = createRoute({
   component: AnalyticsPage,
 });
 
+// ?q= carries a question from the desk's composer or a card's "Talk about
+// this"; the page asks it in a new conversation and drops it from the URL.
 const askRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/ask",
   component: AskPage,
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search.q === "string" && search.q !== "" ? { q: search.q } : {},
 });
 
 const brandsRoute = createRoute({

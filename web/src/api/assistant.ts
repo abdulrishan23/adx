@@ -44,6 +44,20 @@ export function useSendMessage(id: number | null) {
   });
 }
 
+// Sends into a conversation named per call, for a question that arrives
+// before the page has a current conversation.
+export function useSendMessageTo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, text }: { id: number; text: string }) =>
+      postJSON<Reply>(`/api/assistant/conversations/${id}/messages`, { text }),
+    onSuccess: (_reply, { id }) => {
+      qc.invalidateQueries({ queryKey: ["assistant", "turns", id] });
+      qc.invalidateQueries({ queryKey: ["assistant", "conversations"] });
+    },
+  });
+}
+
 export function useSendVoice(id: number | null) {
   const qc = useQueryClient();
   return useMutation({

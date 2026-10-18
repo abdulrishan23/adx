@@ -1,9 +1,11 @@
-import { type FormEvent, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   useConversations,
   useCreateConversation,
   usePreviewVoice,
   useSendMessage,
+  useSendMessageTo,
   useSendVoice,
   useTurns,
 } from "@/api/assistant";
@@ -21,10 +23,28 @@ export function AskPage() {
   const [current, setCurrent] = useState<number | null>(null);
   const turns = useTurns(current);
   const send = useSendMessage(current);
+  const sendTo = useSendMessageTo();
   const sendVoice = useSendVoice(current);
   const preview = usePreviewVoice();
   const [text, setText] = useState("");
   const [spoken, setSpoken] = useState("");
+  const { q } = useSearch({ from: "/ask" });
+  const navigate = useNavigate();
+  const asked = useRef<string | null>(null);
+
+  // A question carried in from the desk: one new conversation, the question
+  // sent once, the URL cleaned so a reload does not ask it again.
+  useEffect(() => {
+    if (!q || asked.current === q) return;
+    asked.current = q;
+    create.mutate(undefined, {
+      onSuccess: (c) => {
+        setCurrent(c.id);
+        sendTo.mutate({ id: c.id, text: q });
+        navigate({ to: "/ask", search: {}, replace: true });
+      },
+    });
+  }, [q, create.mutate, sendTo.mutate, navigate]);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -77,8 +97,11 @@ export function AskPage() {
             ))}
           </ol>
         )}
-        {send.isPending && <p className="text-sm text-muted-foreground">Asking…</p>}
+        {(send.isPending || sendTo.isPending) && (
+          <p className="text-sm text-muted-foreground">Asking…</p>
+        )}
         {send.error && <p className="text-sm text-destructive">{send.error.message}</p>}
+        {sendTo.error && <p className="text-sm text-destructive">{sendTo.error.message}</p>}
         {current !== null && spoken && (
           <div className="space-y-1 rounded-md border p-2 text-sm">
             <p>
