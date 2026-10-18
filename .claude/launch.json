@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "adx-server",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/abdulrishan/Desktop/adx/server && ADX_ENV=dev ADX_DB_PATH=/private/tmp/claude-501/-Users-abdulrishan-Desktop-adx/38dadc97-2a84-43ef-8155-656e59e856a8/scratchpad/adx-data/adx.db ADX_ASSETS_DIR=/private/tmp/claude-501/-Users-abdulrishan-Desktop-adx/38dadc97-2a84-43ef-8155-656e59e856a8/scratchpad/adx-data/assets exec go run ./cmd/adx"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "adx-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd /Users/abdulrishan/Desktop/adx/web && exec pnpm dev"],
+      "port": 5173
+    }
+  ]
+}
