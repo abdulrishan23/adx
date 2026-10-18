@@ -150,6 +150,22 @@ func (q *Queries) EndUserSessions(ctx context.Context, arg EndUserSessionsParams
 	return err
 }
 
+const ensureAdminMemberships = `-- name: EnsureAdminMemberships :exec
+INSERT INTO memberships (workspace_id, user_id, role, enabled, created_at)
+SELECT w.id, ?1, 'admin', 1, ?2 FROM workspaces w WHERE true
+ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = 'admin', enabled = 1
+`
+
+type EnsureAdminMembershipsParams struct {
+	UserID    int64
+	CreatedAt time.Time
+}
+
+func (q *Queries) EnsureAdminMemberships(ctx context.Context, arg EnsureAdminMembershipsParams) error {
+	_, err := q.db.ExecContext(ctx, ensureAdminMemberships, arg.UserID, arg.CreatedAt)
+	return err
+}
+
 const getLiveSession = `-- name: GetLiveSession :one
 SELECT id_hash, user_id, workspace_id, via, created_at, last_seen_at, expires_at, ended_at FROM sessions WHERE id_hash = ? AND ended_at IS NULL
 `

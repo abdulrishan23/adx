@@ -308,6 +308,41 @@ func (u *Users) Bootstrap(ctx context.Context, actor core.Actor, email string) (
 	return user, true, err
 }
 
+// DevEmail is the synthetic person the dev admin acts as. It has no
+// authentik account: the pk is 0 and the uuid is "dev", values authentik
+// never hands out, so sign-in can never match it.
+const DevEmail = "dev@adx.localhost"
+
+// EnsureDev makes the person the dev admin acts as, so dev requests carry a
+// real user id and the rows that record who activated, decided or started
+// something point at an existing person. It is safe to repeat: a second run
+// puts the role and status back to an active admin and adds an enabled admin
+// membership in any workspace made since. Startup calls it in dev mode only;
+// it never touches authentik, and nothing is logged, because it is not an
+// admin adding someone.
+func (u *Users) EnsureDev(ctx context.Context, actor core.Actor) (User, error) {
+	if !actor.AtLeast(core.RoleAdmin) {
+		return User{}, core.ErrForbidden
+	}
+	var row store.User
+	err := u.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+		var err error
+		now := time.Now().UTC()
+		row, err = q.UpsertDevUser(ctx, store.UpsertDevUserParams{
+			Email: DevEmail, Name: sql.NullString{String: "Dev admin", Valid: true},
+			AuthentikPk: 0, AuthentikUuid: "dev", CreatedAt: now,
+		})
+		if err != nil {
+			return err
+		}
+		return q.EnsureAdminMemberships(ctx, store.EnsureAdminMembershipsParams{UserID: row.ID, CreatedAt: now})
+	})
+	if err != nil {
+		return User{}, err
+	}
+	return fromRow(row), nil
+}
+
 // SignIn decides whether the person authentik signed in may use ADX. It
 // matches only on authentik's subject, which is the account UUID ADX saved
 // when adding them, never on the email. An invited person becomes active.

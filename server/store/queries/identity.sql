@@ -40,3 +40,8 @@ RETURNING *;
 
 -- name: DeleteExpiredSignInAttempts :exec
 DELETE FROM sign_in_attempts WHERE expires_at <= ?;
+
+-- name: EnsureAdminMemberships :exec
+INSERT INTO memberships (workspace_id, user_id, role, enabled, created_at)
+SELECT w.id, sqlc.arg(user_id), 'admin', 1, sqlc.arg(created_at) FROM workspaces w WHERE true
+ON CONFLICT (workspace_id, user_id) DO UPDATE SET role = 'admin', enabled = 1;

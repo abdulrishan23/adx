@@ -9,7 +9,8 @@ import (
 )
 
 // SessionResponse is GET /api/session. Dev is true for the dev admin, which
-// has no person behind it.
+// nobody signed in as; User is then the dev person, or null on a server
+// without one.
 type SessionResponse struct {
 	User        *users.User `json:"user"`
 	Role        core.Role   `json:"role"`
@@ -29,7 +30,7 @@ func (h *handlers) session(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	actor := actorFrom(r)
-	writeJSON(w, http.StatusOK, SessionResponse{Role: actor.Role, WorkspaceID: actor.WorkspaceID, Workspace: "Reportage (dev)", Dev: true})
+	writeJSON(w, http.StatusOK, SessionResponse{User: h.devUser, Role: actor.Role, WorkspaceID: actor.WorkspaceID, Workspace: "Reportage (dev)", Dev: true})
 }
 
 // login sends the browser to authentik. These routes sit outside withActor:

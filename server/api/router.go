@@ -40,6 +40,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
 	"github.com/WokeWorks/adx/server/core/supervisor"
+	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/workflows"
 	"github.com/WokeWorks/adx/server/core/workspaces"
 )
@@ -54,6 +55,10 @@ type Deps struct {
 	// Identity resolves session cookies and runs sign-in. Nil means no
 	// sessions at all: dev gets the dev admin, production refuses everything.
 	Identity *identity.Identity
+	// DevUser is the person the dev admin acts as, made by users.EnsureDev at
+	// startup. Nil leaves the dev admin without a person, so the core
+	// functions that record who acted refuse it.
+	DevUser  *users.User
 	Policies *policies.Policies
 	Runs     *runs.Runs
 	Leads    *leads.Leads
@@ -96,6 +101,7 @@ type handlers struct {
 	connections   *connections.Connections
 	ops           *ops.Ops
 	identity      *identity.Identity
+	devUser       *users.User
 	policies      *policies.Policies
 	runs          *runs.Runs
 	leads         *leads.Leads
@@ -128,7 +134,7 @@ type handlers struct {
 }
 
 func NewRouter(d Deps) http.Handler {
-	h := &handlers{log: d.Log, dev: d.Dev, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
+	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
 		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
@@ -167,7 +173,7 @@ func NewRouter(d Deps) http.Handler {
 	r.Post("/api/auth/logout", h.logout)
 
 	r.Group(func(r chi.Router) {
-		r.Use(withActor(d.Dev, d.Identity))
+		r.Use(withActor(d.Dev, d.Identity, d.DevUser))
 		r.Get("/api/session", h.session)
 		r.Post("/api/session/switch", h.switchWorkspace)
 		r.Get("/api/workspaces", h.listWorkspaces)

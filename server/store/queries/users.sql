@@ -35,3 +35,9 @@ RETURNING *;
 -- name: CountEnabledAdmins :one
 SELECT count(*) FROM users
 WHERE role = 'admin' AND status != 'disabled';
+
+-- name: UpsertDevUser :one
+INSERT INTO users (email, name, role, status, authentik_pk, authentik_uuid, created_at)
+VALUES (?, ?, 'admin', 'active', ?, ?, ?)
+ON CONFLICT (authentik_uuid) DO UPDATE SET role = 'admin', status = 'active'
+RETURNING *;

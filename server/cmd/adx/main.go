@@ -252,6 +252,18 @@ func run() error {
 		}
 	}
 
+	// The dev admin acts as a synthetic person, so the actions that record
+	// who did them work without a sign-in. After bootstrap, so the dev person
+	// never counts as the admin a fresh install already has.
+	var devUser *users.User
+	if dev {
+		u, err := people.EnsureDev(ctx, core.System(core.ViaStartup))
+		if err != nil {
+			return fmt.Errorf("dev user: %w", err)
+		}
+		devUser = &u
+	}
+
 	// Claim the port before starting workers, so a busy port fails fast
 	// instead of leaving River running against a database about to close.
 	if dev {
@@ -575,6 +587,7 @@ func run() error {
 			Connections:   connections,
 			Ops:           readiness,
 			Identity:      sessions,
+			DevUser:       devUser,
 			Policies:      policyService,
 			Runs:          runsService,
 			Leads:         leadsService,

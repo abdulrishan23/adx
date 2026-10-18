@@ -224,3 +224,41 @@ func (q *Queries) SetUserStatus(ctx context.Context, arg SetUserStatusParams) er
 	_, err := q.db.ExecContext(ctx, setUserStatus, arg.Status, arg.ID)
 	return err
 }
+
+const upsertDevUser = `-- name: UpsertDevUser :one
+INSERT INTO users (email, name, role, status, authentik_pk, authentik_uuid, created_at)
+VALUES (?, ?, 'admin', 'active', ?, ?, ?)
+ON CONFLICT (authentik_uuid) DO UPDATE SET role = 'admin', status = 'active'
+RETURNING id, email, name, role, status, authentik_pk, authentik_uuid, created_at, last_sign_in_at
+`
+
+type UpsertDevUserParams struct {
+	Email         string
+	Name          sql.NullString
+	AuthentikPk   int64
+	AuthentikUuid string
+	CreatedAt     time.Time
+}
+
+func (q *Queries) UpsertDevUser(ctx context.Context, arg UpsertDevUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, upsertDevUser,
+		arg.Email,
+		arg.Name,
+		arg.AuthentikPk,
+		arg.AuthentikUuid,
+		arg.CreatedAt,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.Name,
+		&i.Role,
+		&i.Status,
+		&i.AuthentikPk,
+		&i.AuthentikUuid,
+		&i.CreatedAt,
+		&i.LastSignInAt,
+	)
+	return i, err
+}

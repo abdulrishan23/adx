@@ -22,7 +22,9 @@ export function AccountMenu() {
     );
   }
   const s = session.data;
-  const who = s.dev ? "Dev admin (no sign-in)" : (s.user?.name ?? s.user?.email ?? "Signed in");
+  const who = s.dev
+    ? `${s.user?.name ?? "Dev admin"} (no sign-in)`
+    : (s.user?.name ?? s.user?.email ?? "Signed in");
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-muted-foreground">

@@ -3,6 +3,7 @@ package users_test
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -598,4 +599,42 @@ func TestSignInNeedsASubject(t *testing.T) {
 	_, err := e.u.SignIn(t.Context(), web, users.Identity{Email: "sara@reportage.ae", InAllowedGroup: true})
 	require.Error(t, err)
 	assert.Len(t, e.actions(t), before)
+}
+
+// Catches: the dev admin acting without a person, the dev person losing
+// admin after a demotion, missing a workspace made after the first start,
+// and a second start failing on the unique authentik columns.
+func TestEnsureDevIsSafeToRepeat(t *testing.T) {
+	e := setup(t)
+	dev, err := e.u.EnsureDev(t.Context(), system)
+	require.NoError(t, err)
+	assert.NotZero(t, dev.ID)
+	assert.Equal(t, users.DevEmail, dev.Email)
+	assert.Equal(t, core.RoleAdmin, dev.Role)
+	assert.Equal(t, users.StatusActive, dev.Status)
+	require.NotNil(t, dev.Name)
+	assert.Equal(t, "Dev admin", *dev.Name)
+
+	me, err := e.u.Me(t.Context(), core.Actor{UserID: dev.ID, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: core.DefaultWorkspace})
+	require.NoError(t, err)
+	assert.Equal(t, dev.ID, me.ID)
+
+	e.add(t, "cmo@reportage.ae", core.RoleAdmin)
+	_, err = e.u.SetRole(t.Context(), system, dev.ID, core.RoleViewer)
+	require.NoError(t, err)
+	other, err := e.db.Writer().CreateWorkspace(t.Context(), store.CreateWorkspaceParams{Slug: "bianca", Name: "Bianca Holdings", CreatedAt: time.Now().UTC()})
+	require.NoError(t, err)
+
+	again, err := e.u.EnsureDev(t.Context(), system)
+	require.NoError(t, err)
+	assert.Equal(t, dev.ID, again.ID, "one dev person, not one per start")
+	assert.Equal(t, core.RoleAdmin, again.Role)
+	for _, ws := range []int64{core.DefaultWorkspace, other.ID} {
+		m, err := e.db.Reader().GetMembership(t.Context(), store.GetMembershipParams{WorkspaceID: ws, UserID: dev.ID})
+		require.NoError(t, err)
+		assert.Equal(t, "admin", m.Role)
+		assert.EqualValues(t, 1, m.Enabled)
+	}
+	_, err = e.u.EnsureDev(t.Context(), web)
+	assert.ErrorIs(t, err, core.ErrForbidden)
 }

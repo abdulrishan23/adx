@@ -8,6 +8,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/identity"
+	"github.com/WokeWorks/adx/server/core/users"
 )
 
 type actorKey struct{}
@@ -21,9 +22,14 @@ const sessionCookie = "adx_session"
 // up in core/identity on every request, so a disabled person or a changed
 // role applies at once. Nothing the client sends besides the cookie is
 // consulted: a role header is ignored. Without a cookie, dev mode hands out
-// an admin in the default workspace, and only dev mode. Outside dev every
-// request without a live session is 401.
-func withActor(dev bool, id *identity.Identity) func(http.Handler) http.Handler {
+// an admin in the default workspace, and only dev mode: the dev person when
+// startup made one, so actions that record who did them work, else an actor
+// with no user id. Outside dev every request without a live session is 401.
+func withActor(dev bool, id *identity.Identity, devUser *users.User) func(http.Handler) http.Handler {
+	var devUserID int64
+	if devUser != nil {
+		devUserID = devUser.ID
+	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if cookie, err := r.Cookie(sessionCookie); err == nil && cookie.Value != "" && id != nil {
@@ -46,7 +52,7 @@ func withActor(dev bool, id *identity.Identity) func(http.Handler) http.Handler 
 				writeError(w, http.StatusUnauthorized, "sign in to continue")
 				return
 			}
-			actor := core.Actor{UserID: 0, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: devWorkspace(r)}
+			actor := core.Actor{UserID: devUserID, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: devWorkspace(r)}
 			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), actorKey{}, actor)))
 		})
 	}
