@@ -17,11 +17,12 @@ import { AnalyticsPage } from "@/routes/analytics";
 import { ApprovePage } from "@/routes/approve";
 import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
+import { BrandPage } from "@/routes/brand";
+import { BrandsPage } from "@/routes/brands";
 import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
-import { BrandKnowledgePage } from "@/routes/create/brand";
 import { LaunchPage } from "@/routes/create/launch";
 import { PagesPage } from "@/routes/create/pages";
 import { PlanPage, PlansPage } from "@/routes/create/plans";
@@ -48,8 +49,6 @@ import { PeoplePage } from "@/routes/people";
 import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
-import { ProjectPage } from "@/routes/project";
-import { ProjectsPage } from "@/routes/projects";
 import { ProjectsOverviewPage } from "@/routes/projects-overview";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
@@ -180,6 +179,14 @@ const oldAlertsRoute = createRoute({
     throw redirect({ to: "/inbox" });
   },
 });
+// Brand knowledge is the brand page now.
+const oldBrandKnowledgeRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/create/brand",
+  beforeLoad: () => {
+    throw redirect({ to: "/brands" });
+  },
+});
 const oldProjectsListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects",
@@ -190,8 +197,8 @@ const oldProjectsListRoute = createRoute({
 const oldProjectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/projects/$projectId",
-  beforeLoad: ({ params }) => {
-    throw redirect({ to: "/brands/$projectId", params });
+  beforeLoad: () => {
+    throw redirect({ to: "/brands" });
   },
 });
 
@@ -338,6 +345,7 @@ const routeTree = rootRoute.addChildren([
   oldFunnelRoute,
   oldProjectsRoute,
   oldProjectsListRoute,
+  oldBrandKnowledgeRoute,
   oldAlertsRoute,
   oldProjectRoute,
   presentRoute,
@@ -347,7 +355,6 @@ const routeTree = rootRoute.addChildren([
   publicRoute.addChildren([privacyRoute, approveRoute]),
   appRoute.addChildren([
     indexRoute,
-    page("/create/brand", BrandKnowledgePage),
     page("/create/research", ResearchPage),
     page("/create/plans", PlansPage),
     page("/create/plans/$planId", PlanPage),
@@ -387,9 +394,9 @@ const routeTree = rootRoute.addChildren([
     page("/settings/guardrails", GuardrailsPage),
     page("/settings/scoring", ScoringPage),
     page("/inbox", InboxPage),
-    page("/brands", ProjectsPage),
+    page("/brands", BrandsPage),
     page("/brands/new", StartBrandPage),
-    page("/brands/$projectId", ProjectPage),
+    page("/brands/$brandId", BrandPage),
     page("/engine", EnginePage),
     page("/engine/home", E.home),
     page("/engine/projects", E.projects),

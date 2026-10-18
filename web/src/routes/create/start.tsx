@@ -1,14 +1,16 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Upload } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
-import { type Analyst, useStartSetup } from "@/api/create";
-import { useCreateProject } from "@/api/projects";
+import { useAssignProject, useCreateBrand } from "@/api/brands";
+import type { Analyst } from "@/api/create";
+import { useCreateBrief } from "@/api/research";
 import { ErrorNote, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusMark } from "@/components/ui/status-chip";
+import { postJSON } from "@/engine/api/client";
+import { useCreateProject } from "@/engine/api/projects";
 import { cn } from "@/lib/utils";
-import { SampleChip } from "./shared";
 
 const ANALYSTS: { id: Analyst; name: string; looks: string }[] = [
   { id: "performance", name: "Performance marketer", looks: "Campaigns, costs and conversion" },
@@ -25,13 +27,22 @@ const TEXTAREA =
 // Starting a brand is the first step of the CEO's flow: give Adx the brand's
 // context, say who should look at it and with which skills, and Adx sets up
 // the project and works through analysis and research to a first media plan.
-// The brand is created for real; the setup run is sample until phase 2.
+// Everything here is real: the brand, its first project, and a research brief
+// that reads the website and the competitors named, audits the account when
+// there is history, and starts running at once. The specialists and the
+// skills file are recorded in the brand's notes until the engine has a place
+// for them (B5.2's registry).
 export function StartBrandPage() {
   const navigate = useNavigate();
-  const create = useCreateProject();
-  const start = useStartSetup();
+  const createBrand = useCreateBrand();
+  const createProject = useCreateProject();
+  const assign = useAssignProject();
+  const createBrief = useCreateBrief();
+
   const ids = {
     name: useId(),
+    project: useId(),
+    competitors: useId(),
     website: useId(),
     elsewhere: useId(),
     brief: useId(),
@@ -42,8 +53,10 @@ export function StartBrandPage() {
   const [analysts, setAnalysts] = useState<Analyst[]>(["performance", "media", "brand"]);
   const [skillsFile, setSkillsFile] = useState<string | null>(null);
   const [templateFile, setTemplateFile] = useState<string | null>(null);
-  const busy = create.isPending || start.isPending;
-  const error = create.error ?? start.error;
+  const [project, setProject] = useState("");
+  const busy =
+    createBrand.isPending || createProject.isPending || assign.isPending || createBrief.isPending;
+  const error = createBrand.error ?? createProject.error ?? assign.error ?? createBrief.error;
 
   const toggle = (a: Analyst) =>
     setAnalysts((xs) => (xs.includes(a) ? xs.filter((x) => x !== a) : [...xs, a]));
@@ -52,19 +65,44 @@ export function StartBrandPage() {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const text = (k: string) => String(f.get(k) ?? "").trim();
-    const project = await create.mutateAsync({ name: name.trim() });
-    await start.mutateAsync({
-      projectId: project.id,
-      brief: text("brief"),
-      results: text("results"),
-      website: text("website"),
-      elsewhere: text("elsewhere"),
-      hasHistory,
-      analysts,
-      skillsFile,
-      templateFile,
+    const lines = (k: string) =>
+      text(k)
+        .split("\n")
+        .map((l) => l.trim())
+        .filter(Boolean);
+    const notes = [
+      text("brief"),
+      text("results") && `Results so far: ${text("results")}`,
+      `Specialists: ${analysts.map((a) => ANALYSTS.find((x) => x.id === a)?.name ?? a).join(", ")}`,
+      skillsFile && `Skills file: ${skillsFile}`,
+      templateFile && `Media-plan template: ${templateFile}`,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const brand = await createBrand.mutateAsync({ name: name.trim(), kind: "own", notes });
+    const p = await createProject.mutateAsync({ name: project.trim() || name.trim() });
+    await assign.mutateAsync({ projectId: p.id, brandId: brand.id });
+    const website = text("website");
+    const competitors = lines("competitors").map((l) => {
+      const [cname, ...urls] = l.split(/\s+/);
+      return { name: cname ?? l, urls: urls.filter((u) => /^https?:\/\//.test(u)) };
     });
-    navigate({ to: "/brands/$projectId", params: { projectId: String(project.id) } });
+    const brief = await createBrief.mutateAsync({
+      brandId: brand.id,
+      projectId: p.id,
+      title: `${p.name}: setup research`,
+      question: `Who is ${name.trim()} selling ${p.name} to, who else is selling to them, and what will it cost to reach them?`,
+      geography: "AE",
+      language: "en",
+      urls: [website, ...lines("elsewhere")].filter((u) => /^https?:\/\//.test(u)),
+      competitors,
+      keywordSeeds: [],
+      googleAdsAccountId: 0,
+      auditAccount: hasHistory,
+    });
+    // Start the run and move on; the brand page shows items as they're fetched.
+    await postJSON(`/api/research/briefs/${brief.brief.id}/runs`, {});
+    navigate({ to: "/brands/$brandId", params: { brandId: String(brand.id) } });
   }
 
   return (
@@ -84,9 +122,12 @@ export function StartBrandPage() {
         className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
       >
         <div className="min-w-0 space-y-6">
-          <Panel title="The brand" description="A development or product Reportage markets.">
+          <Panel
+            title="The brand"
+            description="The developer or company Adx markets, and the first development it's selling."
+          >
             <div className="grid gap-4">
-              <Field id={ids.name} label="Name">
+              <Field id={ids.name} label="Brand">
                 <Input
                   id={ids.name}
                   name="name"
@@ -94,6 +135,21 @@ export function StartBrandPage() {
                   maxLength={100}
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  placeholder="Reportage Properties"
+                />
+              </Field>
+              <Field
+                id={ids.project}
+                label="First project"
+                hint="The development to start on. More can be added on the brand page."
+              >
+                <Input
+                  id={ids.project}
+                  name="project"
+                  required
+                  maxLength={100}
+                  value={project}
+                  onChange={(e) => setProject(e.target.value)}
                   placeholder="The Wadi"
                 />
               </Field>
@@ -102,11 +158,25 @@ export function StartBrandPage() {
               </Field>
               <Field
                 id={ids.elsewhere}
-                label="Where else it lives"
-                hint="Social handles, a brochure link, a YouTube channel. One per line."
+                label="Pages to read"
+                hint="Project pages, a brochure link, a listing. One URL per line; Adx reads each one."
                 optional
               >
                 <textarea id={ids.elsewhere} name="elsewhere" rows={3} className={TEXTAREA} />
+              </Field>
+              <Field
+                id={ids.competitors}
+                label="Competitors"
+                hint="One per line: a name, then their page URLs. Adx reads their pages and keeps them on the competitor side."
+                optional
+              >
+                <textarea
+                  id={ids.competitors}
+                  name="competitors"
+                  rows={3}
+                  className={TEXTAREA}
+                  placeholder="Aldar https://www.aldar.com/en/explore-aldar/yas-park-gate"
+                />
               </Field>
             </div>
           </Panel>
@@ -220,13 +290,7 @@ export function StartBrandPage() {
         </div>
 
         <aside className="lg:sticky lg:top-6">
-          <Panel
-            title={
-              <span className="flex items-center gap-2">
-                What Adx will do <SampleChip phase={2} />
-              </span>
-            }
-          >
+          <Panel title={<span className="flex items-center gap-2">What Adx will do</span>}>
             <ol className="space-y-3">
               {[
                 ["Brand analysis", "What it sells, to whom, its voice and gaps"],
@@ -257,12 +321,13 @@ export function StartBrandPage() {
               type="submit"
               size="lg"
               className="mt-4 w-full"
-              disabled={busy || !name.trim() || analysts.length === 0}
+              disabled={busy || !name.trim() || !project.trim() || analysts.length === 0}
             >
               {busy ? "Starting…" : "Start setup"}
             </Button>
             <p className="mt-2 text-xs text-muted-foreground">
-              Adds the brand now. The setup run is sample data until phase 2.
+              The research starts the moment you press this. Keyword ideas and the audit wait for
+              connected accounts.
             </p>
             {error && (
               <div className="mt-3">
