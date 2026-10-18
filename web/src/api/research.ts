@@ -3,5 +3,6 @@ export {
   useBrief,
   useBriefs,
   useCreateBrief,
+  useResolveCompetitor,
   useStartResearchRun,
 } from "@/engine/api/research";
