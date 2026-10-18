@@ -93,3 +93,9 @@ export function formatDate(
 ): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, ...opts }).format(new Date(iso));
 }
+
+// Date and time in Dubai, for when a day isn't enough: a deployment, a
+// submission.
+export function formatDateTime(iso: string): string {
+  return formatDate(iso, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}

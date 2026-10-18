@@ -14,7 +14,7 @@ import (
 )
 
 type PagesResponse struct {
-	Pages      []pages.Page         `json:"pages"`
+	Pages      []pages.PageSummary  `json:"pages"`
 	Publishing pages.PublishingGate `json:"publishing"`
 }
 
@@ -30,7 +30,7 @@ type SubmissionsResponse struct {
 const pageCSP = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'self'"
 
 func (h *handlers) listPages(w http.ResponseWriter, r *http.Request) {
-	list, err := h.pages.List(r.Context(), actorFrom(r))
+	list, err := h.pages.ListSummaries(r.Context(), actorFrom(r))
 	if err != nil {
 		h.fail(w, r, err)
 		return

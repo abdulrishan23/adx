@@ -467,6 +467,42 @@ func (p *Pages) List(ctx context.Context, actor core.Actor) ([]Page, error) {
 	return out, nil
 }
 
+// PageSummary is a page as the list shows it: whose it is, where it stands
+// and where it's served. PublishedVersion is nil while nothing is live.
+type PageSummary struct {
+	Page
+	BrandName        string `json:"brandName"`
+	ProjectName      string `json:"projectName"`
+	LatestVersion    int64  `json:"latestVersion"`
+	PublishedVersion *int64 `json:"publishedVersion"`
+	PublicURL        string `json:"publicUrl"`
+}
+
+// ListSummaries lists the workspace's pages with their brand, latest and
+// published versions, newest first.
+func (p *Pages) ListSummaries(ctx context.Context, actor core.Actor) ([]PageSummary, error) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
+		return nil, core.ErrForbidden
+	}
+	rows, err := p.db.Reader().ListPageSummaries(ctx, actor.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]PageSummary, 0, len(rows))
+	for _, r := range rows {
+		s := PageSummary{
+			Page: pageFromRow(store.Page{ID: r.ID, WorkspaceID: r.WorkspaceID, BrandID: r.BrandID, ProjectID: r.ProjectID, PlanID: r.PlanID, PlanVersion: r.PlanVersion, Slug: r.Slug, Name: r.Name, Language: r.Language, TestToken: r.TestToken, CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}),
+			BrandName: r.BrandName, ProjectName: r.ProjectName.String, LatestVersion: r.LatestVersion, PublicURL: p.base + "/p/" + r.Slug,
+		}
+		if r.PublishedVersion > 0 {
+			v := r.PublishedVersion
+			s.PublishedVersion = &v
+		}
+		out = append(out, s)
+	}
+	return out, nil
+}
+
 func (p *Pages) Get(ctx context.Context, actor core.Actor, id int64) (PageDetail, error) {
 	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return PageDetail{}, core.ErrForbidden

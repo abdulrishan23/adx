@@ -292,6 +292,31 @@ func TestRollbackNamesTheExactOldVersion(t *testing.T) {
 	assert.Equal(t, "published", states[rb.ID])
 	_, err = e.pages.Rollback(ctx, coretest.Viewer, d.Page.ID)
 	assert.ErrorIs(t, err, core.ErrForbidden)
+
+	// The list says what's live after the rollback: version 1, not the
+	// newest deployment's version or the latest draft.
+	list, err := e.pages.ListSummaries(ctx, coretest.Viewer)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, int64(2), list[0].LatestVersion)
+	require.NotNil(t, list[0].PublishedVersion)
+	assert.Equal(t, int64(1), *list[0].PublishedVersion)
+	assert.Equal(t, "Reportage", list[0].BrandName)
+	assert.Equal(t, "The Wadi", list[0].ProjectName)
+	assert.True(t, strings.HasSuffix(list[0].PublicURL, "/p/wadi"), list[0].PublicURL)
+}
+
+// Catches: a page with no deployment reported as live.
+func TestListShowsUnpublishedPagesAsDrafts(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	_, err := e.pages.Create(ctx, coretest.Marketer, pages.PageInput{BrandID: e.reportage, ProjectID: e.wadi, Slug: "wadi", Name: "Wadi", Language: "en", Document: goodDoc()})
+	require.NoError(t, err)
+	list, err := e.pages.ListSummaries(ctx, coretest.Viewer)
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, int64(1), list[0].LatestVersion)
+	assert.Nil(t, list[0].PublishedVersion)
 }
 
 // Catches: editor text reaching the page as markup, an attribute escape,

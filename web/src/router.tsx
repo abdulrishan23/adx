@@ -24,7 +24,7 @@ import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
 import { LaunchPage } from "@/routes/create/launch";
-import { PagesPage } from "@/routes/create/pages";
+import { PagePage, PagesPage } from "@/routes/create/pages";
 import { PlanPage, PlansPage } from "@/routes/create/plans";
 import { ResearchPage } from "@/routes/create/research";
 import { StartBrandPage } from "@/routes/create/start";
@@ -359,6 +359,7 @@ const routeTree = rootRoute.addChildren([
     page("/create/plans", PlansPage),
     page("/create/plans/$planId", PlanPage),
     page("/create/pages", PagesPage),
+    page("/create/pages/$pageId", PagePage),
     page("/create/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
     page("/convert/inbox", ComingSoonPage),

@@ -2750,6 +2750,15 @@ export interface PageRequirement {
 }
 
 // From pages/pages.go
+export interface PageSummary extends Page {
+    brandName: string;
+    projectName: string;
+    latestVersion: number;
+    publishedVersion: number | null;
+    publicUrl: string;
+}
+
+// From pages/pages.go
 export interface PageVersion {
     id: number;
     pageId: number;
@@ -2768,7 +2777,7 @@ export interface PageVersionInput {
 
 // From api/pages.go
 export interface PagesResponse {
-    pages: Page[];
+    pages: PageSummary[];
     publishing: PublishingGate;
 }
 
