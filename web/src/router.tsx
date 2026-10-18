@@ -7,9 +7,7 @@ import {
   Outlet,
   redirect,
 } from "@tanstack/react-router";
-import { AccountMenu } from "@/components/account-menu";
-import { ServerStatus } from "@/components/server-status";
-import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { Sidebar } from "@/components/sidebar";
 import { AgentsPage } from "@/routes/agents";
 import { AlertsPage } from "@/routes/alerts";
 import { AnalyticsPage } from "@/routes/analytics";
@@ -49,103 +47,11 @@ const rootRoute = createRootRoute({
   head: () => ({ meta: [{ title: "ADX" }] }),
 });
 
-// The desk (design language, 09): a 200px sidebar on its own tone with the
-// pages grouped by what they are for, and a content column up to 1280px.
-const NAV = [
-  {
-    heading: "Work",
-    items: [
-      { to: "/projects", label: "Projects" },
-      { to: "/analytics", label: "Analytics" },
-      { to: "/ask", label: "Ask ADX" },
-    ],
-  },
-  {
-    heading: "Create",
-    items: [
-      { to: "/brands", label: "Brands" },
-      { to: "/research", label: "Research" },
-      { to: "/plans", label: "Plans" },
-      { to: "/pages", label: "Pages" },
-      { to: "/creatives", label: "Creatives" },
-    ],
-  },
-  {
-    heading: "Perform",
-    items: [
-      { to: "/launch", label: "Launch" },
-      { to: "/proposals", label: "Proposals" },
-      { to: "/reports", label: "Reports" },
-      { to: "/alerts", label: "Alerts" },
-    ],
-  },
-  {
-    heading: "Convert",
-    items: [
-      { to: "/people", label: "People" },
-      { to: "/pipeline", label: "Pipeline" },
-      { to: "/calls", label: "Calls" },
-      { to: "/leads", label: "Leads" },
-    ],
-  },
-  {
-    heading: "Agents",
-    items: [
-      { to: "/supervisor", label: "Supervisor" },
-      { to: "/workflows", label: "Workflows" },
-      { to: "/settings/agents", label: "Agents" },
-      { to: "/learning", label: "Learning" },
-      { to: "/evaluation", label: "Evaluation" },
-    ],
-  },
-  {
-    heading: "Workspace",
-    items: [
-      { to: "/connections", label: "Connections" },
-      { to: "/settings/policies", label: "Policies" },
-      { to: "/settings/funnel", label: "Funnel" },
-      { to: "/settings/outreach", label: "Outreach" },
-      { to: "/settings/scoring", label: "Scoring" },
-      { to: "/settings/workspaces", label: "Workspaces" },
-      { to: "/ops", label: "Ops" },
-      { to: "/runs", label: "Runs" },
-    ],
-  },
-] as const;
-
 function Layout() {
   return (
     <div className="flex min-h-screen">
       <HeadContent />
-      <aside className="sticky top-0 flex h-screen w-[200px] shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
-        <div className="px-4 pt-5 pb-4">
-          <Link to="/projects" className="font-heading text-xl font-bold tracking-tight">
-            adx
-          </Link>
-        </div>
-        <nav className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none]">
-          {NAV.map((group) => (
-            <div key={group.heading} className="mb-4">
-              <p className="eyebrow px-2 pb-1.5">{group.heading}</p>
-              {group.items.map((item) => (
-                <Link
-                  key={item.to}
-                  to={item.to}
-                  className="flex h-8 items-center px-2 hover:bg-sidebar-accent"
-                  activeProps={{ className: "bg-sidebar-accent font-medium" }}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="space-y-2 border-t px-4 py-3 text-xs">
-          <WorkspaceSwitcher />
-          <AccountMenu />
-          <ServerStatus />
-        </div>
-      </aside>
+      <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <main className="mx-auto w-full max-w-[1280px] flex-1 px-8 pt-10 pb-10">
           <Outlet />
