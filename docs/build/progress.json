@@ -162,7 +162,7 @@
         {
           "check": "Disabled/expired membership stops protected operations",
           "result": "pass",
-          "evidence": "identity TestSessionsFollowTheUserAndExpire; api disable \u2192 401"
+          "evidence": "identity TestSessionsFollowTheUserAndExpire; api disable → 401"
         },
         {
           "check": "Dev admin path is impossible outside explicit development mode",
@@ -773,7 +773,7 @@
         "make test"
       ],
       "acceptance": [
-        "upload \u2192 layout \u2192 render \u2192 review board \u2192 approve \u2192 export works locally for 9:16, 4:5, 1:1 and 1.91:1 in en and ar",
+        "upload → layout → render → review board → approve → export works locally for 9:16, 4:5, 1:1 and 1.91:1 in en and ar",
         "editing an approved version creates a new unapproved version",
         "approval is content acceptance and never grants delivery",
         "house-rule errors block rendering",
@@ -1050,7 +1050,6 @@
         "unapproved percentages and prices fail readiness until the fact or offer is approved"
       ],
       "remaining": [
-        "browser exercise of the drag canvas",
         "pixel export (browser rasterizes SVG)"
       ],
       "blockers": [],
@@ -1318,8 +1317,7 @@
         "links and merges are reversible with a recorded reason"
       ],
       "remaining": [
-        "an enrichment provider adapter when one is chosen",
-        "browser inspection"
+        "an enrichment provider adapter when one is chosen"
       ],
       "blockers": [
         {
@@ -1370,8 +1368,7 @@
       ],
       "remaining": [
         "tracked-link identity for page views",
-        "a real GoHighLevel webhook against a location",
-        "browser inspection"
+        "a real GoHighLevel webhook against a location"
       ],
       "blockers": [
         {
@@ -1422,8 +1419,7 @@
       ],
       "remaining": [
         "a messaging adapter and Reportage's messaging policy",
-        "live CRM field write against a location",
-        "browser inspection"
+        "live CRM field write against a location"
       ],
       "blockers": [
         {
@@ -1485,7 +1481,7 @@
       "remaining": [
         "media stream endpoint (B4.5)",
         "live call on an authorized route",
-        "browser inspection"
+        "browser inspection of a placed call (none can be placed without a telecom route)"
       ],
       "blockers": [
         {
@@ -1546,7 +1542,7 @@
       "remaining": [
         "live conversation on a real route and agent",
         "GoHighLevel stage mapping for qualification outcomes",
-        "browser inspection"
+        "browser inspection of a call's evidence panel and labels (no call exists)"
       ],
       "blockers": [
         {
@@ -1600,7 +1596,7 @@
       ],
       "remaining": [
         "real spoken sessions and labelled calls",
-        "browser inspection of speech recognition"
+        "browser inspection of speech recognition (the Speak control renders; no microphone in the preview pane)"
       ],
       "blockers": [],
       "commit": null,
@@ -1638,8 +1634,7 @@
         "a preview changes no record; stale versions do not overwrite"
       ],
       "remaining": [
-        "mapping qualification outcomes to pipeline stages once Reportage names them",
-        "browser inspection"
+        "mapping qualification outcomes to pipeline stages once Reportage names them"
       ],
       "blockers": [],
       "commit": null,
@@ -1678,7 +1673,7 @@
         "a model-written draft stays draft until an admin accepts it"
       ],
       "remaining": [
-        "browser inspection"
+        "activation from the browser in dev mode (the dev admin has no user id; see verification.md, \"Browser journeys 2026-10-18, remaining pages\")"
       ],
       "blockers": [],
       "commit": null,
@@ -1722,7 +1717,7 @@
       ],
       "remaining": [
         "domain read tools beyond the four Ask ADX reads",
-        "browser inspection"
+        "browser inspection of retry, correct, pause and resume (only the buttons were seen)"
       ],
       "blockers": [],
       "commit": null,
@@ -1809,8 +1804,7 @@
         "supported is attributed, not causal; validated needs a controlled comparison"
       ],
       "remaining": [
-        "callers opening records for every recommendation source",
-        "browser inspection"
+        "callers opening records for every recommendation source"
       ],
       "blockers": [],
       "commit": null,
@@ -1997,7 +1991,7 @@
         "make check and make test pass"
       ],
       "remaining": [
-        "browser journeys for the pages not in the 2026-10-18 walk (verification.md, \"Browser journeys 2026-10-18\")",
+        "browser journeys still unchecked: a call and its evidence, a lead import run, an alert action, a research run, a generated plan or report, a proposal or execution, dark mode, the production build, widths under 800 px (verification.md, \"Browser journeys 2026-10-18, remaining pages\")",
         "operator effort and autonomy review with real business users",
         "everything in docs/build/capability-matrix.md under what live use needs"
       ],
