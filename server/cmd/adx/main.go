@@ -36,6 +36,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/identity"
+	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/learning"
 	"github.com/WokeWorks/adx/server/core/measurement"
@@ -361,7 +362,11 @@ func run() error {
 	_, _ = rand.Read(formSalt)
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
 	policyService := policies.New(db)
-	proposalService := proposals.New(db, policyService, planService, proposals.Config{})
+	// Launch resolves plan lines to campaigns and says which campaigns an
+	// accepted plan stands behind; proposals ask it before letting anything
+	// but a pause or a budget cut through on a campaign (BD-58).
+	launchService := launch.New(db, planService, reportingService, launch.Config{})
+	proposalService := proposals.New(db, policyService, planService, proposals.Config{Coverage: launchService})
 	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write
 	// adapter is registered and every intent is held with that reason.
 	writers := map[string]execution.Writer{}

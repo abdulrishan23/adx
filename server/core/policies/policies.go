@@ -37,6 +37,7 @@ const (
 	CampaignCreatePaus WriteAction = "campaign.create_paused"
 	AdSetPause         WriteAction = "adset.pause"
 	CampaignPause      WriteAction = "campaign.pause"
+	CampaignResume     WriteAction = "campaign.resume"
 	BudgetRaise        WriteAction = "budget.raise"
 	BidsChange         WriteAction = "bids.change"
 	Launch             WriteAction = "launch"
@@ -55,6 +56,7 @@ var Catalog = []WriteActionInfo{
 	{CampaignCreatePaus, "Create a campaign or ad (paused)"},
 	{AdSetPause, "Pause an ad set or campaign"},
 	{CampaignPause, "Pause a whole campaign"},
+	{CampaignResume, "Resume a paused campaign"},
 	{BudgetRaise, "Raise a budget within the cap"},
 	{BidsChange, "Change bids or target CPA or ROAS"},
 	{Launch, "Launch anything"},
@@ -157,6 +159,17 @@ type PolicyRequest struct {
 	// WriteCapability is the account capability the action needs, such as
 	// "write.budget". It must be verified for the account.
 	WriteCapability string
+	// Unplanned says the target is a campaign with no accepted plan behind
+	// it (BD-58 rule 3). Such a campaign allows only the safety actions in
+	// AllowedUnplanned, whatever the checklist says, until a plan adopts it.
+	Unplanned bool
+}
+
+// AllowedUnplanned lists what may change on a campaign that is not under a
+// plan: a marketer may pause it or lower its budget (BD-58 rule 4). Nothing
+// else, not even a resume, until a plan adopts it.
+func AllowedUnplanned(a WriteAction) bool {
+	return a == CampaignPause || a == BudgetLower
 }
 
 type PolicyOutcome string
@@ -188,6 +201,7 @@ const (
 	ReasonCapUnconfigured     = "cap_unconfigured"
 	ReasonWorkspaceMismatch   = "workspace_mismatch"
 	ReasonAccountNotConnected = "account_not_connected"
+	ReasonUnplannedCampaign   = "campaign_not_under_a_plan"
 )
 
 type Policies struct {
@@ -322,6 +336,9 @@ func (p *Policies) Evaluate(ctx context.Context, actor core.Actor, req PolicyReq
 	if !known[req.Action] {
 		return PolicyDecision{Outcome: Denied, Reason: ReasonUnknownAction}, nil
 	}
+	if req.Unplanned && !AllowedUnplanned(req.Action) {
+		return PolicyDecision{Outcome: Denied, Reason: ReasonUnplannedCampaign}, nil
+	}
 	current, err := p.current(ctx, actor.WorkspaceID)
 	if err != nil {
 		return PolicyDecision{}, err
@@ -406,7 +423,10 @@ func SuggestedDefaults() PolicyDocument {
 		Actions: map[WriteAction]PolicyRule{
 			AudiencesUpsert: allowed, ConversionsUpload: allowed, ExclusionsUpdate: allowed, LeadFieldsSet: allowed,
 			AdPause: allowed, BudgetLower: allowed, CampaignCreatePaus: allowed,
-			AdSetPause: approval, CampaignPause: approval, BudgetRaise: approval, BidsChange: approval,
+			// Resuming a paused campaign is a proposal a marketer applies
+			// alone, logged and reversible, without the CMO (BD-58 rule 5).
+			CampaignResume: allowed,
+			AdSetPause:     approval, CampaignPause: approval, BudgetRaise: approval, BidsChange: approval,
 			Launch: approval, TargetingChange: approval,
 			OrganicPost: {Marketer: ModeOff, Admin: ModeOff},
 		},

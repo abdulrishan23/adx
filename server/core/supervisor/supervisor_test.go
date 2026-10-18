@@ -19,6 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/outreach"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/proposals/proposalstest"
 	"github.com/WokeWorks/adx/server/core/registry"
 	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/voice"
@@ -67,7 +68,7 @@ func setup(t *testing.T) *env {
 	ctx := t.Context()
 	ev := evidence.New(e.db, e.clock)
 	e.policies = policies.New(e.db)
-	e.proposals = proposals.New(e.db, e.policies, nil, proposals.Config{Clock: e.clock})
+	e.proposals = proposals.New(e.db, e.policies, nil, proposals.Config{Clock: e.clock, Coverage: proposalstest.Planned{}})
 	e.crm = crm.New(e.db, ev, crm.Config{Clock: e.clock})
 	e.out = outreach.New(e.db, ev, outreach.Config{Clock: e.clock, CRM: e.crm, Policies: e.policies})
 	e.calls = calls.New(e.db, calls.Config{Clock: e.clock, Telephony: e.tel, Policies: e.policies, Outreach: e.out, CRM: e.crm, PublicURL: "https://adx.example.com"})

@@ -261,7 +261,11 @@ func (d *Dispatcher) prepare(ctx context.Context, row store.ExecutionIntent) (ta
 	if acct.Account.WorkspaceID != row.WorkspaceID {
 		return t, "held: the account belongs to another workspace; nothing was sent", nil
 	}
-	decision, err := d.policies.Evaluate(ctx, actor, policies.PolicyRequest{AccountID: row.AccountID, Action: policies.WriteAction(prop.Action), WriteCapability: capabilityFor(policies.WriteAction(prop.Action))})
+	req, err := d.proposals.PolicyRequestFor(ctx, row.WorkspaceID, row.AccountID, policies.WriteAction(prop.Action), prop.TargetKind, prop.TargetRef)
+	if err != nil {
+		return t, "", err
+	}
+	decision, err := d.policies.Evaluate(ctx, actor, req)
 	if err != nil {
 		return t, "", err
 	}
@@ -290,7 +294,7 @@ func capabilityFor(a policies.WriteAction) string {
 		return "write.budget"
 	case policies.CampaignCreatePaus, policies.Launch:
 		return "write.campaign"
-	case policies.AdPause, policies.AdSetPause, policies.CampaignPause:
+	case policies.AdPause, policies.AdSetPause, policies.CampaignPause, policies.CampaignResume:
 		return "write.status"
 	case policies.AudiencesUpsert:
 		return "write.audiences"

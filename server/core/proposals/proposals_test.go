@@ -19,6 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/proposals/proposalstest"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/storetest"
 )
@@ -44,7 +45,7 @@ func setup(t *testing.T) *env {
 	e.policies = policies.New(e.db)
 	e.brands = brands.New(e.db, brands.Config{Clock: e.clock})
 	e.plans = plans.New(e.db, e.brands, plans.Config{Clock: e.clock})
-	e.props = proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock})
+	e.props = proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock, Coverage: proposalstest.Planned{}})
 	b, err := e.brands.Create(ctx, coretest.Admin, brands.BrandInput{Name: "Reportage", Kind: brands.Own})
 	require.NoError(t, err)
 	e.reportage = b.ID
@@ -331,4 +332,69 @@ func TestReadOnlyAssistantCannotInvokeTheExecutor(t *testing.T) {
 		}
 	}
 	assert.NotEmpty(t, a.ToolNames())
+}
+
+// Catches: a change other than pause or lower budget going through on a
+// campaign no accepted plan stands behind, a server with no coverage source
+// treating campaigns as planned, and a campaign being created with no
+// envelope, so no plan, behind it (BD-58 rules 3 and 4).
+func TestUnplannedCampaignTakesOnlySafetyActions(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	e.enablePolicy(t)
+	env := e.envelope(t)
+	unplanned := proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock, Coverage: proposalstest.Unplanned{}})
+
+	in := raise(1_000, env.ID, "raise-unplanned")
+	in.AccountID = e.googleAcc
+	pr, _, err := unplanned.Propose(ctx, coretest.Admin, in)
+	require.NoError(t, err)
+	assert.Equal(t, "denied", pr.State)
+	assert.Equal(t, policies.ReasonUnplannedCampaign, pr.PolicyReason)
+
+	lower := proposals.ProposalInput{AccountID: e.googleAcc, Action: policies.BudgetLower, TargetKind: "campaign", TargetRef: "111", TargetVersion: "budget:500000",
+		ExpectedCurrent: json.RawMessage(`{"dailyBudgetMinor":500000}`), Proposed: json.RawMessage(`{"dailyBudgetMinor":100000}`), Reason: "spend with no plan behind it", IdempotencyKey: "lower-unplanned"}
+	pr, _, err = unplanned.Propose(ctx, coretest.Marketer, lower)
+	require.NoError(t, err)
+	assert.Equal(t, "approved", pr.State, pr.PolicyReason)
+	pause := lower
+	pause.Action, pause.IdempotencyKey, pause.Proposed = policies.CampaignPause, "pause-unplanned", json.RawMessage(`{"status":"PAUSED"}`)
+	pr, _, err = unplanned.Propose(ctx, coretest.Marketer, pause)
+	require.NoError(t, err)
+	assert.Equal(t, "proposed", pr.State, "a marketer's pause still needs the admin under the defaults")
+	resume := lower
+	resume.Action, resume.IdempotencyKey, resume.Proposed = policies.CampaignResume, "resume-unplanned", json.RawMessage(`{"status":"ENABLED"}`)
+	pr, _, err = unplanned.Propose(ctx, coretest.Marketer, resume)
+	require.NoError(t, err)
+	assert.Equal(t, "denied", pr.State, "nothing else changes on it until a plan adopts it")
+
+	// The same raise on a planned campaign goes through, and the authority
+	// shown for it says so.
+	in = raise(1_000, env.ID, "raise-planned")
+	in.AccountID = e.googleAcc
+	pr, _, err = e.props.Propose(ctx, coretest.Admin, in)
+	require.NoError(t, err)
+	assert.Equal(t, "approved", pr.State, pr.PolicyReason)
+	auth, err := unplanned.Authority(ctx, coretest.Viewer, pr.ID)
+	require.NoError(t, err)
+	assert.Equal(t, policies.ReasonUnplannedCampaign, auth.Reason, "coverage is asked again each time, not remembered")
+
+	// No coverage source means nothing is known to be under a plan.
+	none := proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock})
+	req, err := none.PolicyRequestFor(ctx, 1, e.googleAcc, policies.BudgetRaise, "campaign", "111")
+	require.NoError(t, err)
+	assert.True(t, req.Unplanned)
+	req, err = none.PolicyRequestFor(ctx, 1, e.googleAcc, policies.CampaignCreatePaus, "campaign", "new:x")
+	require.NoError(t, err)
+	assert.False(t, req.Unplanned, "a create is covered by its envelope, not by an existing plan match")
+	req, err = none.PolicyRequestFor(ctx, 1, e.googleAcc, policies.AudiencesUpsert, "audience", "new")
+	require.NoError(t, err)
+	assert.False(t, req.Unplanned, "the rule is about campaigns")
+
+	create := proposals.ProposalInput{AccountID: e.googleAcc, Action: policies.CampaignCreatePaus, TargetKind: "campaign", TargetRef: "new:free", TargetVersion: "none",
+		Proposed: json.RawMessage(`{"name":"No plan"}`), Reason: "a campaign with nothing behind it", IdempotencyKey: "create-free"}
+	_, _, err = e.props.Propose(ctx, coretest.Admin, create)
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindInvalid, ce.Kind)
 }

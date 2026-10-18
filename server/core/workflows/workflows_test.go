@@ -15,6 +15,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/coretest"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/proposals/proposalstest"
 	"github.com/WokeWorks/adx/server/core/registry"
 	"github.com/WokeWorks/adx/server/core/workflows"
 	"github.com/WokeWorks/adx/server/store"
@@ -56,7 +57,7 @@ func setup(t *testing.T) *env {
 	ctx := t.Context()
 	e.reg = registry.New(e.db, registry.Config{Clock: e.clock})
 	e.policies = policies.New(e.db)
-	e.proposals = proposals.New(e.db, e.policies, nil, proposals.Config{Clock: e.clock})
+	e.proposals = proposals.New(e.db, e.policies, nil, proposals.Config{Clock: e.clock, Coverage: proposalstest.Planned{}})
 	e.runner = &scriptedRunner{scripts: map[string]func(workflows.RunRequest) (workflows.RunResult, error){}, calls: map[string]int{}}
 	e.dispatch = &workflows.CoreDispatcher{Proposals: e.proposals, Reads: map[string]workflows.ReadTool{
 		"get_analytics": func(context.Context, core.Actor, map[string]any) (any, error) {

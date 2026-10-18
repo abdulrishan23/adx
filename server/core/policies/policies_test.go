@@ -209,3 +209,45 @@ func requireKind(t *testing.T, err error, kind core.Kind) {
 }
 
 var _ = context.Background
+
+// Catches: resuming a paused campaign waiting on the CMO under the suggested
+// defaults (BD-58 rule 5), and the new action missing from the catalog.
+func TestResumeIsAMarketersOwnAction(t *testing.T) {
+	e := setup(t)
+	acct := e.account(t, "resume", true)
+	_, err := e.p.Put(t.Context(), admin, configured(acct))
+	require.NoError(t, err)
+	d := e.evaluate(t, marketer, acct, policies.CampaignResume)
+	assert.Equal(t, policies.Allowed, d.Outcome, d.Reason)
+	assert.Equal(t, policies.NeedsApproval, e.evaluate(t, marketer, acct, policies.CampaignPause).Outcome, "pausing a planned campaign keeps its approval rule")
+	found := false
+	for _, a := range policies.Catalog {
+		found = found || a.Action == policies.CampaignResume
+	}
+	assert.True(t, found)
+}
+
+// Catches: a campaign with no plan behind it taking a raise, a resume or a
+// targeting change because the checklist allows the role to; and the safety
+// actions (pause, lower) being blocked on it (BD-58 rules 3 and 4).
+func TestUnplannedCampaignAllowsOnlyPauseAndLower(t *testing.T) {
+	e := setup(t)
+	acct := e.account(t, "unplanned", true)
+	_, err := e.p.Put(t.Context(), admin, configured(acct))
+	require.NoError(t, err)
+	eval := func(actor core.Actor, action policies.WriteAction) policies.PolicyDecision {
+		d, err := e.p.Evaluate(t.Context(), actor, policies.PolicyRequest{AccountID: acct, Action: action, WriteCapability: "write.budget", Unplanned: true})
+		require.NoError(t, err)
+		return d
+	}
+	for _, action := range []policies.WriteAction{policies.BudgetRaise, policies.CampaignResume, policies.TargetingChange, policies.BidsChange} {
+		d := eval(admin, action)
+		assert.Equal(t, policies.Denied, d.Outcome, string(action))
+		assert.Equal(t, policies.ReasonUnplannedCampaign, d.Reason, string(action))
+	}
+	assert.Equal(t, policies.Allowed, eval(marketer, policies.BudgetLower).Outcome)
+	assert.Equal(t, policies.NeedsApproval, eval(marketer, policies.CampaignPause).Outcome, "pause keeps the checklist's own rule")
+	assert.Equal(t, policies.Allowed, eval(admin, policies.CampaignPause).Outcome)
+	assert.True(t, policies.AllowedUnplanned(policies.BudgetLower))
+	assert.False(t, policies.AllowedUnplanned(policies.BudgetRaise))
+}

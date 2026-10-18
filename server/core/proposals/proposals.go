@@ -132,20 +132,59 @@ type ProposalInput struct {
 	Supersedes int64 `json:"supersedes"`
 }
 
-type Config struct{ Clock core.Clock }
+// PlanCoverage says whether a campaign, by its account and the platform's
+// id, has an accepted plan behind it (BD-58 rule 3). core/launch implements
+// it; cmd/adx passes it in.
+type PlanCoverage interface {
+	UnderPlan(ctx context.Context, workspaceID, accountID int64, campaignRef string) (bool, string, error)
+}
+
+type Config struct {
+	Clock core.Clock
+	// Coverage answers whether a campaign is under a plan. Nil means no
+	// source of coverage on this server, and then every running campaign
+	// counts as not under a plan: only pause and lower budget go through.
+	Coverage PlanCoverage
+}
 
 type Proposals struct {
 	db       *store.DB
 	clock    core.Clock
 	policies *policies.Policies
 	plans    *plans.Plans
+	coverage PlanCoverage
 }
 
 func New(db *store.DB, pol *policies.Policies, pl *plans.Plans, cfg Config) *Proposals {
 	if cfg.Clock == nil {
 		cfg.Clock = core.SystemClock{}
 	}
-	return &Proposals{db: db, clock: cfg.Clock, policies: pol, plans: pl}
+	return &Proposals{db: db, clock: cfg.Clock, policies: pol, plans: pl, coverage: cfg.Coverage}
+}
+
+// PolicyRequestFor is the policy question one change asks, with the target's
+// plan coverage filled in. A change to a campaign (other than creating one)
+// is marked unplanned when no accepted plan stands behind it, so policy lets
+// only pause and lower budget through. Creates are covered by their envelope.
+func (p *Proposals) PolicyRequestFor(ctx context.Context, workspaceID, accountID int64, action policies.WriteAction, targetKind, targetRef string) (policies.PolicyRequest, error) {
+	req := policies.PolicyRequest{AccountID: accountID, Action: action, WriteCapability: capabilityFor(action)}
+	if targetKind != "campaign" || creates(action) {
+		return req, nil
+	}
+	if p.coverage == nil {
+		req.Unplanned = true
+		return req, nil
+	}
+	under, _, err := p.coverage.UnderPlan(ctx, workspaceID, accountID, targetRef)
+	if err != nil {
+		return policies.PolicyRequest{}, err
+	}
+	req.Unplanned = !under
+	return req, nil
+}
+
+func creates(a policies.WriteAction) bool {
+	return a == policies.CampaignCreatePaus || a == policies.Launch
 }
 
 // capabilityFor is the account write capability an action needs proven.
@@ -155,7 +194,7 @@ func capabilityFor(a policies.WriteAction) string {
 		return "write.budget"
 	case policies.CampaignCreatePaus, policies.Launch:
 		return "write.campaign"
-	case policies.AdPause, policies.AdSetPause, policies.CampaignPause:
+	case policies.AdPause, policies.AdSetPause, policies.CampaignPause, policies.CampaignResume:
 		return "write.status"
 	case policies.AudiencesUpsert:
 		return "write.audiences"
@@ -314,6 +353,9 @@ func (p *Proposals) Propose(ctx context.Context, actor core.Actor, in ProposalIn
 	if in.AccountID == 0 {
 		return Proposal{}, false, core.Invalid("an account is required")
 	}
+	if creates(in.Action) && in.EnvelopeID == 0 {
+		return Proposal{}, false, core.Invalid("no campaign without a plan: creating one needs a budget envelope from an accepted plan version")
+	}
 	var envelope *store.BudgetEnvelope
 	if in.AmountMinor < 0 {
 		return Proposal{}, false, core.Invalid("amount can't be negative")
@@ -337,7 +379,11 @@ func (p *Proposals) Propose(ctx context.Context, actor core.Actor, in ProposalIn
 		}
 		envelope = &row
 	}
-	decision, err := p.policies.Evaluate(ctx, actor, policies.PolicyRequest{AccountID: in.AccountID, Action: in.Action, WriteCapability: capabilityFor(in.Action)})
+	req, err := p.PolicyRequestFor(ctx, actor.WorkspaceID, in.AccountID, in.Action, in.TargetKind, in.TargetRef)
+	if err != nil {
+		return Proposal{}, false, err
+	}
+	decision, err := p.policies.Evaluate(ctx, actor, req)
 	if err != nil {
 		return Proposal{}, false, err
 	}
@@ -413,7 +459,7 @@ func (p *Proposals) decide(ctx context.Context, actor core.Actor, id int64, deci
 	if row.State != "proposed" {
 		return Proposal{}, core.Conflict("proposal %d is %s, not awaiting approval", id, row.State)
 	}
-	d, err := p.policies.Evaluate(ctx, actor, policies.PolicyRequest{AccountID: row.AccountID, Action: policies.WriteAction(row.Action), WriteCapability: capabilityFor(policies.WriteAction(row.Action))})
+	d, err := p.evaluate(ctx, actor, row)
 	if err != nil {
 		return Proposal{}, err
 	}
@@ -511,7 +557,7 @@ func (p *Proposals) Execute(ctx context.Context, actor core.Actor, id int64, ide
 		_ = p.db.Writer().SetProposalStateAny(ctx, store.SetProposalStateAnyParams{State: "stale", UpdatedAt: p.clock.Now().UTC(), ID: id})
 		return Intent{}, false, core.Conflict("no approval covers target version %s; the proposal is stale", row.TargetVersion)
 	}
-	d, err := p.policies.Evaluate(ctx, actor, policies.PolicyRequest{AccountID: row.AccountID, Action: policies.WriteAction(row.Action), WriteCapability: capabilityFor(policies.WriteAction(row.Action))})
+	d, err := p.evaluate(ctx, actor, row)
 	if err != nil {
 		return Intent{}, false, err
 	}
@@ -696,7 +742,16 @@ func (p *Proposals) Authority(ctx context.Context, actor core.Actor, id int64) (
 	if !eval.AtLeast(core.RoleMarketer) {
 		eval.Role = core.RoleMarketer
 	}
-	return p.policies.Evaluate(ctx, eval, policies.PolicyRequest{AccountID: row.AccountID, Action: policies.WriteAction(row.Action), WriteCapability: capabilityFor(policies.WriteAction(row.Action))})
+	return p.evaluate(ctx, eval, row)
+}
+
+// evaluate asks policy about a stored proposal as it stands now.
+func (p *Proposals) evaluate(ctx context.Context, actor core.Actor, row store.Proposal) (policies.PolicyDecision, error) {
+	req, err := p.PolicyRequestFor(ctx, actor.WorkspaceID, row.AccountID, policies.WriteAction(row.Action), row.TargetKind, row.TargetRef)
+	if err != nil {
+		return policies.PolicyDecision{}, err
+	}
+	return p.policies.Evaluate(ctx, actor, req)
 }
 
 func (p *Proposals) proposal(ctx context.Context, workspaceID, id int64) (store.Proposal, error) {

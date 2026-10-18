@@ -18,6 +18,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/proposals/proposalstest"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/storetest"
 )
@@ -53,7 +54,7 @@ func setup(t *testing.T, writers map[string]execution.Writer) *env {
 	e.policies = policies.New(e.db)
 	br := brands.New(e.db, brands.Config{Clock: e.clock})
 	e.plans = plans.New(e.db, br, plans.Config{Clock: e.clock})
-	e.props = proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock})
+	e.props = proposals.New(e.db, e.policies, e.plans, proposals.Config{Clock: e.clock, Coverage: proposalstest.Planned{}})
 	e.google = executiontest.New("google_ads", policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause)
 	e.meta = executiontest.New("meta", policies.CampaignCreatePaus, policies.BudgetRaise, policies.CampaignPause)
 	if writers == nil {
