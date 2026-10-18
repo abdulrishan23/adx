@@ -1,150 +1,175 @@
+// Data hooks for the creative screens and the public review board. These
+// always call the Go server: there's no mock, because the screens upload and
+// draw real files.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJSON, postJSON } from "./client";
+import { getJSON, patchJSON, postJSON, putJSON, uploadFile } from "./client";
 import type {
-  Asset,
-  AssetsResponse,
-  BrandKitResponse,
-  CreativeInput,
-  CreativeQueueResponse,
-  CreativeResponse,
-  CreativesResponse,
-  Document,
-  LaunchReadiness,
-  ProjectOffersResponse,
-  StartRunResponse,
-  Version,
-} from "./types.gen";
+  Ad,
+  AdDetail,
+  Board,
+  Comment,
+  CommentInput,
+  Concept,
+  ConceptInput,
+  CreativeProject,
+  DecisionInput,
+  DraftInput,
+  FileRef,
+  GeneratedAd,
+  GenerateResult,
+  NewConcept,
+  NewRender,
+  Overview,
+  PickInput,
+  PublishInput,
+  Render,
+  RenderInput,
+  RendersResponse,
+  Settings,
+  SettingsInput,
+  UploadedAd,
+  UploadResult,
+  VariationInput,
+} from "./types.legacy";
 
-export function useAssets(kind?: string) {
+const KEY = ["creative"] as const;
+
+export function useCreativeOverview() {
   return useQuery({
-    queryKey: ["assets", kind],
-    queryFn: () => getJSON<AssetsResponse>(`/api/assets${kind ? `?kind=${kind}` : ""}`),
+    queryKey: [...KEY, "overview"],
+    queryFn: () => getJSON<Overview>("/api/creative"),
   });
 }
 
-export function useUploadAsset() {
+export function useCreativeProject(projectId: number) {
+  return useQuery({
+    queryKey: [...KEY, "project", projectId],
+    queryFn: () => getJSON<CreativeProject>(`/api/creative/projects/${projectId}`),
+  });
+}
+
+export function useCreativeAd(adId: number) {
+  return useQuery({
+    queryKey: [...KEY, "ad", adId],
+    queryFn: () => getJSON<AdDetail>(`/api/creative/ads/${adId}`),
+    // The editor holds its own copy while open; a refetch would fight it.
+    refetchOnWindowFocus: false,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+}
+
+// Every creative write changes what the lists show, so they all refresh.
+function useCreativeMutation<I, O>(fn: (input: I) => Promise<O>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({
-      file,
-      kind,
-      projectId,
-    }: {
-      file: File;
-      kind: string;
-      projectId: number;
-    }) => {
-      const form = new FormData();
-      form.append("file", file);
-      form.append("kind", kind);
-      form.append("project_id", String(projectId));
-      const res = await fetch("/api/assets", { method: "POST", body: form });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(err?.error ?? res.statusText);
-      }
-      return (await res.json()) as Asset;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["assets"] }),
+    mutationFn: fn,
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...KEY, "overview"] }),
+    onSettled: () => qc.invalidateQueries({ queryKey: [...KEY, "project"] }),
   });
 }
 
-export function useProjectOffers(projectId: number) {
+export const useSetUpCreative = () =>
+  useCreativeMutation((projectId: number) =>
+    postJSON<Settings>("/api/creative/projects", { projectId }),
+  );
+
+export const useUpdateCreativeSettings = (projectId: number) =>
+  useCreativeMutation((input: SettingsInput) =>
+    putJSON<Settings>(`/api/creative/projects/${projectId}/settings`, input),
+  );
+
+export const useRotateReviewKey = (projectId: number) =>
+  useCreativeMutation(() =>
+    postJSON<Settings>(`/api/creative/projects/${projectId}/review-key`, {}),
+  );
+
+export const useSaveBrandKit = (projectId: number) =>
+  useCreativeMutation((kit: unknown) =>
+    putJSON<Settings>(`/api/creative/projects/${projectId}/brand-kit`, kit),
+  );
+
+export const useAddRenders = (projectId: number) =>
+  useCreativeMutation((renders: NewRender[]) =>
+    postJSON<RendersResponse>(`/api/creative/projects/${projectId}/renders`, { renders }),
+  );
+
+export const useUpdateRender = () =>
+  useCreativeMutation(({ id, ...input }: RenderInput & { id: number }) =>
+    patchJSON<Render>(`/api/creative/renders/${id}`, input),
+  );
+
+export const useCreateConcept = (projectId: number) =>
+  useCreativeMutation((input: NewConcept) =>
+    postJSON<Concept>(`/api/creative/projects/${projectId}/concepts`, input),
+  );
+
+export const useSaveConcept = (conceptId: number) =>
+  useCreativeMutation((input: ConceptInput) =>
+    putJSON<Concept>(`/api/creative/concepts/${conceptId}`, input),
+  );
+
+export const useAddUploads = (projectId: number) =>
+  useCreativeMutation((ads: UploadedAd[]) =>
+    postJSON<UploadResult>(`/api/creative/projects/${projectId}/uploads`, { ads }),
+  );
+
+export const saveGenerated = (conceptId: number, input: GeneratedAd) =>
+  postJSON<GenerateResult>(`/api/creative/concepts/${conceptId}/ads`, input);
+
+export const saveDraft = (adId: number, input: DraftInput) =>
+  putJSON<void>(`/api/creative/ads/${adId}/draft`, input);
+
+export const publishAd = (adId: number, input: PublishInput) =>
+  postJSON<Ad>(`/api/creative/ads/${adId}/versions`, input);
+
+export const createVariation = (adId: number, input: VariationInput) =>
+  postJSON<Ad>(`/api/creative/ads/${adId}/variations`, input);
+
+export const useResolveComment = () =>
+  useCreativeMutation(({ id, resolved }: { id: number; resolved: boolean }) =>
+    postJSON<void>(`/api/creative/comments/${id}/resolve`, { resolved }),
+  );
+
+export const upload = (file: Blob, name?: string) => uploadFile<FileRef>("/api/files", file, name);
+
+// Refreshes everything creative after a run of direct calls, such as
+// generating a concept's ads.
+export function useRefreshCreative() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: KEY });
+}
+
+// The review board, refreshed every 20 seconds while the tab is visible, as
+// the old board did.
+export function useReviewBoard(key: string) {
   return useQuery({
-    queryKey: ["project-offers", projectId],
-    queryFn: () => getJSON<ProjectOffersResponse>(`/api/projects/${projectId}/offers`),
-    enabled: projectId > 0,
+    queryKey: ["review", key],
+    queryFn: () => getJSON<Board>(`/api/review/${encodeURIComponent(key)}`),
+    refetchInterval: 20_000,
+    refetchIntervalInBackground: false,
+    retry: (count, err) => count < 2 && !("status" in err && err.status === 404),
   });
 }
 
-export function useCreatives() {
-  return useQuery({
-    queryKey: ["creatives"],
-    queryFn: () => getJSON<CreativesResponse>("/api/creatives"),
-  });
-}
-
-export function useCreative(id: number | null) {
-  return useQuery({
-    queryKey: ["creatives", id],
-    queryFn: () => getJSON<CreativeResponse>(`/api/creatives/${id}`),
-    enabled: id !== null,
-    // A queued render changes the version when the worker finishes.
-    refetchInterval: (q) => {
-      const v = q.state.data?.versions.at(-1);
-      return v && v.reviewState === "draft" && !v.renderError ? 4000 : false;
-    },
-  });
-}
-
-export function useBrandKit(projectId: number) {
-  return useQuery({
-    queryKey: ["brand", projectId],
-    queryFn: () => getJSON<BrandKitResponse>(`/api/projects/${projectId}/brand-kit`),
-    enabled: projectId > 0,
-  });
-}
-
-export function useCreateCreative() {
+function useReviewMutation<I, O>(key: string, fn: (input: I) => Promise<O>) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (input: CreativeInput) => postJSON<CreativeResponse>("/api/creatives", input),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["creatives"] }),
+    mutationFn: fn,
+    onSettled: () => qc.invalidateQueries({ queryKey: ["review", key] }),
   });
 }
 
-export function useCreativeAction(id: number | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ action, body }: { action: "submit" | "review"; body?: unknown }) =>
-      postJSON<Version>(`/api/creatives/${id}/${action}`, body ?? {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["creatives"] }),
-  });
-}
+export const useReviewDecide = (key: string) =>
+  useReviewMutation(key, (input: DecisionInput) =>
+    postJSON<void>(`/api/review/${encodeURIComponent(key)}/decisions`, input),
+  );
 
-// Rendering is a durable run on servers with a worker and inline on those
-// without; the response is one or the other.
-export function useStartRender(id: number | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => postJSON<StartRunResponse | Version>(`/api/creatives/${id}/render`, {}),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["creatives"] });
-      qc.invalidateQueries({ queryKey: ["runs"] });
-    },
-  });
-}
+export const useReviewComment = (key: string) =>
+  useReviewMutation(key, (input: CommentInput) =>
+    postJSON<Comment>(`/api/review/${encodeURIComponent(key)}/comments`, input),
+  );
 
-export function useCreativeQueue() {
-  return useQuery({
-    queryKey: ["creatives", "queue"],
-    queryFn: () => getJSON<CreativeQueueResponse>("/api/creatives/queue"),
-  });
-}
-
-export function useReadiness(id: number | null) {
-  return useQuery({
-    queryKey: ["creatives", id, "readiness"],
-    queryFn: () => getJSON<LaunchReadiness>(`/api/creatives/${id}/readiness`),
-    enabled: id !== null,
-  });
-}
-
-export function useSaveDocument(id: number | null) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (document: Document) => {
-      const res = await fetch(`/api/creatives/${id}/document`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ document }),
-      });
-      if (!res.ok) {
-        const err = (await res.json().catch(() => null)) as { error?: string } | null;
-        throw new Error(err?.error ?? res.statusText);
-      }
-      return (await res.json()) as Version;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["creatives"] }),
-  });
-}
+export const useReviewPick = (key: string) =>
+  useReviewMutation(key, (input: PickInput) =>
+    postJSON<void>(`/api/review/${encodeURIComponent(key)}/picks`, input),
+  );

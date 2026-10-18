@@ -1,55 +1,23 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJSON, postJSON } from "./client";
-import type {
-  AssignProjectsResponse,
-  FreshnessResponse,
-  RefreshInput,
-  ReportingResult,
-  StartRunResponse,
-} from "./types.gen";
+import { useQuery } from "@tanstack/react-query";
+import { type Analytics, type AnalyticsSearch, rangeError } from "@/lib/analytics";
+import { getJSON } from "./client";
+import { mockResponse, USE_MOCK } from "./mock";
+import { analytics } from "./mock/analytics";
 
-export function useFreshness() {
+export function useAnalytics(search: AnalyticsSearch) {
+  const { metric: _, ...filters } = search;
   return useQuery({
-    queryKey: ["analytics", "freshness"],
-    queryFn: () => getJSON<FreshnessResponse>("/api/analytics/freshness"),
-    refetchInterval: 30_000,
-  });
-}
-
-export function useRefreshAnalytics() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: RefreshInput) =>
-      postJSON<StartRunResponse>("/api/analytics/refresh", input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["runs"] });
-      queryClient.invalidateQueries({ queryKey: ["analytics"] });
-    },
-  });
-}
-
-export type AnalyticsParams = {
-  from: string;
-  to: string;
-  group: "campaign" | "project" | "platform" | "day";
-  compare: "" | "previous" | "year";
-  platform: "" | "google_ads" | "meta";
-};
-
-export function useAnalytics(p: AnalyticsParams) {
-  const search = new URLSearchParams({ from: p.from, to: p.to, group: p.group });
-  if (p.compare) search.set("compare", p.compare);
-  if (p.platform) search.set("platform", p.platform);
-  return useQuery({
-    queryKey: ["analytics", p],
-    queryFn: () => getJSON<ReportingResult>(`/api/analytics?${search.toString()}`),
-  });
-}
-
-export function useAssignProjects() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => postJSON<AssignProjectsResponse>("/api/analytics/assign-projects", {}),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["analytics"] }),
+    queryKey: ["analytics", filters],
+    enabled: !rangeError(search),
+    queryFn: () =>
+      USE_MOCK
+        ? mockResponse(() => analytics(search))
+        : getJSON<Analytics>(
+            `/api/analytics?${new URLSearchParams(
+              Object.entries(filters)
+                .filter(([, v]) => v !== undefined)
+                .map(([k, v]) => [k, String(v)]),
+            )}`,
+          ),
   });
 }

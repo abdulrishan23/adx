@@ -1,226 +1,90 @@
 import { useState } from "react";
-import {
-  useCreateSchedule,
-  useGenerateScheduled,
-  useReport,
-  useReports,
-  useSchedules,
-} from "@/api/reports";
-import { useSession } from "@/api/session";
-import type { Report, ReportSchedule } from "@/api/types.gen";
+import { useReports } from "@/api/adx";
+import type { Report } from "@/api/models";
+import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { formatMoney, NOT_AVAILABLE } from "@/lib/format";
+import { Sheet } from "@/components/ui/sheet";
+import { StatusChip } from "@/components/ui/status-chip";
+import { formatRelative } from "@/lib/format";
 
-const delivery: Record<string, string> = {
-  unconfigured: "Not delivered: delivery not configured",
-  pending: "Delivery pending",
-  sent: "Sent",
-  failed: "Delivery failed",
-};
+const KIND_LABEL = { weekly: "Weekly", monthly: "Monthly" } as const;
 
-// Scheduled and ad hoc reports. A report shows when it was generated, what
-// it covers, how fresh its figures were, and whether it went anywhere.
-// Unconfigured recipients are stated, never silently skipped.
 export function ReportsPage() {
-  const schedules = useSchedules();
   const reports = useReports();
-  const session = useSession();
-  const create = useCreateSchedule();
-  const generate = useGenerateScheduled();
-  const [open, setOpen] = useState<number | null>(null);
-  const detail = useReport(open);
-  const isAdmin = session.data?.role === "admin";
-  const canGenerate = isAdmin || session.data?.role === "marketer";
-  const [form, setForm] = useState({ name: "", cadence: "daily", recipients: "" });
-
+  const [openId, setOpenId] = useState<string | null>(null);
+  const open = reports.data?.find((r) => r.id === openId);
   return (
-    <section className="space-y-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Reports</h1>
-
-      <div className="space-y-3">
-        <h2 className="font-semibold">Schedules</h2>
-        {schedules.isPending && <p className="text-muted-foreground">Loading…</p>}
-        {schedules.error && <p className="text-destructive">{schedules.error.message}</p>}
-        {schedules.data && schedules.data.schedules.length === 0 && (
-          <p className="text-muted-foreground">
-            No schedules yet. Reports are generated only from a schedule or on request.
-          </p>
-        )}
-        {schedules.data && schedules.data.schedules.length > 0 && (
-          <ul className="divide-y border-y">
-            {schedules.data.schedules.map((s: ReportSchedule) => (
-              <li
-                key={s.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
-              >
-                <span>
-                  <span className="font-medium">{s.name}</span>{" "}
-                  <span className="text-muted-foreground">
-                    {s.cadence} · {s.enabled ? "enabled" : "disabled"} ·{" "}
-                    {s.deliveryConfigured
-                      ? `to ${s.recipients.join(", ")}`
-                      : s.recipients.length === 0
-                        ? "no recipients: generated, not delivered"
-                        : "no mail transport: generated, not delivered"}
-                  </span>
-                </span>
-                {canGenerate && (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={generate.isPending}
-                    onClick={() => generate.mutate(s.id)}
-                  >
-                    Generate now
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        {generate.data && (
-          <p className="text-sm text-muted-foreground">
-            {generate.data.created ? "Generated" : "Already generated for this period"}: report{" "}
-            {generate.data.report.id} · {delivery[generate.data.report.deliveryStatus]}
-          </p>
-        )}
-        {generate.error && <p className="text-sm text-destructive">{generate.error.message}</p>}
-        {isAdmin && (
-          <form
-            className="flex flex-wrap items-end gap-2 text-sm"
-            onSubmit={(e) => {
-              e.preventDefault();
-              create.mutate(
-                {
-                  name: form.name,
-                  cadence: form.cadence as ReportSchedule["cadence"],
-                  enabled: true,
-                  params: {
-                    accountId: 0,
-                    platform: "",
-                    projectId: 0,
-                    groupBy: "campaign",
-                    compare: "previous",
-                  },
-                  recipients: form.recipients
-                    .split(",")
-                    .map((r) => r.trim())
-                    .filter(Boolean),
-                },
-                { onSuccess: () => setForm({ name: "", cadence: "daily", recipients: "" }) },
-              );
-            }}
-          >
-            <Input
-              placeholder="Schedule name"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="max-w-xs"
-            />
-            <select
-              className="rounded-md border bg-background px-2 py-1"
-              value={form.cadence}
-              onChange={(e) => setForm({ ...form, cadence: e.target.value })}
-            >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-            </select>
-            <Input
-              placeholder="Recipients, comma separated (optional)"
-              value={form.recipients}
-              onChange={(e) => setForm({ ...form, recipients: e.target.value })}
-              className="max-w-sm"
-            />
-            <Button type="submit" size="sm" disabled={create.isPending}>
-              Add schedule
-            </Button>
-            {create.error && <span className="text-destructive">{create.error.message}</span>}
-          </form>
-        )}
-      </div>
-
-      <div className="space-y-3">
-        <h2 className="font-semibold">Generated</h2>
-        {reports.data && reports.data.reports.length === 0 && (
-          <p className="text-muted-foreground">Nothing generated yet.</p>
-        )}
-        {reports.data && reports.data.reports.length > 0 && (
-          <ul className="divide-y border-y">
-            {reports.data.reports.map((r: Report) => (
-              <li key={r.id} className="py-2 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span>
-                    <span className="font-medium">{r.cadence}</span> {r.periodStart} to{" "}
-                    {r.periodEnd}{" "}
-                    <span className="text-muted-foreground">
-                      · generated {new Date(r.generatedAt).toLocaleString()} · formula{" "}
-                      {r.formulaVersion}
-                    </span>
-                  </span>
-                  <span
-                    className={
-                      r.deliveryStatus === "failed" || r.status === "failed"
-                        ? "text-destructive"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {r.status === "failed" ? `Failed: ${r.error}` : delivery[r.deliveryStatus]}
-                    {r.deliveryDetail ? ` (${r.deliveryDetail})` : ""}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={() => setOpen(open === r.id ? null : r.id)}
-                  >
-                    {open === r.id ? "Hide" : "Show"}
-                  </Button>
+    <>
+      <PageHeader title="Reports" />
+      {reports.isPending && <LoadingRows rows={4} />}
+      {reports.error && <ErrorNote error={reports.error} />}
+      {reports.data && reports.data.length === 0 && (
+        <EmptyState title="No reports yet">The first weekly report arrives next Monday.</EmptyState>
+      )}
+      {reports.data && reports.data.length > 0 && (
+        <Panel bodyClassName="p-0">
+          <ul className="divide-y">
+            {reports.data.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{r.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {KIND_LABEL[r.kind]} · {r.period} · {formatRelative(r.createdAt)}
+                  </div>
                 </div>
-                {open === r.id && detail.data?.result && <ReportBody report={detail.data} />}
+                <StatusChip status={r.state}>{r.stateLabel}</StatusChip>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={r.state === "pending"}
+                  onClick={() => setOpenId(r.id)}
+                >
+                  Open
+                </Button>
               </li>
             ))}
           </ul>
-        )}
-      </div>
-    </section>
+        </Panel>
+      )}
+      {open && <ReportSheet report={open} onClose={() => setOpenId(null)} />}
+    </>
   );
 }
 
-function ReportBody({ report }: { report: Report }) {
-  const res = report.result;
-  if (!res) return null;
+function ReportSheet({ report: r, onClose }: { report: Report; onClose: () => void }) {
   return (
-    <div className="mt-2 space-y-1 rounded-lg border p-3 text-sm">
-      <div className="text-muted-foreground">
-        Figures{" "}
-        {res.freshness.observedThrough
-          ? `observed through ${res.freshness.observedThrough}`
-          : "never read"}
-        {res.freshness.partial ? " (partial)" : ""} · {res.coverage.matchedCount} of{" "}
-        {res.coverage.eligibleCount} leads matched
-      </div>
-      {res.coverage.dependenciesMissing.map((d: string) => (
-        <div key={d} className="text-destructive">
-          {d}
+    <Sheet
+      open
+      onOpenChange={(o) => !o && onClose()}
+      title={r.title}
+      description={`${KIND_LABEL[r.kind]} · ${r.period}`}
+      footer={
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" disabled title="Export lands with the real reports">
+            Download PDF
+          </Button>
         </div>
-      ))}
-      <table className="w-full">
-        <tbody className="divide-y">
-          {[...res.rows, res.summary].map((row) => (
-            <tr key={row.key}>
-              <td className="py-1">{row.label}</td>
-              <td className="py-1">
-                {formatMoney(row.metrics.spend.minor, row.metrics.spend.currency || "AED")}
-              </td>
-              <td className="py-1">{row.metrics.leads} leads</td>
-              <td className="py-1">{row.metrics.qualifiedLeads ?? NOT_AVAILABLE} qualified</td>
-              <td className="py-1">{row.metrics.deals ?? NOT_AVAILABLE} deals</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+      }
+    >
+      {r.state === "caution" && (
+        <p className="mb-4 rounded-md border border-status-caution/50 bg-status-caution/10 px-3 py-2 text-sm">
+          Some sources were missing for part of this period.
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-3">
+        {r.figures.map((f) => (
+          <div key={f.label} className="rounded-lg border p-3">
+            <Eyebrow>{f.label}</Eyebrow>
+            <div className="mt-1 font-heading text-xl font-semibold tabular-nums">{f.value}</div>
+          </div>
+        ))}
+      </div>
+      <h3 className="mt-6 mb-2 text-sm font-semibold">What happened</h3>
+      <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed">
+        {r.summary.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ul>
+    </Sheet>
   );
 }

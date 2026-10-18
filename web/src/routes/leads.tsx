@@ -1,157 +1,253 @@
-import { useState } from "react";
-import { useAccounts } from "@/api/accounts";
-import { useImportLeads, useLeadCoverage, useLeads } from "@/api/leads";
-import { useSession } from "@/api/session";
-import { Button } from "@/components/ui/button";
-import { NOT_AVAILABLE } from "@/lib/format";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowRight, Search } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useLeads, useLeadsSummary } from "@/api/adx";
+import { projectOf } from "@/api/mock/data";
+import { matchesFilter } from "@/api/mock/server";
+import type { Lead, LeadFilter, MatchLevel, Temperature } from "@/api/models";
+import { ScopeBar } from "@/app/scope";
+import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
+import { Segmented } from "@/components/segmented";
+import { TemperatureMeter } from "@/components/temperature";
+import { Input } from "@/components/ui/input";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { formatRelative } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-function pct(part: number, total: number): string {
-  if (total === 0) return NOT_AVAILABLE;
-  return `${Math.round((part / total) * 100)}%`;
-}
+export const MATCH_LABEL: Record<MatchLevel, string> = {
+  click_id: "Click ID",
+  lead_id: "Platform lead ID",
+  contact: "Phone or email",
+  utm: "UTM only",
+  none: "Unknown",
+};
 
-// Leads as GoHighLevel last gave them, with the coverage numbers every
-// figure depends on. Raw status is shown next to the ADX stage so an
-// unmapped status is visible, not hidden.
+type Tab = Temperature | "all";
+const PAGE = 50;
+
 export function LeadsPage() {
-  const [stage, setStage] = useState("");
-  const leads = useLeads({ stage });
-  const coverage = useLeadCoverage();
-  const accounts = useAccounts();
-  const session = useSession();
-  const importLeads = useImportLeads();
-  const canImport = session.data?.role === "marketer" || session.data?.role === "admin";
-  const ghlAccounts = accounts.data?.accounts.filter((a) => a.provider === "gohighlevel") ?? [];
+  const leads = useLeads();
+  const summary = useLeadsSummary();
+  const navigate = useNavigate();
+  const [tab, setTab] = useState<Tab>("hot");
+  const [filter, setFilter] = useState<LeadFilter | null>(null);
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(0);
+
+  const all = leads.data ?? [];
+  const counts = {
+    hot: all.filter((l) => l.temperature === "hot").length,
+    warm: all.filter((l) => l.temperature === "warm").length,
+    cold: all.filter((l) => l.temperature === "cold").length,
+    all: all.length,
+  };
+
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return all.filter(
+      (l) =>
+        // A search spans every temperature, so a name is never hidden by the tab.
+        (q ? l.name.toLowerCase().includes(q) : tab === "all" || l.temperature === tab) &&
+        (!filter || matchesFilter(l, filter)),
+    );
+  }, [all, tab, filter, query]);
+
+  const shown = rows.slice(page * PAGE, page * PAGE + PAGE);
+  const pages = Math.ceil(rows.length / PAGE);
+
+  function toggleFilter(f: LeadFilter) {
+    setFilter((cur) => (cur === f ? null : f));
+    setTab("all");
+    setPage(0);
+  }
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
-        {canImport && ghlAccounts.length > 0 && (
-          <div className="flex items-center gap-2">
-            {ghlAccounts.map((a) => (
-              <Button
-                key={a.id}
-                variant="outline"
-                size="sm"
-                disabled={importLeads.isPending}
-                onClick={() => importLeads.mutate({ accountId: a.id, mode: "full", since: null })}
+    <>
+      <PageHeader title="Leads" actions={<ScopeBar showPlatform={false} />} />
+
+      {summary.data && (
+        <div className="mb-6 space-y-4">
+          <button
+            type="button"
+            disabled={!summary.data.headline.filter}
+            onClick={() =>
+              summary.data.headline.filter && toggleFilter(summary.data.headline.filter)
+            }
+            className="group flex w-full items-center justify-between gap-4 rounded-lg bg-primary px-5 py-4 text-left text-primary-foreground disabled:cursor-default"
+          >
+            <span className="font-heading text-lg font-medium">{summary.data.headline.text}</span>
+            {summary.data.headline.filter && (
+              <ArrowRight className="size-5 shrink-0 transition-transform group-hover:translate-x-1" />
+            )}
+          </button>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {summary.data.stats.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                aria-pressed={filter === s.key}
+                onClick={() => toggleFilter(s.key)}
+                className={cn(
+                  "rounded-lg border bg-card px-4 py-3 text-left transition-colors hover:border-foreground/40",
+                  filter === s.key && "border-foreground ring-1 ring-foreground",
+                )}
               >
-                Import from {a.name ?? a.externalId}
-              </Button>
+                <span
+                  className={cn(
+                    "block font-mono text-2xl font-semibold tabular-nums",
+                    s.urgent && "text-destructive",
+                  )}
+                >
+                  {s.count}
+                </span>
+                <span className="text-sm text-muted-foreground">{s.label}</span>
+              </button>
             ))}
           </div>
-        )}
-      </div>
-      {importLeads.data && (
-        <p className="text-sm text-muted-foreground">
-          {importLeads.data.created ? "Import started" : "Import already running"}: run{" "}
-          {importLeads.data.run.id} ({importLeads.data.run.state}). See Runs for progress.
-        </p>
-      )}
-      {importLeads.error && <p className="text-sm text-destructive">{importLeads.error.message}</p>}
-
-      {coverage.data && (
-        <dl className="grid grid-cols-2 gap-2 rounded-lg border p-4 text-sm sm:grid-cols-4">
-          <dt className="text-muted-foreground">Leads</dt>
-          <dd>{coverage.data.total}</dd>
-          <dt className="text-muted-foreground">With a status</dt>
-          <dd>{pct(coverage.data.withStatus, coverage.data.total)}</dd>
-          <dt className="text-muted-foreground">With a stage</dt>
-          <dd>
-            {coverage.data.funnelConfigured
-              ? pct(coverage.data.withStage, coverage.data.total)
-              : "Funnel not configured"}
-          </dd>
-          <dt className="text-muted-foreground">With a project</dt>
-          <dd>{pct(coverage.data.withProject, coverage.data.total)}</dd>
-          <dt className="text-muted-foreground">Status missing on last scan</dt>
-          <dd>{coverage.data.statusMissingOnLastScan}</dd>
-          <dt className="text-muted-foreground">Phones shared by several leads</dt>
-          <dd>{coverage.data.sharedPhones}</dd>
-          <dt className="text-muted-foreground">Click-id matched</dt>
-          <dd>{coverage.data.matchLevels?.click_id ?? 0}</dd>
-          <dt className="text-muted-foreground">UTM matched</dt>
-          <dd>{coverage.data.matchLevels?.utm ?? 0}</dd>
-        </dl>
+        </div>
       )}
 
-      <div className="flex items-center gap-2 text-sm">
-        <label htmlFor="stage" className="text-muted-foreground">
-          Stage
-        </label>
-        <select
-          id="stage"
-          className="rounded-md border bg-background px-2 py-1"
-          value={stage}
-          onChange={(e) => setStage(e.target.value)}
-        >
-          <option value="">All</option>
-          {[
-            "open",
-            "attempted",
-            "engaged",
-            "meeting",
-            "offer",
-            "won",
-            "disqualified",
-            "excluded",
-            "dead",
-          ].map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <Segmented
+          label="Temperature"
+          value={tab}
+          onChange={(t) => {
+            setTab(t);
+            setPage(0);
+          }}
+          options={[
+            { value: "hot", label: "Hot", count: counts.hot },
+            { value: "warm", label: "Warm", count: counts.warm },
+            { value: "cold", label: "Cold", count: counts.cold },
+            { value: "all", label: "All", count: counts.all },
+          ]}
+        />
+        <div className="relative w-full sm:w-64">
+          <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            aria-label="Search leads"
+            placeholder="Search name…"
+            className="pl-8"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
       </div>
 
-      {leads.isPending && <p className="text-muted-foreground">Loading…</p>}
-      {leads.error && <p className="text-destructive">{leads.error.message}</p>}
-      {leads.data && leads.data.leads.length === 0 && (
-        <p className="text-muted-foreground">
-          No leads yet. Connect a GoHighLevel location and run an import.
-        </p>
+      {leads.isPending && <LoadingRows rows={12} />}
+      {leads.error && <ErrorNote error={leads.error} />}
+      {leads.data && rows.length === 0 && (
+        <Panel>
+          <EmptyState title="No leads match">
+            {filter
+              ? "Clear the filter above to see every lead."
+              : "Nothing in this temperature for this scope."}
+          </EmptyState>
+        </Panel>
       )}
-      {leads.data && leads.data.leads.length > 0 && (
-        <table className="w-full text-sm">
-          <thead className="text-left text-muted-foreground">
-            <tr>
-              <th className="py-1 font-normal">Name</th>
-              <th className="py-1 font-normal">Phone</th>
-              <th className="py-1 font-normal">Source</th>
-              <th className="py-1 font-normal">Project</th>
-              <th className="py-1 font-normal">Status (raw)</th>
-              <th className="py-1 font-normal">Stage</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y border-y">
-            {leads.data.leads.map((l) => (
-              <tr key={l.id}>
-                <td className="py-2">
-                  {[l.firstName, l.lastName].filter(Boolean).join(" ") || l.externalId}
-                </td>
-                <td className="py-2">{l.phone ?? NOT_AVAILABLE}</td>
-                <td className="py-2">
-                  {l.source ?? l.sourceRaw ?? NOT_AVAILABLE}
-                  {l.source === "handling_channel" && (
-                    <span className="text-muted-foreground"> (bucket, not a source)</span>
-                  )}
-                </td>
-                <td className="py-2">{l.projectRaw ?? NOT_AVAILABLE}</td>
-                <td className="py-2">
-                  {l.statusRaw ?? "No status"}
-                  {l.statusMissingSince && (
-                    <span className="text-muted-foreground"> · field missing on last scan</span>
-                  )}
-                </td>
-                <td className="py-2">
-                  {l.stage ?? <span className="text-muted-foreground">Unmapped</span>}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {shown.length > 0 && (
+        <section className="rounded-lg border bg-card">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Lead</TH>
+                <TH>Temperature</TH>
+                <TH>Why</TH>
+                <TH>Project</TH>
+                <TH>Status</TH>
+                <TH>Source</TH>
+                <TH>Owner</TH>
+                <TH numeric>Last active</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {shown.map((l) => (
+                <TR
+                  key={l.id}
+                  tabIndex={0}
+                  className="cursor-pointer hover:bg-muted/50"
+                  onClick={() =>
+                    navigate({ to: "/leads/$leadId", params: { leadId: String(l.id) } })
+                  }
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    navigate({ to: "/leads/$leadId", params: { leadId: String(l.id) } })
+                  }
+                >
+                  <TD>
+                    <Link
+                      to="/leads/$leadId"
+                      params={{ leadId: String(l.id) }}
+                      className="font-medium"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {l.name}
+                    </Link>
+                    <p className="font-mono text-xs text-muted-foreground">{l.phoneCountry}</p>
+                  </TD>
+                  <TD>
+                    <TemperatureMeter temperature={l.temperature} />
+                  </TD>
+                  <TD className="max-w-64 truncate text-muted-foreground">{l.reason}</TD>
+                  <TD className="whitespace-nowrap">
+                    {l.projectId ? projectOf(l.projectId) : "—"}
+                  </TD>
+                  <TD className="whitespace-nowrap">
+                    {l.status ?? <span className="text-muted-foreground">No status</span>}
+                  </TD>
+                  <TD>
+                    <SourceCell lead={l} />
+                  </TD>
+                  <TD>{l.owner}</TD>
+                  <TD numeric className="text-muted-foreground">
+                    {formatRelative(l.lastActivityAt)}
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+          {pages > 1 && (
+            <div className="flex items-center justify-between border-t px-5 py-3 text-sm">
+              <span className="text-muted-foreground">
+                {page * PAGE + 1}–{Math.min(rows.length, (page + 1) * PAGE)} of {rows.length}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-1 hover:bg-muted disabled:opacity-40"
+                  disabled={page === 0}
+                  onClick={() => setPage(page - 1)}
+                >
+                  Previous
+                </button>
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-1 hover:bg-muted disabled:opacity-40"
+                  disabled={page >= pages - 1}
+                  onClick={() => setPage(page + 1)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       )}
-    </section>
+    </>
+  );
+}
+
+function SourceCell({ lead }: { lead: Lead }) {
+  const recovered = lead.source !== lead.originalSource;
+  return (
+    <div className="whitespace-nowrap">
+      <p>{lead.originalSource}</p>
+      <p className="text-xs text-muted-foreground">
+        {recovered ? `Recovered from ${lead.source}` : MATCH_LABEL[lead.matchLevel]}
+      </p>
+    </div>
   );
 }

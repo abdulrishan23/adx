@@ -1,42 +1,25 @@
-import { useCallback, useSyncExternalStore } from "react";
-import { readStored, writeStored } from "@/lib/storage";
-
-// Paper (light) is the default; Ink (dark) redefines the same tokens under
-// .dark on <html> (design language, 03). The choice is remembered in the
-// browser; with nothing remembered the system preference decides.
+export type ThemePreference = "light" | "dark" | "system";
 export type Theme = "light" | "dark";
 
-const THEME_KEY = "adx.theme";
+export const THEME_STORAGE_KEY = "adx-theme";
 
-export function readTheme(): Theme {
-  const stored = readStored(THEME_KEY);
-  if (stored === "light" || stored === "dark") return stored;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+const PREFERENCES: readonly ThemePreference[] = ["system", "light", "dark"];
+
+// parsePreference turns whatever is stored into a known preference. Anything
+// unknown, including nothing, means follow the system.
+export function parsePreference(value: string | null | undefined): ThemePreference {
+  return PREFERENCES.includes(value as ThemePreference) ? (value as ThemePreference) : "system";
 }
 
-export function applyTheme(theme: Theme): void {
-  document.documentElement.classList.toggle("dark", theme === "dark");
+export function resolveTheme(preference: ThemePreference, systemPrefersDark: boolean): Theme {
+  if (preference === "system") {
+    return systemPrefersDark ? "dark" : "light";
+  }
+  return preference;
 }
 
-const listeners = new Set<() => void>();
-
-function setTheme(theme: Theme): void {
-  applyTheme(theme);
-  writeStored(THEME_KEY, theme);
-  for (const l of listeners) l();
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function current(): Theme {
-  return document.documentElement.classList.contains("dark") ? "dark" : "light";
-}
-
-export function useTheme(): [Theme, () => void] {
-  const theme = useSyncExternalStore<Theme>(subscribe, current, () => "light");
-  const toggle = useCallback(() => setTheme(current() === "dark" ? "light" : "dark"), []);
-  return [theme, toggle];
+// nextPreference is the order the toggle steps through.
+export function nextPreference(current: ThemePreference): ThemePreference {
+  const i = PREFERENCES.indexOf(current);
+  return PREFERENCES[(i + 1) % PREFERENCES.length] ?? "system";
 }

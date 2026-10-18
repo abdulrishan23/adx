@@ -5,6 +5,7 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 ## Layout
 
 - `server/` is the Go module. `web/` is the React app. They deploy separately behind one domain, and `/api` goes to Go.
+- `web/src/engine/` holds the server's own screens and API clients, mounted under `/engine` inside the shell. They are the plain, working UI for every capability. Our screens (`web/src/routes`, `web/src/api`) carry the design; each one is rewired to `@/api/types.gen` and the engine's endpoints, then its engine twin is removed. Screens still on sample data say so with a Sample chip and import `@/api/types.legacy`.
 - `server/core` holds business logic, one package per domain. Every function takes a `core.Actor`.
 - Build features in core first. `server/api`, MCP and `server/jobs` are thin wrappers that call the same core functions.
 - `server/store` is SQLite: migrations, queries, sqlc output. Core may use it directly.

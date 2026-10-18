@@ -5,6 +5,10 @@ import { defineConfig } from "vitest/config";
 import { privacyPage } from "./privacy-page.ts";
 
 export default defineConfig({
+  // Where the app is mounted. It stays at the root for `make dev` and is set
+  // to "/app/" for the deployment behind adx.wokeworks.ai. Everything that
+  // needs it reads import.meta.env.BASE_URL, so there is one source of truth.
+  base: process.env.ADX_BASE ?? "/",
   plugins: [react(), tailwindcss(), privacyPage()],
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "src") },
