@@ -1,11 +1,14 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { type Launch, useFixBlocker, useLaunches } from "@/api/create";
+import { useCampaigns } from "@/api/adx";
+import { type Launch, useFixBlocker, useLaunches, usePlan } from "@/api/create";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformTag } from "@/components/platform";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
-import { formatRelative } from "@/lib/format";
+import { formatMoneyShort, formatRelative } from "@/lib/format";
+import { pickCampaign, type Resolution, resolveLaunch, spentThisMonth } from "@/lib/launch";
 import { BrandPicker, SampleChip } from "./shared";
 
 const route = getRouteApi("/app/create/launch");
@@ -147,6 +150,7 @@ function LaunchBody({ launch: l }: { launch: Launch }) {
           </ol>
         </Panel>
       </div>
+      {l.planId && <MoneyPanel planId={l.planId} projectId={l.projectId} />}
       <p className="text-sm text-muted-foreground">
         Target from the CEO's flow: plan approved to live in under an hour.{" "}
         <StatusChip status="pending" className="font-sans normal-case tracking-normal">
@@ -154,5 +158,109 @@ function LaunchBody({ launch: l }: { launch: Launch }) {
         </StatusChip>
       </p>
     </div>
+  );
+}
+
+const PLATFORM_LABEL: Record<string, string> = {
+  meta: "Meta",
+  google: "Google",
+  snapchat: "Snapchat",
+  tiktok: "TikTok",
+};
+
+// Where the money goes (BD-58): each plan line against the campaigns already
+// running for the project. One match is updated, more than one and a person
+// picks, none and Adx creates one. The plan is the month's ceiling, so spend
+// this month nets off the line and the rest is spread over the days left.
+function MoneyPanel({ planId, projectId }: { planId: string; projectId: number }) {
+  const plan = usePlan(planId);
+  const campaigns = useCampaigns();
+  const [picked, setPicked] = useState<Record<number, string>>({});
+  const today = new Date();
+  const monthEnd = new Date(today.getFullYear(), today.getMonth() + 1, 0).toLocaleDateString(
+    "en-GB",
+    { day: "numeric", month: "short" },
+  );
+
+  if (plan.isPending || campaigns.isPending) return <LoadingRows rows={3} />;
+  if (plan.error) return <ErrorNote error={plan.error} />;
+  if (campaigns.error) return <ErrorNote error={campaigns.error} />;
+  if (!plan.data) return null;
+
+  const lines = plan.data.channels.map((ch) => ({
+    platform: ch.platform,
+    budgetMinor: ch.budgetMinor,
+  }));
+  const running = (campaigns.data ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    platform: c.platform,
+    type: c.type,
+    projectId: c.projectId,
+    spentThisMonthMinor: spentThisMonth(c.daily, today),
+  }));
+  const resolutions: Resolution[] = resolveLaunch(lines, running, projectId, today).map((r, i) => {
+    const choice = picked[i];
+    return r.kind === "pick" && choice ? (pickCampaign(r, choice, today) ?? r) : r;
+  });
+
+  return (
+    <Panel
+      title="Where the money goes"
+      description={`Each plan line against the campaigns already running for ${plan.data.projectName}. One match is updated; more than one and you pick; none and Adx creates one. The plan is the month's ceiling, so spend this month comes off the line.`}
+      bodyClassName="p-0"
+    >
+      <ul className="divide-y">
+        {resolutions.map((r, i) => (
+          <li
+            key={`${r.line.platform}:${r.line.type ?? ""}`}
+            className="flex items-start gap-3 px-5 py-3"
+          >
+            <StatusMark
+              status={r.kind === "update" ? "ready" : r.kind === "pick" ? "caution" : "pending"}
+              className="mt-2"
+            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <p className="text-sm font-medium">
+                {PLATFORM_LABEL[r.line.platform] ?? r.line.platform} ·{" "}
+                {formatMoneyShort(r.line.budgetMinor)} this month
+              </p>
+              {r.kind === "create" && (
+                <p className="text-sm text-muted-foreground">
+                  Creates a new {PLATFORM_LABEL[r.line.platform] ?? r.line.platform} campaign.{" "}
+                  {formatMoneyShort(r.dailyMinor)} a day to {monthEnd}.
+                </p>
+              )}
+              {r.kind === "update" && (
+                <p className="text-sm text-muted-foreground">
+                  Updates {r.campaign.name}. {formatMoneyShort(r.spentMinor)} spent this month,{" "}
+                  {formatMoneyShort(r.remainingMinor)} left, {formatMoneyShort(r.dailyMinor)} a day
+                  to {monthEnd}.
+                </p>
+              )}
+              {r.kind === "pick" && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Matches {r.candidates.length} running campaigns. Pick the one this line is for;
+                    Adx never updates both unasked.
+                  </p>
+                  <Select
+                    aria-label={`Campaign for the ${PLATFORM_LABEL[r.line.platform] ?? r.line.platform} line`}
+                    value={null}
+                    onValueChange={(id) => setPicked((p) => ({ ...p, [i]: id }))}
+                    options={r.candidates.map((c) => ({
+                      value: c.id,
+                      label: `${c.name} · ${formatMoneyShort(c.spentThisMonthMinor)} spent`,
+                    }))}
+                    placeholder="Pick a campaign"
+                    className="max-w-sm"
+                  />
+                </>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
