@@ -42,7 +42,7 @@ export function CallsPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Calls</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Calls</h1>
         {st && (
           <p className={st.liveCalling ? "text-muted-foreground" : "text-destructive"}>
             {st.liveCalling
@@ -54,7 +54,7 @@ export function CallsPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <h2 className="font-medium">Calling policy (JSON)</h2>
+          <h2 className="font-semibold">Calling policy (JSON)</h2>
           <textarea
             className="h-72 w-full rounded-md border bg-background p-2 font-mono text-xs"
             value={text}
@@ -69,7 +69,7 @@ export function CallsPage() {
           {put.error && <p className="text-destructive">{put.error.message}</p>}
         </div>
         <div className="space-y-2">
-          <h2 className="font-medium">Calls</h2>
+          <h2 className="font-semibold">Calls</h2>
           {list.data?.calls.length === 0 && <p className="text-muted-foreground">No calls.</p>}
           {list.data?.calls.map((c) => (
             <div

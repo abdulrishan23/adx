@@ -36,10 +36,10 @@ export function ReportsPage() {
 
   return (
     <section className="space-y-8">
-      <h1 className="text-2xl font-semibold">Reports</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Reports</h1>
 
       <div className="space-y-3">
-        <h2 className="font-medium">Schedules</h2>
+        <h2 className="font-semibold">Schedules</h2>
         {schedules.isPending && <p className="text-muted-foreground">Loading…</p>}
         {schedules.error && <p className="text-destructive">{schedules.error.message}</p>}
         {schedules.data && schedules.data.schedules.length === 0 && (
@@ -143,7 +143,7 @@ export function ReportsPage() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="font-medium">Generated</h2>
+        <h2 className="font-semibold">Generated</h2>
         {reports.data && reports.data.reports.length === 0 && (
           <p className="text-muted-foreground">Nothing generated yet.</p>
         )}

@@ -37,7 +37,7 @@ export function PeoplePage() {
     <section className="grid gap-6 text-sm md:grid-cols-[20rem_1fr]">
       <aside className="space-y-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h1 className="text-2xl font-semibold">People</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">People</h1>
           {canEdit && (
             <Button
               size="xs"
@@ -118,7 +118,7 @@ function NewPerson({ onCreated }: { onCreated: (id: number) => void }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3">
-      <h2 className="font-medium">Add a person by hand</h2>
+      <h2 className="font-semibold">Add a person by hand</h2>
       <Input
         placeholder="Name"
         value={form.displayName}
@@ -167,7 +167,9 @@ function PersonView({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{d.person.displayName || "(no name)"}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {d.person.displayName || "(no name)"}
+        </h2>
         <p className="text-muted-foreground">
           {d.person.primaryPhone ?? "no phone"} · {d.person.primaryEmail ?? "no email"} · first seen{" "}
           {new Date(d.person.createdAt).toLocaleDateString()}
@@ -191,7 +193,7 @@ function PersonView({
 
       {d.candidates.length > 0 && (
         <section className="space-y-2 rounded-lg border border-destructive/40 p-3">
-          <h3 className="font-medium">Uncertain matches</h3>
+          <h3 className="font-semibold">Uncertain matches</h3>
           <p className="text-muted-foreground">
             These records share something with this person but not enough to be sure. Nothing is
             merged until someone says so.
@@ -230,7 +232,7 @@ function PersonView({
       )}
 
       <section className="space-y-1">
-        <h3 className="font-medium">Enquiries</h3>
+        <h3 className="font-semibold">Enquiries</h3>
         {d.enquiries.length === 0 && <p className="text-muted-foreground">None.</p>}
         {d.enquiries.map((e) => (
           <div key={e.id} className="space-y-1">
@@ -254,7 +256,7 @@ function PersonView({
       </section>
 
       <section className="space-y-1">
-        <h3 className="font-medium">Identifiers and sources</h3>
+        <h3 className="font-semibold">Identifiers and sources</h3>
         {d.identifiers.map((i) => (
           <p key={i.id}>
             {i.kind}: {i.value}{" "}
@@ -286,7 +288,7 @@ function PersonView({
       <ScoreSection id={id} canEdit={canEdit} />
 
       <section className="space-y-2">
-        <h3 className="font-medium">
+        <h3 className="font-semibold">
           What we know{" "}
           <span className="font-normal text-muted-foreground">
             (what the customer said stands; a provider's guess sits beside it)

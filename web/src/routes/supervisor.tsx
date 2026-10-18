@@ -48,7 +48,7 @@ export function SupervisorPage() {
     <section className="space-y-6 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h1 className="text-2xl font-semibold">Supervisor</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Supervisor</h1>
           <p className="text-muted-foreground">
             {inbox.data
               ? `${inbox.data.items.length} item${inbox.data.items.length === 1 ? "" : "s"} waiting.`
@@ -109,7 +109,7 @@ export function SupervisorPage() {
           {act.error && <p className="text-destructive">{act.error.message}</p>}
         </div>
         <aside className="space-y-3">
-          <h2 className="font-medium">Autonomy and precedence (JSON)</h2>
+          <h2 className="font-semibold">Autonomy and precedence (JSON)</h2>
           <p className="text-muted-foreground">
             {config.data?.configured
               ? `Version ${config.data.current?.version}.`
@@ -128,7 +128,7 @@ export function SupervisorPage() {
           )}
           {put.error && <p className="text-destructive">{put.error.message}</p>}
           <div className="flex items-baseline justify-between pt-2">
-            <h2 className="font-medium">Conflicts</h2>
+            <h2 className="font-semibold">Conflicts</h2>
             {canEdit && (
               <Button size="xs" variant="outline" onClick={() => arbitrate.mutate()}>
                 Arbitrate now
@@ -145,7 +145,7 @@ export function SupervisorPage() {
               {c.resolution && ` · ${c.resolution}`}
             </p>
           ))}
-          <h2 className="pt-2 font-medium">Recommendations</h2>
+          <h2 className="pt-2 font-semibold">Recommendations</h2>
           {recs.data?.recommendations.length === 0 && (
             <p className="text-muted-foreground">None recorded.</p>
           )}

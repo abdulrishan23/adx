@@ -68,7 +68,7 @@ export function ResearchPage() {
   return (
     <section className="grid gap-6 md:grid-cols-[18rem_1fr]">
       <aside className="space-y-3">
-        <h1 className="text-2xl font-semibold">Research</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Research</h1>
         {briefs.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
         {briefs.error && <p className="text-sm text-destructive">{briefs.error.message}</p>}
         {briefs.data?.briefs.length === 0 && (
@@ -167,7 +167,7 @@ function NewBrief({ onCreated }: { onCreated: (id: number) => void }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">New brief</h2>
+      <h2 className="font-semibold">New brief</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={brandId}
@@ -286,7 +286,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
     <div className="space-y-6 text-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-xl font-semibold">{d.brief.title}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{d.brief.title}</h2>
           <p className="text-muted-foreground">
             {d.brief.question || "No question written."} · {d.brief.geography} · {d.brief.language}{" "}
             · {d.runs} run{d.runs === 1 ? "" : "s"}
@@ -305,7 +305,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
 
       {unresolved.length > 0 && (
         <section className="space-y-2 rounded-lg border border-destructive/40 p-3">
-          <h3 className="font-medium">Competitors ADX can't place</h3>
+          <h3 className="font-semibold">Competitors ADX can't place</h3>
           <p className="text-muted-foreground">
             A name is matched only when it is exactly a competitor brand. These wait for a person;
             their pages are not read until then.
@@ -323,7 +323,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
       )}
 
       <section className="space-y-2">
-        <h3 className="font-medium">Sources</h3>
+        <h3 className="font-semibold">Sources</h3>
         <table className="w-full text-left">
           <thead className="text-muted-foreground">
             <tr>
@@ -361,7 +361,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
 
       <div className="grid gap-6 md:grid-cols-2">
         <section className="space-y-2">
-          <h3 className="font-medium">
+          <h3 className="font-semibold">
             Your account{" "}
             <span className="font-normal text-muted-foreground">(observed, private)</span>
           </h3>
@@ -371,7 +371,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
           ))}
         </section>
         <section className="space-y-2">
-          <h3 className="font-medium">
+          <h3 className="font-semibold">
             Public web{" "}
             <span className="font-normal text-muted-foreground">
               (pages as read; nothing inferred)
@@ -385,7 +385,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
       </div>
 
       <section className="space-y-2">
-        <h3 className="font-medium">
+        <h3 className="font-semibold">
           Keyword ideas{" "}
           <span className="font-normal text-muted-foreground">
             (estimated by Google Keyword Planner, not observed)
@@ -456,7 +456,7 @@ function MarketEvents({ canEdit }: { canEdit: boolean }) {
   });
   return (
     <div className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">Market events</h2>
+      <h2 className="font-semibold">Market events</h2>
       <p className="text-muted-foreground">
         Recorded by the team, with a source. Reports can only mention events recorded here, and only
         as hypotheses.
@@ -536,7 +536,7 @@ function Schedules({ briefId, canEdit }: { briefId: number; canEdit: boolean }) 
   const mine = schedules.data?.schedules.filter((s) => s.briefId === briefId) ?? [];
   return (
     <section className="space-y-2">
-      <h3 className="font-medium">Recurring</h3>
+      <h3 className="font-semibold">Recurring</h3>
       {mine.length === 0 && (
         <p className="text-muted-foreground">
           Not scheduled. A schedule re-reads every source each period and writes a comparative
@@ -610,7 +610,7 @@ function Reports({
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium">Comparative reports</h3>
+        <h3 className="font-semibold">Comparative reports</h3>
         {canEdit && (
           <Button
             size="xs"
@@ -1041,7 +1041,7 @@ function EvidencePanel({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <section className="space-y-2 rounded-lg border p-3">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-medium">Evidence {id}</h3>
+        <h3 className="font-semibold">Evidence {id}</h3>
         <Button size="xs" variant="outline" onClick={onClose}>
           Close
         </Button>

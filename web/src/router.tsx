@@ -49,233 +49,113 @@ const rootRoute = createRootRoute({
   head: () => ({ meta: [{ title: "ADX" }] }),
 });
 
+// The desk (design language, 09): a 200px sidebar on its own tone with the
+// pages grouped by what they are for, and a content column up to 1280px.
+const NAV = [
+  {
+    heading: "Work",
+    items: [
+      { to: "/projects", label: "Projects" },
+      { to: "/analytics", label: "Analytics" },
+      { to: "/ask", label: "Ask ADX" },
+    ],
+  },
+  {
+    heading: "Create",
+    items: [
+      { to: "/brands", label: "Brands" },
+      { to: "/research", label: "Research" },
+      { to: "/plans", label: "Plans" },
+      { to: "/pages", label: "Pages" },
+      { to: "/creatives", label: "Creatives" },
+    ],
+  },
+  {
+    heading: "Perform",
+    items: [
+      { to: "/launch", label: "Launch" },
+      { to: "/proposals", label: "Proposals" },
+      { to: "/reports", label: "Reports" },
+      { to: "/alerts", label: "Alerts" },
+    ],
+  },
+  {
+    heading: "Convert",
+    items: [
+      { to: "/people", label: "People" },
+      { to: "/pipeline", label: "Pipeline" },
+      { to: "/calls", label: "Calls" },
+      { to: "/leads", label: "Leads" },
+    ],
+  },
+  {
+    heading: "Agents",
+    items: [
+      { to: "/supervisor", label: "Supervisor" },
+      { to: "/workflows", label: "Workflows" },
+      { to: "/settings/agents", label: "Agents" },
+      { to: "/learning", label: "Learning" },
+      { to: "/evaluation", label: "Evaluation" },
+    ],
+  },
+  {
+    heading: "Workspace",
+    items: [
+      { to: "/connections", label: "Connections" },
+      { to: "/settings/policies", label: "Policies" },
+      { to: "/settings/funnel", label: "Funnel" },
+      { to: "/settings/outreach", label: "Outreach" },
+      { to: "/settings/scoring", label: "Scoring" },
+      { to: "/settings/workspaces", label: "Workspaces" },
+      { to: "/ops", label: "Ops" },
+      { to: "/runs", label: "Runs" },
+    ],
+  },
+] as const;
+
 function Layout() {
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen">
       <HeadContent />
-      <header className="border-b">
-        <nav className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4">
-          <span className="font-semibold">ADX</span>
-          <Link
-            to="/projects"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Projects
+      <aside className="sticky top-0 flex h-screen w-[200px] shrink-0 flex-col border-r bg-sidebar text-sidebar-foreground">
+        <div className="px-4 pt-5 pb-4">
+          <Link to="/projects" className="font-heading text-xl font-bold tracking-tight">
+            adx
           </Link>
-          <Link
-            to="/analytics"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Analytics
-          </Link>
-          <Link
-            to="/ask"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Ask ADX
-          </Link>
-          <Link
-            to="/brands"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Brands
-          </Link>
-          <Link
-            to="/research"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Research
-          </Link>
-          <Link
-            to="/plans"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Plans
-          </Link>
-          <Link
-            to="/pages"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Pages
-          </Link>
-          <Link
-            to="/launch"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Launch
-          </Link>
-          <Link
-            to="/proposals"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Proposals
-          </Link>
-          <Link
-            to="/creatives"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Creatives
-          </Link>
-          <Link
-            to="/reports"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Reports
-          </Link>
-          <Link
-            to="/alerts"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Alerts
-          </Link>
-          <Link
-            to="/people"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            People
-          </Link>
-          <Link
-            to="/pipeline"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Pipeline
-          </Link>
-          <Link
-            to="/calls"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Calls
-          </Link>
-          <Link
-            to="/learning"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Learning
-          </Link>
-          <Link
-            to="/supervisor"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Supervisor
-          </Link>
-          <Link
-            to="/workflows"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Workflows
-          </Link>
-          <Link
-            to="/settings/agents"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Agents
-          </Link>
-          <Link
-            to="/evaluation"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Evaluation
-          </Link>
-          <Link
-            to="/settings/outreach"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Outreach
-          </Link>
-          <Link
-            to="/settings/scoring"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Scoring
-          </Link>
-          <Link
-            to="/leads"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Leads
-          </Link>
-          <Link
-            to="/connections"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Connections
-          </Link>
-          <Link
-            to="/settings/policies"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Policies
-          </Link>
-          <Link
-            to="/settings/funnel"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Funnel
-          </Link>
-          <Link
-            to="/settings/workspaces"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Workspaces
-          </Link>
-          <Link
-            to="/ops"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Ops
-          </Link>
-          <Link
-            to="/runs"
-            className="text-muted-foreground"
-            activeProps={{ className: "text-foreground" }}
-          >
-            Runs
-          </Link>
-          <div className="ml-auto flex items-center gap-3">
-            <WorkspaceSwitcher />
-            <AccountMenu />
-          </div>
+        </div>
+        <nav className="flex-1 overflow-y-auto px-2 pb-4 [scrollbar-width:none]">
+          {NAV.map((group) => (
+            <div key={group.heading} className="mb-4">
+              <p className="eyebrow px-2 pb-1.5">{group.heading}</p>
+              {group.items.map((item) => (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className="flex h-8 items-center px-2 hover:bg-sidebar-accent"
+                  activeProps={{ className: "bg-sidebar-accent font-medium" }}
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </div>
+          ))}
         </nav>
-      </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">
-        <Outlet />
-      </main>
-      <footer className="border-t">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4 text-sm text-muted-foreground">
+        <div className="space-y-2 border-t px-4 py-3 text-xs">
+          <WorkspaceSwitcher />
+          <AccountMenu />
+          <ServerStatus />
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <main className="mx-auto w-full max-w-[1280px] flex-1 px-8 pt-10 pb-10">
+          <Outlet />
+        </main>
+        <footer className="border-t px-8 py-3 text-xs text-muted-foreground">
           <Link to="/privacy" className="underline underline-offset-4">
             Privacy and data deletion
           </Link>
-          <ServerStatus />
-        </div>
-      </footer>
+        </footer>
+      </div>
     </div>
   );
 }

@@ -23,7 +23,7 @@ export function WorkspacesPage() {
   return (
     <div className="space-y-10">
       <section className="space-y-3">
-        <h1 className="text-2xl font-semibold">Workspaces</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Workspaces</h1>
         <p className="text-sm text-muted-foreground">
           Each client is a workspace with its own accounts, projects, people and history. You are in{" "}
           <strong>{session.data?.workspace ?? "…"}</strong>.
@@ -123,7 +123,7 @@ function Members() {
   const [role, setRole] = useState<Role>("viewer");
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Members</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">Members</h2>
       <p className="text-sm text-muted-foreground">
         People who may act in this workspace. Someone must exist in ADX before they can be added
         here.
@@ -225,7 +225,7 @@ function Industry({ canEdit }: { canEdit: boolean }) {
   }
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">Industry configuration</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">Industry configuration</h2>
       <p className="text-sm text-muted-foreground">
         What this client's business looks like to ADX: vocabulary, stages and qualifiers. Saving
         writes a new version; earlier versions stay as they were.{" "}

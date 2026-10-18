@@ -36,7 +36,7 @@ export function AlertsPage() {
   return (
     <section className="space-y-8">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Alerts</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Alerts</h1>
         {canAct && (
           <Button
             variant="outline"

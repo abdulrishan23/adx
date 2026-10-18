@@ -61,7 +61,7 @@ export function AgentsPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Agents and skills</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Agents and skills</h1>
         <p className="text-muted-foreground">
           A skill is instructions with a typed input and output, an evidence scope and permitted
           tools. An agent bundles skills under an account scope and never acts above marketer. A
@@ -135,7 +135,7 @@ export function AgentsPage() {
           ))}
         </div>
         <div className="space-y-2">
-          <h2 className="font-medium">New {kind} version (JSON)</h2>
+          <h2 className="font-semibold">New {kind} version (JSON)</h2>
           <Input
             placeholder="key, e.g. research.pass"
             value={key}
@@ -177,7 +177,7 @@ export function AgentsPage() {
             </p>
           )}
           {err && <p className="text-destructive">{err.message}</p>}
-          <h2 className="pt-4 font-medium">Capability catalogue</h2>
+          <h2 className="pt-4 font-semibold">Capability catalogue</h2>
           <ul className="text-muted-foreground">
             {caps.data?.capabilities.map((c) => (
               <li key={c.name}>

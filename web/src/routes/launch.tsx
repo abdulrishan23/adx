@@ -56,7 +56,7 @@ export function LaunchPage() {
   return (
     <section className="space-y-6 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Launch readiness</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Launch readiness</h1>
         <div className="flex flex-wrap gap-2">
           <select
             className="rounded-md border bg-background px-2 py-1"
@@ -142,7 +142,7 @@ function Readiness({
       <div className="grid gap-3 md:grid-cols-2">
         {["plan", "assets", "pages", "accounts", "measurement", "external_review"].map((area) => (
           <section key={area} className="rounded-lg border p-3">
-            <h3 className="font-medium">{areaLabel[area]}</h3>
+            <h3 className="font-semibold">{areaLabel[area]}</h3>
             <ul className="mt-1 space-y-1">
               {(byArea.get(area) ?? []).map((it) => (
                 <li
@@ -168,7 +168,7 @@ function Readiness({
       </div>
       {canEdit && <RunChecks planId={planId} version={version} />}
       <section className="space-y-1">
-        <h3 className="font-medium">Checks on this version</h3>
+        <h3 className="font-semibold">Checks on this version</h3>
         {checks.data?.checks.length === 0 && <p className="text-muted-foreground">None run yet.</p>}
         <ul className="space-y-1">
           {checks.data?.checks.map((c) => (
@@ -202,7 +202,7 @@ function Readiness({
       </section>
       {r.links.length > 0 && (
         <section className="space-y-1">
-          <h3 className="font-medium">
+          <h3 className="font-semibold">
             Tracked links{" "}
             <span className="font-normal text-muted-foreground">(built with the fixed scheme)</span>
           </h3>
@@ -229,7 +229,7 @@ function RunChecks({ planId, version }: { planId: number; version: number }) {
   const [name, setName] = useState("");
   return (
     <section className="space-y-2 rounded-lg border p-3">
-      <h3 className="font-medium">Run a check</h3>
+      <h3 className="font-semibold">Run a check</h3>
       <p className="text-muted-foreground">
         A form check posts a real test submission through the live page; it is marked as a test and
         never counts as an enquiry. A conversion-action check reads what the last Google Ads refresh
@@ -373,7 +373,7 @@ function Evidence({ id, onClose }: { id: number; onClose: () => void }) {
   return (
     <section className="space-y-1 rounded-lg border p-3">
       <div className="flex items-baseline justify-between">
-        <h3 className="font-medium">Evidence {id}</h3>
+        <h3 className="font-semibold">Evidence {id}</h3>
         <Button size="xs" variant="outline" onClick={onClose}>
           Close
         </Button>
@@ -410,7 +410,7 @@ function Deployment({
   return (
     <section className="space-y-3 rounded-lg border p-3">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-medium">
+        <h3 className="font-semibold">
           Deployment: {l.state}
           {l.delivered ? " · delivered" : " · not delivered"}
         </h3>

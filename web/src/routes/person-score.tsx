@@ -12,7 +12,7 @@ export function ScoreSection({ id, canEdit }: { id: number; canEdit: boolean }) 
   const latest = v.latest;
   return (
     <section className="space-y-2">
-      <h3 className="font-medium">Fit, intent and temperature</h3>
+      <h3 className="font-semibold">Fit, intent and temperature</h3>
       {!latest && <p className="text-muted-foreground">Not assessed yet: no signals recorded.</p>}
       {latest && (
         <div className="space-y-1">

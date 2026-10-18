@@ -43,7 +43,7 @@ export function ProposalsPage() {
   const canEdit = isAdmin || session.data?.role === "marketer";
   return (
     <section className="space-y-6 text-sm">
-      <h1 className="text-2xl font-semibold">Proposals</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Proposals</h1>
       <Envelopes isAdmin={isAdmin} />
       <div className="grid gap-6 md:grid-cols-[22rem_1fr]">
         <aside className="space-y-3">
@@ -107,7 +107,7 @@ function Envelopes({ isAdmin }: { isAdmin: boolean }) {
   const byProvider = (p: string) => accounts.data?.accounts.filter((a) => a.provider === p) ?? [];
   return (
     <section className="space-y-2 rounded-lg border p-3">
-      <h2 className="font-medium">
+      <h2 className="font-semibold">
         Budget envelopes{" "}
         <span className="font-normal text-muted-foreground">
           (what accepted plans allow; reservations are checked against them)
@@ -255,7 +255,7 @@ function NewProposal({ onCreated }: { onCreated: (id: number) => void }) {
         );
       }}
     >
-      <h2 className="font-medium">New proposal</h2>
+      <h2 className="font-semibold">New proposal</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={form.accountId}
@@ -377,7 +377,7 @@ function ProposalView({
   return (
     <div className="space-y-3 rounded-lg border p-3">
       <div>
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-2xl font-semibold tracking-tight">
           {p.action} on {p.targetKind} {p.targetRef}
         </h2>
         <p className="text-muted-foreground">
@@ -475,7 +475,7 @@ function Executions({ isAdmin }: { isAdmin: boolean }) {
   const cancel = useCancelExecution();
   return (
     <section className="space-y-1">
-      <h3 className="font-medium">Action history (outbox)</h3>
+      <h3 className="font-semibold">Action history (outbox)</h3>
       {q.data?.executions.length === 0 && <p className="text-muted-foreground">No executions.</p>}
       <ul className="space-y-1">
         {q.data?.executions.map((x) => (

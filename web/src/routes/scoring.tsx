@@ -40,7 +40,7 @@ export function ScoringPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Scoring</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Scoring</h1>
         <p className="text-muted-foreground">
           {rules.data?.configured
             ? `Rules version ${rules.data.current?.version}, saved ${new Date(rules.data.current?.createdAt ?? 0).toLocaleString()}.`
@@ -52,7 +52,7 @@ export function ScoringPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <h2 className="font-medium">Rules (JSON)</h2>
+          <h2 className="font-semibold">Rules (JSON)</h2>
           <textarea
             className="h-96 w-full rounded-md border bg-background p-2 font-mono text-xs"
             value={text}
@@ -67,7 +67,7 @@ export function ScoringPage() {
           {put.error && <p className="text-destructive">{put.error.message}</p>}
         </div>
         <div className="space-y-2">
-          <h2 className="font-medium">What ADX can observe</h2>
+          <h2 className="font-semibold">What ADX can observe</h2>
           <ul className="space-y-1">
             {rules.data?.catalog.map((k) => (
               <li key={k.kind} className={k.supported ? "" : "text-muted-foreground"}>
@@ -76,7 +76,7 @@ export function ScoringPage() {
               </li>
             ))}
           </ul>
-          <h2 className="pt-4 font-medium">Events nobody is tied to</h2>
+          <h2 className="pt-4 font-semibold">Events nobody is tied to</h2>
           <p className="text-muted-foreground">
             A browser or device id alone is not a person. These stay unscored until someone
             attributes them.

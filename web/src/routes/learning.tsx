@@ -37,7 +37,7 @@ export function LearningPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Learning</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Learning</h1>
         {r && (
           <p className="text-muted-foreground">
             {r.records} records · {r.interventions} interventions (adopted or modified) ·{" "}
@@ -52,7 +52,7 @@ export function LearningPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <h2 className="font-medium">Records</h2>
+          <h2 className="font-semibold">Records</h2>
           {records.data?.records.length === 0 && (
             <p className="text-muted-foreground">
               None yet. Records are opened when a recommendation is made.
@@ -173,7 +173,7 @@ export function LearningPage() {
           )}
         </div>
         <div className="space-y-2">
-          <h2 className="font-medium">Insights</h2>
+          <h2 className="font-semibold">Insights</h2>
           {insights.data?.insights.length === 0 && <p className="text-muted-foreground">None.</p>}
           {insights.data?.insights.map((i) => (
             <div

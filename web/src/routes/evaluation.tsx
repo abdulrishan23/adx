@@ -12,7 +12,7 @@ export function EvaluationPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Evaluation</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Evaluation</h1>
         <p className="text-muted-foreground">
           Generated {new Date(r.generatedAt).toLocaleString()}.
         </p>
@@ -20,7 +20,7 @@ export function EvaluationPage() {
       <div
         className={`rounded-lg border p-3 ${r.predictive.enabled ? "" : "border-destructive/40"}`}
       >
-        <h2 className="font-medium">
+        <h2 className="font-semibold">
           Predictive claims: {r.predictive.enabled ? "enabled" : "disabled"}
         </h2>
         <p className="text-muted-foreground">
@@ -30,7 +30,7 @@ export function EvaluationPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-3">
         <div className="space-y-1">
-          <h2 className="font-medium">Qualification</h2>
+          <h2 className="font-semibold">Qualification</h2>
           <p>Conversations: {r.qualification.sessions}</p>
           <p>Read by the model: {r.qualification.read}</p>
           <p>Pending review: {r.qualification.pending}</p>
@@ -46,7 +46,7 @@ export function EvaluationPage() {
           {r.qualification.note && <p className="text-muted-foreground">{r.qualification.note}</p>}
         </div>
         <div className="space-y-1">
-          <h2 className="font-medium">Alerts</h2>
+          <h2 className="font-semibold">Alerts</h2>
           <p>Total: {r.alerts.total}</p>
           <p>Open: {r.alerts.open}</p>
           <p>Acknowledged: {r.alerts.acknowledged}</p>
@@ -56,7 +56,7 @@ export function EvaluationPage() {
           <p>Raised in the last 7 days: {r.alerts.raisedLast7Days}</p>
         </div>
         <div className="space-y-1">
-          <h2 className="font-medium">Observed feedback</h2>
+          <h2 className="font-semibold">Observed feedback</h2>
           <p>Objections recorded: {r.feedback.objections}</p>
           <p>Active opt-outs: {r.feedback.activeSuppressions}</p>
           <p>Drafts held or suppressed: {r.feedback.draftsHeld}</p>
@@ -66,7 +66,7 @@ export function EvaluationPage() {
         </div>
       </div>
       <div>
-        <h2 className="font-medium">Labels</h2>
+        <h2 className="font-semibold">Labels</h2>
         {r.labels.length === 0 && (
           <p className="text-muted-foreground">
             No calls labelled yet. Label a call from its evidence panel.

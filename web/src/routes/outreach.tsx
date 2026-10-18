@@ -40,7 +40,7 @@ export function OutreachPage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Outreach</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Outreach</h1>
         {st && (
           <p className="text-muted-foreground">
             {st.configured
@@ -58,7 +58,7 @@ export function OutreachPage() {
       </div>
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-2">
-          <h2 className="font-medium">Configuration (JSON)</h2>
+          <h2 className="font-semibold">Configuration (JSON)</h2>
           <textarea
             className="h-72 w-full rounded-md border bg-background p-2 font-mono text-xs"
             value={text}
@@ -74,7 +74,7 @@ export function OutreachPage() {
         </div>
         <div className="space-y-2">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-medium">CRM field outbox</h2>
+            <h2 className="font-semibold">CRM field outbox</h2>
             {canEdit && (
               <span className="flex gap-1">
                 <Button size="xs" variant="outline" onClick={() => sync.mutate()}>

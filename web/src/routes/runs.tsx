@@ -6,7 +6,7 @@ export function RunsPage() {
   const runs = useRuns();
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-semibold">Runs</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Runs</h1>
       {runs.isPending && <p className="text-muted-foreground">Loading…</p>}
       {runs.error && <p className="text-destructive">{runs.error.message}</p>}
       {runs.data && runs.data.runs.length === 0 && (

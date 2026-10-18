@@ -52,7 +52,7 @@ export function BrandsPage() {
   return (
     <section className="grid gap-6 md:grid-cols-[16rem_1fr]">
       <aside className="space-y-3">
-        <h1 className="text-2xl font-semibold">Brands</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Brands</h1>
         {brands.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
         {brands.error && <p className="text-sm text-destructive">{brands.error.message}</p>}
         {brands.data?.brands.length === 0 && (
@@ -80,7 +80,7 @@ export function BrandsPage() {
         {isAdmin && <NewBrand onCreated={setCurrent} />}
         {isAdmin && brands.data && brands.data.unassigned.length > 0 && (
           <div className="rounded-lg border p-3 text-sm">
-            <h2 className="font-medium">Projects under no brand</h2>
+            <h2 className="font-semibold">Projects under no brand</h2>
             <ul className="mt-1 space-y-1">
               {brands.data.unassigned.map((p) => (
                 <li key={p.id} className="flex items-center justify-between gap-2">
@@ -136,7 +136,7 @@ function NewBrand({ onCreated }: { onCreated: (id: number) => void }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">New brand</h2>
+      <h2 className="font-semibold">New brand</h2>
       <Input name="name" placeholder="Name" aria-label="Brand name" />
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -173,7 +173,7 @@ function BrandDetailView({
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-semibold">{d.brand.name}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{d.brand.name}</h2>
         <p className="text-sm text-muted-foreground">
           {d.brand.kind === "competitor" ? "Competitor: observed, never marketed." : "Ours."}{" "}
           {d.projects.length === 0
@@ -184,7 +184,7 @@ function BrandDetailView({
 
       {d.conflicts.length > 0 && (
         <section className="space-y-2 rounded-lg border border-destructive/40 p-3 text-sm">
-          <h3 className="font-medium">Sources disagree ({d.conflicts.length})</h3>
+          <h3 className="font-semibold">Sources disagree ({d.conflicts.length})</h3>
           <p className="text-muted-foreground">
             Neither value can be approved until an admin picks one. Source precedence is not
             configured; every conflict is decided by a person.
@@ -197,7 +197,7 @@ function BrandDetailView({
 
       <section className="space-y-3 text-sm">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-medium">Approved claims</h3>
+          <h3 className="font-semibold">Approved claims</h3>
           <select
             className="rounded-md border bg-background px-2 py-1"
             value={project}
@@ -215,7 +215,7 @@ function BrandDetailView({
       </section>
 
       <section className="space-y-3 text-sm">
-        <h3 className="font-medium">Facts</h3>
+        <h3 className="font-semibold">Facts</h3>
         {d.facts.length === 0 && <p className="text-muted-foreground">No facts recorded.</p>}
         {d.facts.length > 0 && (
           <table className="w-full text-left">
@@ -241,7 +241,7 @@ function BrandDetailView({
       </section>
 
       <section className="space-y-3 text-sm">
-        <h3 className="font-medium">Offers</h3>
+        <h3 className="font-semibold">Offers</h3>
         {d.offers.length === 0 && <p className="text-muted-foreground">No offers.</p>}
         <ul className="divide-y border-y">
           {d.offers.map((o) => (

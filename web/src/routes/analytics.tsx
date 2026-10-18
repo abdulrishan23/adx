@@ -52,7 +52,7 @@ export function AnalyticsPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Analytics</h1>
         {analytics.data && (
           <span className="text-sm text-muted-foreground">
             Formula {analytics.data.formulaVersion} · days in {analytics.data.period.timeZone}

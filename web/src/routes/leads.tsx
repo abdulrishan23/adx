@@ -26,7 +26,7 @@ export function LeadsPage() {
   return (
     <section className="space-y-6">
       <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold">Leads</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
         {canImport && ghlAccounts.length > 0 && (
           <div className="flex items-center gap-2">
             {ghlAccounts.map((a) => (

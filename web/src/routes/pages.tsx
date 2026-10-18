@@ -53,7 +53,7 @@ export function PagesPage() {
   return (
     <section className="grid gap-6 md:grid-cols-[16rem_1fr]">
       <aside className="space-y-3">
-        <h1 className="text-2xl font-semibold">Pages</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Pages</h1>
         {pages.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
         {pages.error && <p className="text-sm text-destructive">{pages.error.message}</p>}
         {pages.data?.pages.length === 0 && (
@@ -78,7 +78,7 @@ export function PagesPage() {
         {canEdit && <NewPage onCreated={setCurrent} />}
         {pages.data && (
           <div className="rounded-lg border p-3 text-sm">
-            <h2 className="font-medium">Publishing</h2>
+            <h2 className="font-semibold">Publishing</h2>
             <p className="text-muted-foreground">
               Pages are served by ADX ({pages.data.publishing.local}).
             </p>
@@ -134,7 +134,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">New page</h2>
+      <h2 className="font-semibold">New page</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={brandId}
@@ -214,7 +214,7 @@ function PageView({ id, canEdit }: { id: number; canEdit: boolean }) {
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
-          <h2 className="text-xl font-semibold">{d.page.name}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{d.page.name}</h2>
           <p className="text-muted-foreground">
             <a href={d.publicUrl} target="_blank" rel="noreferrer noopener" className="underline">
               {d.publicUrl}
@@ -269,7 +269,7 @@ function ReadinessPanel({ detail, canEdit }: { detail: PageDetail; canEdit: bool
   return (
     <section className="rounded-lg border p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-medium">
+        <h3 className="font-semibold">
           {r ? (r.ready ? "Ready for launch review" : "Not ready for launch") : "Readiness"}
         </h3>
         {canEdit && live && detail.testToken && (
@@ -679,7 +679,7 @@ function Deployments({ detail, canEdit }: { detail: PageDetail; canEdit: boolean
   return (
     <section className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-medium">Deployments</h3>
+        <h3 className="font-semibold">Deployments</h3>
         {canEdit && latest && (
           <Button
             size="xs"
@@ -728,7 +728,7 @@ function Submissions({ pageId }: { pageId: number }) {
   const subs = usePageSubmissions(pageId);
   return (
     <section className="space-y-2">
-      <h3 className="font-medium">
+      <h3 className="font-semibold">
         Submissions{" "}
         <span className="font-normal text-muted-foreground">
           (test sends are marked and never count as enquiries)

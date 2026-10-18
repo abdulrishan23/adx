@@ -21,7 +21,7 @@ export function OpsPage() {
   const canEvaluate = isAdmin || session.data?.role === "marketer";
   return (
     <section className="space-y-8 text-sm">
-      <h1 className="text-2xl font-semibold">Operations</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Operations</h1>
       <Readiness />
       <Cost />
       <Releases canEvaluate={canEvaluate} isAdmin={isAdmin} />
@@ -36,7 +36,7 @@ function Readiness() {
   if (ready.error) return <p className="text-destructive">Server unreachable</p>;
   return (
     <div className="space-y-1">
-      <h2 className="font-medium">Readiness: {ready.data.ready ? "ready" : "not ready"}</h2>
+      <h2 className="font-semibold">Readiness: {ready.data.ready ? "ready" : "not ready"}</h2>
       <ul className="flex flex-wrap gap-3">
         {ready.data.checks.map((c) => (
           <li key={c.name} className={c.ok ? "text-muted-foreground" : "text-destructive"}>
@@ -64,7 +64,7 @@ function Cost() {
   return (
     <div className="grid gap-6 md:grid-cols-3">
       <div className="space-y-1">
-        <h2 className="font-medium">This workspace, last 24 hours</h2>
+        <h2 className="font-semibold">This workspace, last 24 hours</h2>
         <p>
           Assistant tokens: {tokens(c.workspace.inputTokens)} in, {tokens(c.workspace.outputTokens)}{" "}
           out
@@ -81,7 +81,7 @@ function Cost() {
         </p>
       </div>
       <div className="space-y-1">
-        <h2 className="font-medium">Server, UTC day {c.server.day}</h2>
+        <h2 className="font-semibold">Server, UTC day {c.server.day}</h2>
         <p>Model: {c.running || "none configured"}</p>
         <p>
           Tokens: {tokens(c.server.inputTokens)} in, {tokens(c.server.outputTokens)} out ·{" "}
@@ -96,7 +96,7 @@ function Cost() {
         </p>
       </div>
       <div className="space-y-1">
-        <h2 className="font-medium">Limits in force</h2>
+        <h2 className="font-semibold">Limits in force</h2>
         <p>Assistant per workspace per day: {tokens(c.budgets.assistantDailyTokens)} tokens</p>
         <p>
           Server per day:{" "}
@@ -124,7 +124,7 @@ function Releases({ canEvaluate, isAdmin }: { canEvaluate: boolean; isAdmin: boo
   const pct = (v: number | null) => (v === null ? "Not available" : `${Math.round(v * 100)}%`);
   return (
     <div className="space-y-3">
-      <h2 className="font-medium">Model releases</h2>
+      <h2 className="font-semibold">Model releases</h2>
       <p className="text-muted-foreground">
         A candidate is replayed over the team's labelled calls with the live reading prompt. It is
         promoted only by an admin, only with at least {r.requirements.minLabels} labelled calls and{" "}
@@ -209,7 +209,7 @@ function Load() {
   const m = load.data.measurement;
   return (
     <div className="space-y-1">
-      <h2 className="font-medium">Load measurement</h2>
+      <h2 className="font-semibold">Load measurement</h2>
       {!m && <p className="text-muted-foreground">{load.data.note}</p>}
       {m && (
         <>

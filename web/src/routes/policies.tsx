@@ -22,7 +22,7 @@ export function PoliciesPage() {
   return (
     <section className="space-y-8">
       <div>
-        <h1 className="text-2xl font-semibold">Policies</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Policies</h1>
         <p className="text-muted-foreground">
           {state.configured
             ? `Version ${current?.version} · saved ${new Date(current?.createdAt ?? "").toLocaleString()}`
@@ -32,7 +32,7 @@ export function PoliciesPage() {
 
       {state.unconfigured.length > 0 && (
         <div className="rounded-lg border p-4">
-          <h2 className="font-medium">Still unconfigured</h2>
+          <h2 className="font-semibold">Still unconfigured</h2>
           <p className="text-sm text-muted-foreground">
             Writes that depend on these stay denied. These values come from the owner, not from ADX.
           </p>
@@ -46,7 +46,7 @@ export function PoliciesPage() {
 
       <div className="rounded-lg border p-4">
         <div className="flex items-center justify-between">
-          <h2 className="font-medium">Kill switch (whole workspace)</h2>
+          <h2 className="font-semibold">Kill switch (whole workspace)</h2>
           <span className={workspaceSwitch?.engaged ? "text-destructive" : "text-muted-foreground"}>
             {workspaceSwitch?.engaged
               ? `Engaged: ${workspaceSwitch.reason || "no reason given"}`
@@ -78,7 +78,7 @@ export function PoliciesPage() {
       </div>
 
       <div>
-        <h2 className="font-medium">Checklist</h2>
+        <h2 className="font-semibold">Checklist</h2>
         <table className="mt-2 w-full text-sm">
           <thead className="text-left text-muted-foreground">
             <tr>

@@ -8,15 +8,15 @@ export function AccountMenu() {
   const signOut = useSignOut();
 
   if (session.isPending) {
-    return <span className="text-sm text-muted-foreground">…</span>;
+    return <span className="text-muted-foreground">…</span>;
   }
   if (session.error) {
-    return <span className="text-sm text-destructive">Can’t reach the server</span>;
+    return <span className="text-destructive">Can’t reach the server</span>;
   }
   if (session.data === null) {
     const here = `${window.location.pathname}${window.location.search}`;
     return (
-      <a href={signInUrl(here)} className="text-sm underline underline-offset-4">
+      <a href={signInUrl(here)} className="underline underline-offset-4">
         Sign in
       </a>
     );
@@ -24,7 +24,7 @@ export function AccountMenu() {
   const s = session.data;
   const who = s.dev ? "Dev admin (no sign-in)" : (s.user?.name ?? s.user?.email ?? "Signed in");
   return (
-    <div className="flex items-center gap-3 text-sm">
+    <div className="flex flex-wrap items-center gap-2">
       <span className="text-muted-foreground">
         {who} · {s.role} · {s.workspace}
       </span>

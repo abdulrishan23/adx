@@ -16,7 +16,7 @@ export function ProjectsPage() {
 
   return (
     <section className="space-y-6">
-      <h1 className="text-2xl font-semibold">Projects</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
 
       <form onSubmit={onSubmit} className="flex max-w-md gap-2">
         <Input name="name" placeholder="Project name" aria-label="Project name" />

@@ -52,7 +52,7 @@ export function ConnectionsPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Connections</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Connections</h1>
         {isAdmin && (
           <div className="flex gap-2">
             <a href="/api/connections/google_ads/start">
@@ -166,7 +166,7 @@ function CapabilityMatrix() {
   }
   return (
     <div className="space-y-3">
-      <h2 className="text-lg font-semibold">What each connector can do</h2>
+      <h2 className="text-2xl font-semibold tracking-tight">What each connector can do</h2>
       <p className="text-sm text-muted-foreground">
         Live writes are {matrix.data.liveWrites ? "on" : "off"} on this server. Supported means the
         code exists; wired means this server is configured for it.
@@ -174,7 +174,7 @@ function CapabilityMatrix() {
       <div className="grid gap-4 md:grid-cols-2">
         {[...byProvider.entries()].map(([provider, caps]) => (
           <div key={provider} className="rounded border p-3">
-            <h3 className="font-medium">{providerLabel[provider] ?? provider}</h3>
+            <h3 className="font-semibold">{providerLabel[provider] ?? provider}</h3>
             <ul className="mt-2 space-y-1 text-sm">
               {caps.map((c) => (
                 <li key={c.capability} className="flex flex-wrap gap-x-2">

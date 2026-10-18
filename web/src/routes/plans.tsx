@@ -68,7 +68,7 @@ export function PlansPage() {
   return (
     <section className="grid gap-6 md:grid-cols-[16rem_1fr]">
       <aside className="space-y-3">
-        <h1 className="text-2xl font-semibold">Plans</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Plans</h1>
         {plans.isPending && <p className="text-sm text-muted-foreground">Loading…</p>}
         {plans.error && <p className="text-sm text-destructive">{plans.error.message}</p>}
         {plans.data?.plans.length === 0 && (
@@ -115,7 +115,7 @@ export function PlansPage() {
 function TemplateNote({ gate }: { gate: TemplateGate }) {
   return (
     <div className="rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">Export formats</h2>
+      <h2 className="font-semibold">Export formats</h2>
       <p className="text-muted-foreground">Generic: {gate.generic.join(", ")}.</p>
       {gate.exact.available ? (
         <p className="text-muted-foreground">Exact template: available ({gate.exact.reason}).</p>
@@ -165,7 +165,7 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
   }
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">New plan</h2>
+      <h2 className="font-semibold">New plan</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={brandId}
@@ -265,7 +265,7 @@ function PlanView({
   return (
     <div className="space-y-4 text-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-semibold">{d.plan.title}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{d.plan.title}</h2>
         <div className="flex flex-wrap gap-1">
           {d.versions.map((v) => (
             <Button
@@ -420,7 +420,7 @@ function DiffView({ planId, from, to }: { planId: number; from: number; to: numb
   const empty = d.fields.length + d.allocations.length + d.sections.length === 0;
   return (
     <section className="space-y-1 rounded-lg border p-3">
-      <h3 className="font-medium">
+      <h3 className="font-semibold">
         Changes from v{d.from} to v{d.to}
       </h3>
       {empty && <p className="text-muted-foreground">No differences.</p>}
@@ -497,7 +497,7 @@ function VersionEditor({
 
       <section className="rounded-lg border p-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="font-medium">Validation</h3>
+          <h3 className="font-semibold">Validation</h3>
           <span
             className={allocated === doc.budgetMinor ? "text-muted-foreground" : "text-destructive"}
           >
@@ -522,7 +522,7 @@ function VersionEditor({
       </section>
 
       <section className="space-y-2">
-        <h3 className="font-medium">Plan</h3>
+        <h3 className="font-semibold">Plan</h3>
         <div className="grid gap-2 md:grid-cols-2">
           <Input
             placeholder="Objective"
@@ -564,7 +564,7 @@ function VersionEditor({
       </section>
 
       <section className="space-y-2">
-        <h3 className="font-medium">Allocations</h3>
+        <h3 className="font-semibold">Allocations</h3>
         <table className="w-full text-left">
           <thead className="text-muted-foreground">
             <tr>
@@ -997,7 +997,7 @@ function ListEditor<T>({
 }) {
   return (
     <section className="space-y-1 rounded-lg border p-2">
-      <h3 className="font-medium">{title}</h3>
+      <h3 className="font-semibold">{title}</h3>
       {items.length === 0 && <p className="text-muted-foreground">None.</p>}
       {items.map((r, i) => (
         <div

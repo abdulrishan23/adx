@@ -1,13 +1,22 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "@fontsource-variable/outfit";
 @import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource-variable/readex-pro";
+@import "@fontsource/ibm-plex-sans-arabic";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: "Geist Variable", sans-serif;
+  /* Three faces, each with an Arabic partner (design language, 04). */
+  --font-heading: "Outfit Variable", "Readex Pro Variable", sans-serif;
+  --font-sans: "Geist Variable", "IBM Plex Sans Arabic", sans-serif;
+  --font-mono: "Geist Mono Variable", "IBM Plex Sans Arabic", monospace;
+  --color-status-ready: var(--status-ready);
+  --color-status-caution: var(--status-caution);
+  --color-status-error: var(--status-error);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +58,79 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Ink on paper (ADX design language, October 2026). Components reach for
+     the role, never the hex. */
+  --ink: #141413;
+  --paper: #f7f6f2;
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #fdfcf9;
+  --card-foreground: var(--ink);
+  --popover: #fdfcf9;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: #ecebe5;
+  --secondary-foreground: var(--ink);
+  --muted: #ecebe5;
+  --muted-foreground: #66655f;
+  --accent: #e6e4dd;
+  --accent-foreground: var(--ink);
+  --destructive: #d92d20;
+  --border: #dfddd5;
+  --input: #d6d4cb;
+  --ring: #8a8880;
+  --chart-1: #141413;
+  --chart-2: #4a4945;
+  --chart-3: #7d7c76;
+  --chart-4: #aeada6;
+  --chart-5: #d6d4cb;
+  --status-ready: #00854a;
+  --status-caution: #ffb020;
+  --status-error: #d92d20;
+  --radius: 0rem;
+  --sidebar: #f0efe9;
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: var(--paper);
+  --sidebar-accent: #e4e2da;
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: #dfddd5;
+  --sidebar-ring: #8a8880;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--ink);
+  --foreground: var(--paper);
+  --card: #1c1c1a;
+  --card-foreground: var(--paper);
+  --popover: #1c1c1a;
+  --popover-foreground: var(--paper);
+  --primary: var(--paper);
+  --primary-foreground: var(--ink);
+  --secondary: #262623;
+  --secondary-foreground: var(--paper);
+  --muted: #262623;
+  --muted-foreground: #a3a199;
+  --accent: #2c2c29;
+  --accent-foreground: var(--paper);
+  --destructive: #f04438;
+  --border: #2e2d2a;
+  --input: #3a3935;
+  --ring: #7d7c76;
+  --chart-1: #f7f6f2;
+  --chart-2: #c9c7bf;
+  --chart-3: #9a9890;
+  --chart-4: #6b6a64;
+  --chart-5: #3f3e3a;
+  --sidebar: #181816;
+  --sidebar-foreground: var(--paper);
+  --sidebar-primary: var(--paper);
+  --sidebar-primary-foreground: var(--ink);
+  --sidebar-accent: #262623;
+  --sidebar-accent-foreground: var(--paper);
+  --sidebar-border: #2e2d2a;
+  --sidebar-ring: #7d7c76;
 }
 
 @layer base {
@@ -125,6 +141,47 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    @apply font-sans text-sm;
   }
+  /* Outfit for headings, tracked in; sizes come from the type scale. */
+  h1,
+  h2,
+  h3 {
+    @apply font-heading font-semibold tracking-tight;
+  }
+  h1 {
+    font-size: 30px;
+    line-height: 36px;
+  }
+  h2,
+  h3 {
+    font-size: 15.2px;
+    line-height: 1.25;
+  }
+  /* Rows that line up: mono capitals in a 36px header, 44px rows on hairlines. */
+  th {
+    @apply h-9 font-mono text-[10.4px] font-medium uppercase tracking-[0.1em] text-muted-foreground;
+  }
+  tbody tr {
+    @apply h-11 border-t border-border;
+  }
+  /* Arabic runs put the Arabic face first and zero the tracking. */
+  :lang(ar),
+  [dir="rtl"] {
+    letter-spacing: 0;
+  }
+  ::selection {
+    @apply bg-accent;
+  }
+}
+
+/* A capital label in mono: the door label on a card, a group heading. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.4px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
 }

@@ -10,7 +10,7 @@ export function WorkspaceSwitcher() {
   if (!session.data || !list.data || list.data.workspaces.length < 2) return null;
   return (
     <select
-      className="rounded border bg-background px-2 py-1 text-sm"
+      className="h-7 w-full border border-input bg-background px-2 text-xs"
       value={session.data.workspaceId}
       disabled={switchTo.isPending}
       onChange={(e) =>

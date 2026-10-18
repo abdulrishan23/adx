@@ -62,7 +62,7 @@ export function AskPage() {
       </aside>
 
       <div className="space-y-4">
-        <h1 className="text-2xl font-semibold">Ask ADX</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Ask ADX</h1>
         <p className="text-sm text-muted-foreground">
           Read-only. Figures come from ADX’s own calculations through the tools listed under each
           answer; the assistant cannot change budgets, campaigns, leads or settings.

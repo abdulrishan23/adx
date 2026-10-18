@@ -31,7 +31,7 @@ export function WorkflowsPage() {
     <section className="space-y-6 text-sm">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Workflows</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Workflows</h1>
           <p className="text-muted-foreground">
             Durable task graphs over active definitions. Changes to the outside are proposals;
             nothing here executes one.

@@ -50,7 +50,7 @@ export function PipelinePage() {
   return (
     <section className="space-y-6 text-sm">
       <div>
-        <h1 className="text-2xl font-semibold">Pipeline</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Pipeline</h1>
         <p className="text-muted-foreground">
           {config.data?.configured
             ? `Stages v${config.data.current?.version} · stage owner: ${config.data.current?.document.stageOwner}`
@@ -104,7 +104,7 @@ export function PipelinePage() {
               )}
             </div>
           ))}
-          <h2 className="pt-4 font-medium">Open follow-ups</h2>
+          <h2 className="pt-4 font-semibold">Open follow-ups</h2>
           {tasks.data?.tasks.length === 0 && <p className="text-muted-foreground">None.</p>}
           {tasks.data?.tasks.map((t) => (
             <p key={t.id}>
@@ -135,7 +135,7 @@ export function PipelinePage() {
           ))}
         </div>
         <aside className="space-y-3">
-          <h2 className="font-medium">Import from GoHighLevel leads</h2>
+          <h2 className="font-semibold">Import from GoHighLevel leads</h2>
           <p className="text-muted-foreground">
             A preview plans every change and writes nothing. Apply walks the plan and resumes if it
             stops.
@@ -175,7 +175,7 @@ export function PipelinePage() {
           {(preview.error || apply.error) && (
             <p className="text-destructive">{(preview.error ?? apply.error)?.message}</p>
           )}
-          <h2 className="pt-4 font-medium">Stages (JSON)</h2>
+          <h2 className="pt-4 font-semibold">Stages (JSON)</h2>
           <textarea
             className="h-64 w-full rounded-md border bg-background p-2 font-mono text-xs"
             value={text}

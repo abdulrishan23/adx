@@ -47,7 +47,7 @@ export function CreativesPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-2xl font-semibold">Creatives</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Creatives</h1>
         {queue.data && (
           <p className="text-sm text-muted-foreground">
             Renderer: {queue.data.capabilities.renderer} layout.{" "}
@@ -63,7 +63,7 @@ export function CreativesPage() {
           const items = queue.data?.items.filter((i) => i.reviewState === col.state) ?? [];
           return (
             <div key={col.state} className="rounded-lg border p-2 text-sm">
-              <h2 className="font-medium">
+              <h2 className="font-semibold">
                 {col.title} <span className="text-muted-foreground">{items.length}</span>
               </h2>
               <ul className="mt-1 space-y-1">
@@ -159,7 +159,7 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
-      <h2 className="font-medium">New creative</h2>
+      <h2 className="font-semibold">New creative</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
         value={form.projectId}
@@ -326,7 +326,7 @@ function CreativeDetail({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-xl font-semibold">{c.name}</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">{c.name}</h2>
         <p className="text-sm text-muted-foreground">
           {c.format} · {c.language} · version {latest.version} · {stateLabel[latest.reviewState]}
           {latest.renderer && ` · ${latest.renderer} layout`}
