@@ -99,9 +99,11 @@
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: #dfddd5;
   --sidebar-ring: #8a8880;
+  color-scheme: light;
 }
 
 .dark {
+  color-scheme: dark;
   --background: var(--ink);
   --foreground: var(--paper);
   --card: #1c1c1a;

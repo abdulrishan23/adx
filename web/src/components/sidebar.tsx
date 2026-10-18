@@ -35,6 +35,7 @@ import {
 import { useState } from "react";
 import { AccountMenu } from "@/components/account-menu";
 import { ServerStatus } from "@/components/server-status";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
 import { readStored, writeStored } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -187,14 +188,18 @@ export function Sidebar() {
         ))}
       </nav>
       {collapsed ? (
-        <div className="flex justify-center border-t py-3">
+        <div className="flex flex-col items-center gap-3 border-t py-3">
+          <ThemeToggle />
           <ServerStatus compact />
         </div>
       ) : (
         <div className="space-y-2 border-t px-4 py-3 text-xs">
           <WorkspaceSwitcher />
           <AccountMenu />
-          <ServerStatus />
+          <div className="flex items-center justify-between gap-2">
+            <ServerStatus />
+            <ThemeToggle />
+          </div>
         </div>
       )}
     </aside>
