@@ -137,11 +137,14 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* The root stays at the browser's 16px so every rem-based size (the 4px
+     spacing grid, 32px controls, 44px rows) lands on the guide's value; the
+     14px reading size is set on body. */
   html {
-    @apply font-sans text-sm;
+    @apply font-sans;
+  }
+  body {
+    @apply bg-background text-sm text-foreground;
   }
   /* Outfit for headings, tracked in; sizes come from the type scale. */
   h1,
