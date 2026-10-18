@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/coder/guts"
+	"github.com/coder/guts/bindings"
 	"github.com/coder/guts/config"
 	"golang.org/x/tools/go/packages"
 )
@@ -40,6 +41,11 @@ func run() error {
 		}
 	}
 	parser.IncludeCustomDeclaration(config.StandardMappings())
+	// A json.RawMessage is a JSON document the web app owns, such as a design
+	// file or a brand kit: it arrives parsed, not as a string.
+	parser.IncludeCustomDeclaration(map[string]guts.TypeOverride{
+		"encoding/json/jsontext.Value": func() bindings.ExpressionType { k := bindings.KeywordUnknown; return &k },
+	})
 
 	skip, shared, err := typesWithoutJSON(sources)
 	if err != nil {

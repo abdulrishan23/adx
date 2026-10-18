@@ -47,6 +47,13 @@ type Actor struct {
 	WorkspaceID int64
 }
 
+// Anonymous is someone without an account, using a public link such as the
+// review board. They have no role, so every role check refuses them;
+// functions behind a public link check the link instead.
+func Anonymous(via Via) Actor {
+	return Actor{UserID: 0, Via: via}
+}
+
 // System is ADX acting on its own behalf, in the default workspace. It may
 // do anything an admin may.
 func System(via Via) Actor {

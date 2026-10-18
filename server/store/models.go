@@ -366,6 +366,105 @@ type Creative struct {
 	PlanVersion  sql.NullInt64
 }
 
+type CreativeAd struct {
+	ID         int64
+	ProjectID  int64
+	ConceptID  int64
+	Code       string
+	FileName   string
+	Pos        int64
+	Fmt        string
+	Lang       string
+	HasCta     int64
+	RenderCode string
+	Draft      sql.NullString
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+type CreativeAdVersion struct {
+	ID            int64
+	AdID          int64
+	Version       int64
+	FileID        int64
+	PreviewFileID int64
+	Design        sql.NullString
+	Source        string
+	CreatedBy     sql.NullInt64
+	CreatedAt     time.Time
+}
+
+type CreativeComment struct {
+	ID         int64
+	AdID       int64
+	VersionID  int64
+	Name       string
+	Body       string
+	PinX       sql.NullFloat64
+	PinY       sql.NullFloat64
+	UserID     sql.NullInt64
+	ResolvedAt sql.NullTime
+	ResolvedBy sql.NullInt64
+	CreatedAt  time.Time
+}
+
+type CreativeConcept struct {
+	ID          int64
+	ProjectID   int64
+	Code        string
+	Pos         int64
+	Name        string
+	Why         string
+	PrimaryText string
+	Headline    string
+	Description string
+	Cta         string
+	Copy        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type CreativeDecision struct {
+	ID        int64
+	VersionID int64
+	Name      string
+	Status    string
+	UserID    sql.NullInt64
+	CreatedAt time.Time
+}
+
+type CreativeProject struct {
+	ProjectID    int64
+	Prefix       string
+	Kicker       string
+	PageName     string
+	ReviewKey    string
+	ReviewActive int64
+	BrandKit     string
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type CreativeRender struct {
+	ID            int64
+	ProjectID     int64
+	Code          string
+	Pos           int64
+	Label         string
+	Hidden        int64
+	FileID        int64
+	PreviewFileID int64
+	CreatedAt     time.Time
+}
+
+type CreativeRenderPick struct {
+	ID         int64
+	ConceptID  int64
+	RenderCode string
+	Name       string
+	CreatedAt  time.Time
+}
+
 type CreativeReview struct {
 	ID           int64
 	VersionID    int64
@@ -560,6 +659,17 @@ type FactConflict struct {
 	ResolvedAt  sql.NullTime
 	WinnerID    sql.NullInt64
 	Resolution  string
+}
+
+type File struct {
+	ID          int64
+	Sha256      string
+	ContentType string
+	Bytes       int64
+	Width       sql.NullInt64
+	Height      sql.NullInt64
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
 }
 
 type FollowUpTask struct {

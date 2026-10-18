@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { upload, useAddRenders, useUpdateRender } from "@/api/creative";
-import type { CreativeProject, Render } from "@/api/types.legacy";
+import type { CreativeProject, Render } from "@/api/types.gen";
 import { EmptyState, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

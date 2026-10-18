@@ -176,7 +176,7 @@ function GraphPanel({ id, canEdit }: { id: number; canEdit: boolean }) {
                 size="xs"
                 variant="outline"
                 className="ml-2"
-                onClick={() => setFix({ id: t.id, output: t.output, reason: "" })}
+                onClick={() => setFix({ id: t.id, output: asText(t.output), reason: "" })}
               >
                 Correct output
               </Button>
@@ -184,7 +184,7 @@ function GraphPanel({ id, canEdit }: { id: number; canEdit: boolean }) {
           </p>
           {t.state === "done" && (
             <pre className="max-h-32 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
-              {t.output}
+              {asText(t.output)}
             </pre>
           )}
           {fix?.id === t.id && (
@@ -237,4 +237,9 @@ function GraphPanel({ id, canEdit }: { id: number; canEdit: boolean }) {
       {err && <p className="text-destructive">{err.message}</p>}
     </div>
   );
+}
+
+// Task output is the JSON the engine stored, shown and edited as text.
+function asText(v: unknown): string {
+  return typeof v === "string" ? v : JSON.stringify(v, null, 2);
 }

@@ -360,7 +360,12 @@ function AuditBody({ f }: { f: Finding }) {
   );
 }
 
-function parse<T>(raw: string): T {
+// A finding's payload arrives as the JSON object the engine stored. A string
+// is tolerated for fixtures that quote it.
+function parse<T>(raw: unknown): T {
+  if (typeof raw !== "string") {
+    return (raw ?? {}) as T;
+  }
   try {
     return JSON.parse(raw) as T;
   } catch {

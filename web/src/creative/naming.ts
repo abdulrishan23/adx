@@ -3,7 +3,7 @@
 // reads names off uploaded files and shows what an ad will be called.
 //   ad code  <Concept>_<SLUG>_<LANG>_<SIZE>[_CTA]          e.g. O1_CASH_EN_191x1_CTA
 //   file     <PREFIX>_<Concept>_<SLUG>_<LANG>_<SIZE>[_CTA].jpg, with 1.91x1 in the name
-import type { Fmt, Lang } from "@/api/types.legacy";
+import type { Fmt, Lang } from "@/api/types.gen";
 
 export type { Fmt, Lang };
 

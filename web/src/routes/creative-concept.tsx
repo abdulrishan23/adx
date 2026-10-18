@@ -9,7 +9,7 @@ import {
   useRefreshCreative,
   useSaveConcept,
 } from "@/api/creative";
-import type { Concept, CreativeProject } from "@/api/types.legacy";
+import type { Concept, CreativeProject } from "@/api/types.gen";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { Button } from "@/components/ui/button";

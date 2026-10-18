@@ -378,7 +378,8 @@ function Projects({
           <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
             <span className="font-medium">{p.name}</span>
             <Link
-              to="/engine/creatives"
+              to="/creative/$projectId"
+              params={{ projectId: String(p.id) }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               Creatives

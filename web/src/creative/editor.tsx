@@ -12,7 +12,7 @@ import {
   Transformer,
 } from "react-konva";
 import { createVariation, publishAd, saveDraft, upload, useRefreshCreative } from "@/api/creative";
-import type { AdDetail, Render } from "@/api/types.legacy";
+import type { AdDetail, Render } from "@/api/types.gen";
 import { Eyebrow } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

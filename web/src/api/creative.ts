@@ -6,14 +6,14 @@ import { getJSON, patchJSON, postJSON, putJSON, uploadFile } from "./client";
 import type {
   Ad,
   AdDetail,
+  AdDraft,
   Board,
+  BoardDecision,
   Comment,
   CommentInput,
   Concept,
   ConceptInput,
   CreativeProject,
-  DecisionInput,
-  DraftInput,
   FileRef,
   GeneratedAd,
   GenerateResult,
@@ -30,7 +30,7 @@ import type {
   UploadedAd,
   UploadResult,
   VariationInput,
-} from "./types.legacy";
+} from "./types.gen";
 
 const KEY = ["creative"] as const;
 
@@ -116,7 +116,7 @@ export const useAddUploads = (projectId: number) =>
 export const saveGenerated = (conceptId: number, input: GeneratedAd) =>
   postJSON<GenerateResult>(`/api/creative/concepts/${conceptId}/ads`, input);
 
-export const saveDraft = (adId: number, input: DraftInput) =>
+export const saveDraft = (adId: number, input: AdDraft) =>
   putJSON<void>(`/api/creative/ads/${adId}/draft`, input);
 
 export const publishAd = (adId: number, input: PublishInput) =>
@@ -160,7 +160,7 @@ function useReviewMutation<I, O>(key: string, fn: (input: I) => Promise<O>) {
 }
 
 export const useReviewDecide = (key: string) =>
-  useReviewMutation(key, (input: DecisionInput) =>
+  useReviewMutation(key, (input: BoardDecision) =>
     postJSON<void>(`/api/review/${encodeURIComponent(key)}/decisions`, input),
   );
 

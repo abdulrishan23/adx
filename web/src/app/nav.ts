@@ -119,7 +119,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Creatives",
-        to: "/engine/creatives",
+        to: "/creative",
         icon: Palette,
         phase: 1,
         status: "live",
