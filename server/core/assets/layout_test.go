@@ -69,3 +69,50 @@ func texts(checks []assets.LayoutCheck) []string {
 	}
 	return out
 }
+
+// Catches: a long title or body laid out as one line, so the blocks below
+// it are placed on top of its wrapped lines (the pilot gate's long Arabic
+// copy), and a renderer line estimate that disagrees with the layout's.
+func TestLayoutWrapsLongCopy(t *testing.T) {
+	long := assets.Copy{
+		Eyebrow: "إطلاق حصري في دبي لاند",
+		Title:   "فلل فاخرة من أربع غرف نوم بإطلالات على المساحات الخضراء وبأسعار تبدأ من مليون ومئتي ألف درهم مع خطة سداد مرنة",
+		Text:    "سجّل اهتمامك اليوم واحصل على خصم يصل إلى خمسة عشر بالمئة للمسجلين الأوائل، مع تسليم في الربع الأخير من عام ألفين وسبعة وعشرين وخطة سداد على ستين شهراً بدون فوائد.",
+		Note:    "الأسعار والعرض خاضعة للشروط والأحكام وقد تتغير دون إشعار مسبق.",
+		CTA:     "سجّل الآن",
+	}
+	for _, f := range []assets.Format{assets.Format9x16, assets.Format4x5, assets.Format1x1, assets.Format191x1} {
+		doc, err := assets.Layout(f, assets.Arabic, long, nil, assets.BrandKit{})
+		require.NoError(t, err)
+		var prev *assets.Layer
+		for i := range doc.Layers {
+			l := &doc.Layers[i]
+			if l.Kind != "text" {
+				continue
+			}
+			lines := assets.WrapLines(l.Text, l.FontSize, l.Width)
+			assert.InDelta(t, l.FontSize*1.2*float64(len(lines)), l.Height, 0.01, "%s %s: height covers every wrapped line", f, l.ID)
+			if l.ID == "title" {
+				assert.Greater(t, len(lines), 1, "%s: the long title wraps", f)
+			}
+			if prev != nil {
+				assert.GreaterOrEqual(t, l.Y, prev.Y+prev.Height, "%s: %s starts below %s", f, l.ID, prev.ID)
+			}
+			assert.GreaterOrEqual(t, l.Y, 0.0, "%s: %s stays in the frame", f, l.ID)
+			prev = l
+		}
+	}
+
+	// English wraps on spaces too, and an explicit break is kept.
+	lines := assets.WrapLines("Villas from AED 1.2M with a 60-month payment plan\nHandover 2028", 72, 900)
+	assert.Equal(t, []string{"Villas from AED 1.2M", "with a 60-month", "payment plan", "Handover 2028"}, lines)
+	// Without a size or width only the explicit lines come back.
+	assert.Equal(t, []string{"a b c", "d"}, assets.WrapLines("a b c\nd", 0, 0))
+	// A word wider than the box stands alone instead of being dropped.
+	assert.Equal(t, []string{"Short", "Supercalifragilistic", "end"}, assets.WrapLines("Short Supercalifragilistic end", 72, 400))
+
+	// A 1.91:1 title that needs more than one line is warned about.
+	wide, err := assets.Layout(assets.Format191x1, assets.Arabic, long, nil, assets.BrandKit{})
+	require.NoError(t, err)
+	assert.Contains(t, texts(assets.CheckDocument(wide, true)), "1.91:1 titles should be one line.")
+}

@@ -65,3 +65,26 @@ func TestRenderIsDeterministicAndSafe(t *testing.T) {
 	_, err = r.Render(ctx, st, assets.Document{})
 	require.Error(t, err)
 }
+
+// Catches: a long title written as one tspan that runs off the frame, since
+// SVG never wraps on its own.
+func TestRenderWrapsLongText(t *testing.T) {
+	st, err := filestore.New(t.TempDir())
+	require.NoError(t, err)
+	ctx := t.Context()
+	title := "فلل فاخرة من أربع غرف نوم بإطلالات على المساحات الخضراء وبأسعار تبدأ من مليون ومئتي ألف درهم مع خطة سداد مرنة"
+	doc, err := assets.Layout(assets.Format9x16, assets.Arabic, assets.Copy{Title: title, CTA: "سجّل الآن"}, nil, assets.BrandKit{})
+	require.NoError(t, err)
+	svg, err := svgrender.New().SVG(ctx, st, doc)
+	require.NoError(t, err)
+	s := string(svg)
+	titleText := s[strings.Index(s, `data-layer="title"`):]
+	titleText = titleText[:strings.Index(titleText, "</text>")]
+	lines := assets.WrapLines(title, doc.Layers[0].FontSize, doc.Layers[0].Width)
+	assert.Greater(t, len(lines), 1)
+	assert.Equal(t, len(lines), strings.Count(titleText, "<tspan"), "one tspan per wrapped line")
+	for _, line := range lines {
+		assert.Contains(t, titleText, ">"+line+"<")
+	}
+	assert.Equal(t, 1, strings.Count(titleText, `dy="0"`), "later lines move down by the line height")
+}

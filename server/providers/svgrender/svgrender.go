@@ -119,7 +119,9 @@ func writeText(b *strings.Builder, l assets.Layer) {
 		fmt.Fprintf(b, ` letter-spacing="%.1f"`, l.LetterSpacing)
 	}
 	b.WriteString(">")
-	for i, line := range strings.Split(text, "\n") {
+	// SVG has no wrapping of its own; the lines are decided here with the
+	// same estimate the layout used for the block's height.
+	for i, line := range assets.WrapLines(text, l.FontSize, l.Width) {
 		dy := "0"
 		if i > 0 {
 			dy = fmt.Sprintf("%.1f", l.FontSize*lineHeight)

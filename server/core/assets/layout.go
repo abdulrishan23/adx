@@ -80,21 +80,21 @@ func Layout(format Format, lang Language, copy Copy, render *Ref, kit BrandKit) 
 	textSize := 34 * scale
 	noteSize := 24 * scale
 	cursor := bottomLimit
-	add := func(id, text string, size float64, fill string, lines int, uppercase bool) {
+	add := func(id, text string, size float64, fill string, uppercase bool) {
 		if text == "" {
 			return
 		}
-		height := size * 1.2 * float64(lines)
+		height := size * 1.2 * float64(lineCount(text, size, textWidth))
 		cursor -= height + 18*scale
 		doc.Layers = append([]Layer{{ID: id, Kind: "text", X: x, Y: cursor, Width: textWidth, Height: height, Text: text, FontFamily: fontFor(roleFor(id)),
 			FontSize: size, Fill: fill, Align: align, LineHeight: 1.2, Uppercase: uppercase, RTL: rtl}}, doc.Layers...)
 	}
 	// Added bottom-up so the slice ends in reading order: eyebrow, title, text, note, cta.
-	add("cta", copy.CTA, textSize, accent, 1, true)
-	add("note", copy.Note, noteSize, ink, lineCount(copy.Note), false)
-	add("text", copy.Text, textSize, ink, lineCount(copy.Text), false)
-	add("title", copy.Title, titleSize, ink, lineCount(copy.Title), false)
-	add("eyebrow", copy.Eyebrow, noteSize, accent, 1, true)
+	add("cta", copy.CTA, textSize, accent, true)
+	add("note", copy.Note, noteSize, ink, false)
+	add("text", copy.Text, textSize, ink, false)
+	add("title", copy.Title, titleSize, ink, false)
+	add("eyebrow", copy.Eyebrow, noteSize, accent, true)
 	// Keep the logo first for drawing order.
 	for i, l := range doc.Layers {
 		if l.Kind == "logo" && i != 0 {
@@ -113,11 +113,6 @@ func roleFor(id string) string {
 		return "label"
 	}
 	return "text"
-}
-
-func lineCount(s string) int {
-	n := strings.Count(s, "\n") + 1
-	return n
 }
 
 func minF(a, b float64) float64 {
@@ -165,7 +160,11 @@ func CheckDocument(doc Document, arReviewed bool) []LayoutCheck {
 		for _, l := range doc.Layers {
 			height := l.Height
 			if l.Kind == "text" {
-				height = l.FontSize * l.LineHeight * float64(maxI(1, lineCount(l.Text)))
+				lineHeight := l.LineHeight
+				if lineHeight == 0 {
+					lineHeight = 1.2
+				}
+				height = l.FontSize * lineHeight * float64(lineCount(l.Text, l.FontSize, l.Width))
 			}
 			name := "An image"
 			switch l.Kind {
@@ -202,7 +201,7 @@ func CheckDocument(doc Document, arReviewed bool) []LayoutCheck {
 	}
 	if doc.Format == Format191x1 {
 		for _, t := range texts {
-			if t.FontSize > 40 && strings.Contains(t.Text, "\n") {
+			if (t.ID == "title" || t.FontSize > 40) && lineCount(t.Text, t.FontSize, t.Width) > 1 {
 				out = append(out, LayoutCheck{"warn", "1.91:1 titles should be one line."})
 				break
 			}
@@ -228,13 +227,6 @@ func HasErrors(checks []LayoutCheck) bool {
 		}
 	}
 	return false
-}
-
-func maxI(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 func abs(f float64) float64 {
