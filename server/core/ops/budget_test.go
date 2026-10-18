@@ -32,7 +32,7 @@ func TestMeterEnforcesTheServerCapAcrossCallsAndDays(t *testing.T) {
 		fake.Responses = append(fake.Responses, r)
 	}
 	meter := ops.NewMeter(db, fake, 1000, clock.Now)
-	o := ops.New(slog.Default(), db).WithBudgets(ops.Budgets{ModelDailyTokenCap: 1000, AssistantDailyTokens: 50}, "claude-opus-5-5")
+	o := ops.New(slog.Default(), db).WithClock(clock.Now).WithBudgets(ops.Budgets{ModelDailyTokenCap: 1000, AssistantDailyTokens: 50}, "claude-opus-5-5")
 	ctx := t.Context()
 
 	_, err := meter.Complete(ctx, assistant.Request{})

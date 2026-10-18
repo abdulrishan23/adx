@@ -616,3 +616,14 @@ make check && make test           # every package
 - Not done: browser journeys; operator review with business users; any live verification.
 
 Live: none. Production verified: nothing in this build.
+
+## Re-verification on 2026-10-18 (owner's machine, after the build)
+
+```
+make check                          # exit 0: go vet, golangci-lint 0 issues, biome 83 files clean, tsc clean
+cd server && go test ./...          # 52 packages ok, 0 FAIL
+cd web && pnpm test                 # 1 file, 4 tests passed
+```
+
+- One failure found and fixed: `core/ops` `TestMeterEnforcesTheServerCapAcrossCallsAndDays` passed on 2026-10-17 and failed on 2026-10-18 because `Ops.Cost` read the real UTC day while the `Meter` under test wrote usage under a clock pinned to 17 October. `Ops` now has `WithClock`, matching `NewMeter`, and the test pins both to the same clock. Production behaviour was unchanged; the test was only green on the day it was written. Catches: the cost view and the meter disagreeing on which day the cap counts.
+- The first `make test` pass on this machine stopped at the Go step, so the web tests had not run under `make test` until this fix; they pass.

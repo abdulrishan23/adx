@@ -61,6 +61,15 @@ func New(log *slog.Logger, db *store.DB, extra ...Check) *Ops {
 	return &Ops{log: log, db: db, checks: append(checks, extra...), now: time.Now}
 }
 
+// WithClock makes the cost view read the same day the Meter wrote. Tests
+// pin it; production leaves it at time.Now.
+func (o *Ops) WithClock(now func() time.Time) *Ops {
+	if now != nil {
+		o.now = now
+	}
+	return o
+}
+
 type constError string
 
 func (e constError) Error() string { return string(e) }
