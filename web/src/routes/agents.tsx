@@ -128,7 +128,7 @@ export function AgentsPage() {
               <details>
                 <summary className="text-muted-foreground">document</summary>
                 <pre className="max-h-64 overflow-auto whitespace-pre-wrap text-xs">
-                  {JSON.stringify(JSON.parse(e.document), null, 2)}
+                  {JSON.stringify(e.document, null, 2)}
                 </pre>
               </details>
             </div>
