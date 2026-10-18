@@ -54,3 +54,23 @@ describe("nav", () => {
     }
   });
 });
+
+// The door from Perform › Campaigns into Create › Launch (BD-58). Catches the
+// project being dropped on the way, or a junk value opening some brand.
+describe("launch door", () => {
+  const parse = router.routesByPath["/create/launch"].options.validateSearch as (
+    s: Record<string, unknown>,
+  ) => { project?: number };
+
+  it("carries the project across", () => {
+    expect(parse({ project: "3" })).toEqual({ project: 3 });
+    expect(parse({ project: 3 })).toEqual({ project: 3 });
+  });
+
+  it("ignores anything that is not a brand id", () => {
+    expect(parse({})).toEqual({});
+    expect(parse({ project: "all" })).toEqual({});
+    expect(parse({ project: "0" })).toEqual({});
+    expect(parse({ project: "1.5" })).toEqual({});
+  });
+});

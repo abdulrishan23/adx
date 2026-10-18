@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { getRouteApi, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { type Launch, useFixBlocker, useLaunches } from "@/api/create";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
@@ -8,12 +8,17 @@ import { StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { formatRelative } from "@/lib/format";
 import { BrandPicker, SampleChip } from "./shared";
 
+const route = getRouteApi("/app/create/launch");
+
 // Launch is the plan becoming live campaigns: readiness checks, then
 // generate, validate, submit, platform review, delivering. Each is its own
-// milestone, so "launched" never hides "rejected by Meta".
+// milestone, so "launched" never hides "rejected by Meta". Create owns this
+// first launch; what happens to a campaign afterwards is Perform's (BD-58),
+// and Perform › Campaigns arrives here with ?project= for its brand.
 export function LaunchPage() {
   const launches = useLaunches();
-  const [brandId, setBrandId] = useState<number>(1);
+  const fromCampaigns = route.useSearch().project;
+  const [brandId, setBrandId] = useState<number>(fromCampaigns ?? 1);
   const l = launches.data?.find((x) => x.projectId === brandId);
   const have = launches.data?.map((x) => x.projectId) ?? [];
   return (

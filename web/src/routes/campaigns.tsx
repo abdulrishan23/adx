@@ -1,5 +1,5 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Rocket } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { useAds, useCampaigns, useDailyBudget, useProposeChange } from "@/api/adx";
 import { projectOf } from "@/api/mock/data";
@@ -8,7 +8,7 @@ import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformMark, platformLabel } from "@/components/platform";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
@@ -109,7 +109,22 @@ export function CampaignsPage() {
       <PageHeader
         title="Campaigns"
         subtitle={`${rows.length} campaigns · ${PERIOD_LABEL[scope.days]}`}
-        actions={<ScopeBar />}
+        actions={
+          <span className="flex flex-wrap items-center gap-2">
+            <ScopeBar />
+            {/* A new campaign starts from a plan, so this is a door into Create's
+                Launch (BD-58), not a second launch flow. Phase 3 with Launch. */}
+            {released(3) && (
+              <Link
+                to="/create/launch"
+                search={scope.projectId === "all" ? {} : { project: scope.projectId }}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                <Rocket /> Launch a campaign
+              </Link>
+            )}
+          </span>
+        }
       />
       {campaigns.isPending && <LoadingRows rows={10} />}
       {campaigns.error && <ErrorNote error={campaigns.error} />}

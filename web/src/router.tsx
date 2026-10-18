@@ -212,6 +212,18 @@ const proposalsRoute = createRoute({
   component: ProposalsPage,
 });
 
+// ?project= is the door from Perform › Campaigns: Launch opens on that brand
+// (BD-58). Create owns the first launch; Perform owns a running campaign.
+const launchRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/create/launch",
+  validateSearch: (search: Record<string, unknown>): { project?: number } => {
+    const n = Number(search.project);
+    return Number.isInteger(n) && n > 0 ? { project: n } : {};
+  },
+  component: LaunchPage,
+});
+
 const campaignsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/campaigns",
@@ -352,7 +364,7 @@ const routeTree = rootRoute.addChildren([
     page("/create/plans", PlansPage),
     page("/create/plans/$planId", PlanPage),
     page("/create/pages", PagesPage),
-    page("/create/launch", LaunchPage),
+    launchRoute,
     page("/convert/calls", ComingSoonPage),
     page("/convert/inbox", ComingSoonPage),
     page("/convert/crm", ComingSoonPage),
