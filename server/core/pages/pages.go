@@ -491,7 +491,7 @@ func (p *Pages) ListSummaries(ctx context.Context, actor core.Actor) ([]PageSumm
 	out := make([]PageSummary, 0, len(rows))
 	for _, r := range rows {
 		s := PageSummary{
-			Page: pageFromRow(store.Page{ID: r.ID, WorkspaceID: r.WorkspaceID, BrandID: r.BrandID, ProjectID: r.ProjectID, PlanID: r.PlanID, PlanVersion: r.PlanVersion, Slug: r.Slug, Name: r.Name, Language: r.Language, TestToken: r.TestToken, CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}),
+			Page:      pageFromRow(store.Page{ID: r.ID, WorkspaceID: r.WorkspaceID, BrandID: r.BrandID, ProjectID: r.ProjectID, PlanID: r.PlanID, PlanVersion: r.PlanVersion, Slug: r.Slug, Name: r.Name, Language: r.Language, TestToken: r.TestToken, CreatedBy: r.CreatedBy, CreatedAt: r.CreatedAt, UpdatedAt: r.UpdatedAt}),
 			BrandName: r.BrandName, ProjectName: r.ProjectName.String, LatestVersion: r.LatestVersion, PublicURL: p.base + "/p/" + r.Slug,
 		}
 		if r.PublishedVersion > 0 {
