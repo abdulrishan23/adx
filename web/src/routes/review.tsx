@@ -7,7 +7,7 @@ import type {
   Comment,
   Decision,
   ReviewStatus,
-} from "@/api/types.legacy";
+} from "@/api/types.gen";
 import { AdxWordmark } from "@/components/brand";
 import { Segmented } from "@/components/segmented";
 import { normalizeKit } from "@/creative/brand";

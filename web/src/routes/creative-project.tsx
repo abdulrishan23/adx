@@ -2,7 +2,7 @@ import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { Download, ExternalLink, Link2, Pencil, Plus, Upload } from "lucide-react";
 import { useState } from "react";
 import { useCreateConcept, useCreativeProject, useResolveComment } from "@/api/creative";
-import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.legacy";
+import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";

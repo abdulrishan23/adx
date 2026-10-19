@@ -16,7 +16,7 @@ const route = getRouteApi("/app/create/launch");
 // Launch is the plan becoming live campaigns: readiness checks, then
 // generate, validate, submit, platform review, delivering. Each is its own
 // milestone, so "launched" never hides "rejected by Meta". Create owns this
-// first launch; what happens to a campaign afterwards is Perform's (BD-58),
+// first launch; what happens to a campaign afterwards is Perform's (BD-60),
 // and Perform › Campaigns arrives here with ?project= for its brand.
 export function LaunchPage() {
   const launches = useLaunches();
@@ -168,7 +168,7 @@ const PLATFORM_LABEL: Record<string, string> = {
   tiktok: "TikTok",
 };
 
-// Where the money goes (BD-58): each plan line against the campaigns already
+// Where the money goes (BD-60): each plan line against the campaigns already
 // running for the project. One match is updated, more than one and a person
 // picks, none and Adx creates one. The plan is the month's ceiling, so spend
 // this month nets off the line and the rest is spread over the days left.

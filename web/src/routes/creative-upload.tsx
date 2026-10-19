@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { upload, useAddUploads, useCreativeProject } from "@/api/creative";
-import type { UploadedAd } from "@/api/types.legacy";
+import type { UploadedAd } from "@/api/types.gen";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { StatusChip } from "@/components/ui/status-chip";

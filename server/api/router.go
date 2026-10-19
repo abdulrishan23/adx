@@ -40,6 +40,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
+	"github.com/WokeWorks/adx/server/core/studio"
 	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/workflows"
@@ -69,6 +70,7 @@ type Deps struct {
 	Alerts      *alerts.Alerts
 	Assistant   *assistant.Assistant
 	Creative    *creative.Service
+	Studio      *studio.Studio
 	Brands      *brands.Brands
 	Research    *research.Research
 	Plans       *plans.Plans
@@ -76,7 +78,7 @@ type Deps struct {
 	Measurement *measurement.Measurement
 	Proposals   *proposals.Proposals
 	Execution   *execution.Dispatcher
-	// Launch serves the plan-line resolution and picks (BD-58). Nil leaves
+	// Launch serves the plan-line resolution and picks (BD-60). Nil leaves
 	// the routes out.
 	Launch        *launch.Service
 	CRM           *crm.CRM
@@ -114,6 +116,7 @@ type handlers struct {
 	alerts        *alerts.Alerts
 	assistant     *assistant.Assistant
 	creative      *creative.Service
+	studio        *studio.Studio
 	brands        *brands.Brands
 	research      *research.Research
 	plans         *plans.Plans
@@ -141,7 +144,7 @@ type handlers struct {
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, studio: d.Studio, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -170,6 +173,16 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/webhooks/voice/stream/{id}", h.voiceStream)
 			}
 		}
+	}
+
+	// Public: the review board works by its link, and files by their
+	// SHA-256, for reviewers without accounts.
+	if h.studio != nil {
+		r.Get("/api/files/{sha}", h.serveFile)
+		r.Get("/api/review/{key}", h.reviewBoard)
+		r.Post("/api/review/{key}/decisions", h.reviewDecide)
+		r.Post("/api/review/{key}/comments", h.reviewComment)
+		r.Post("/api/review/{key}/picks", h.reviewPick)
 	}
 
 	// Sign-in happens before there is a session.
@@ -257,6 +270,33 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/assistant/conversations/{id}/messages", h.sendMessage)
 			r.Post("/api/assistant/conversations/{id}/voice", h.sendVoice)
 			r.Post("/api/assistant/voice/preview", h.previewVoice)
+		}
+		if h.studio != nil {
+			r.Post("/api/files", h.uploadFile)
+			r.Get("/api/creative", h.creativeOverview)
+			r.Post("/api/creative/projects", h.setUpCreative)
+			project := func(fn func(w http.ResponseWriter, r *http.Request, id int64)) http.HandlerFunc {
+				return h.studioRoute("id", "project", fn)
+			}
+			r.Get("/api/creative/projects/{id}", project(h.creativeProject))
+			r.Put("/api/creative/projects/{id}/settings", project(h.updateCreativeSettings))
+			r.Post("/api/creative/projects/{id}/review-key", project(h.rotateReviewKey))
+			r.Put("/api/creative/projects/{id}/brand-kit", project(h.saveBrandKit))
+			r.Post("/api/creative/projects/{id}/renders", project(h.addRenders))
+			r.Post("/api/creative/projects/{id}/concepts", project(h.createConcept))
+			r.Post("/api/creative/projects/{id}/uploads", project(h.addUploads))
+			r.Get("/api/creative/projects/{id}/download", project(h.downloadCreatives))
+			r.Patch("/api/creative/renders/{id}", h.studioRoute("id", "render", h.updateRender))
+			r.Put("/api/creative/concepts/{id}", h.studioRoute("id", "concept", h.saveConcept))
+			r.Post("/api/creative/concepts/{id}/ads", h.studioRoute("id", "concept", h.saveGenerated))
+			ad := func(fn func(w http.ResponseWriter, r *http.Request, id int64)) http.HandlerFunc {
+				return h.studioRoute("id", "ad", fn)
+			}
+			r.Get("/api/creative/ads/{id}", ad(h.creativeAd))
+			r.Put("/api/creative/ads/{id}/draft", ad(h.saveDraft))
+			r.Post("/api/creative/ads/{id}/versions", ad(h.publishAd))
+			r.Post("/api/creative/ads/{id}/variations", ad(h.createVariation))
+			r.Post("/api/creative/comments/{id}/resolve", h.studioRoute("id", "comment", h.resolveComment))
 		}
 		if h.creative != nil {
 			r.Get("/api/assets", h.listAssets)

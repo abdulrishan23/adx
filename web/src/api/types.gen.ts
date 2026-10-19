@@ -60,11 +60,54 @@ export interface ActionPreview {
     message: string;
 }
 
+// From studio/studio.go
+export interface Ad {
+    id: number;
+    code: string;
+    fileName: string;
+    fmt: Fmt;
+    lang: Lang;
+    hasCta: boolean;
+    renderCode: string;
+    hasDraft: boolean;
+    current: AdVersion | null;
+    status: ReviewStatus;
+    decisions: Decision[];
+    comments: number;
+}
+
+// From studio/ads.go
+export interface AdDetail {
+    ad: Ad;
+    concept: Concept;
+    settings: Settings;
+    draft: unknown;
+    design: unknown;
+    siblings: Sibling[];
+    renders: Render[];
+}
+
+// From studio/ads.go
+export interface AdDraft {
+    design: unknown;
+    renderCode: string;
+}
+
 // From api/reports.go
 export interface AdHocReportInput {
     from: Day;
     to: Day;
     params: ReportParams;
+}
+
+// From studio/studio.go
+export interface AdVersion {
+    id: number;
+    version: number;
+    file: FileRef;
+    preview: FileRef;
+    source: string;
+    createdAt: string;
 }
 
 // From users/users.go
@@ -123,8 +166,7 @@ export interface Alert {
     severity: string;
     state: string;
     message: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    evidence: string;
+    evidence: unknown;
     configVersion: number;
     occurrences: number;
     firstSeenAt: string;
@@ -327,6 +369,60 @@ export interface AutonomyRule {
     maxPerDay: number;
 }
 
+// From studio/review.go
+export interface Board {
+    projectName: string;
+    kicker: string;
+    pageName: string;
+    brandKit: unknown;
+    concepts: BoardConcept[];
+    renders: BoardRender[];
+    picks: Pick[];
+    comments: Comment[];
+    decisions: Decision[];
+}
+
+// From studio/review.go
+export interface BoardAd {
+    code: string;
+    fileName: string;
+    fmt: Fmt;
+    lang: Lang;
+    hasCta: boolean;
+    renderCode: string;
+    version: number;
+    file: FileRef;
+    preview: FileRef;
+    status: ReviewStatus;
+}
+
+// From studio/review.go
+export interface BoardConcept {
+    code: string;
+    name: string;
+    why: string;
+    primaryText: string;
+    headline: string;
+    description: string;
+    cta: string;
+    ads: BoardAd[];
+}
+
+// From studio/review.go
+export interface BoardDecision {
+    ad: string;
+    name: string;
+    status: string;
+}
+
+// From studio/review.go
+export interface BoardRender {
+    code: string;
+    label: string;
+    file: FileRef;
+    preview: FileRef;
+}
+
 // From brands/brands.go
 export interface Brand {
     id: number;
@@ -500,8 +596,7 @@ export interface CallEvent {
     fromState: string;
     toState: string;
     detail: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    payload: string;
+    payload: unknown;
     receivedAt: string;
 }
 
@@ -605,8 +700,7 @@ export interface Candidate {
     id: number;
     personId: number;
     candidateId: number;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    reason: string;
+    reason: unknown;
     state: string;
     createdAt: string;
     other: Person | null;
@@ -673,8 +767,7 @@ export const CheckCostSpike = "cost_spike";
 
 // From api/registry.go
 export interface CheckOutputInput {
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    output: string;
+    output: unknown;
 }
 
 // From ops/ops.go
@@ -726,6 +819,28 @@ export interface ClaimSet {
 // From evidence/evidence.go
 export type Class = "estimated" | "inferred" | "observed";
 
+// From studio/studio.go
+export interface Comment {
+    id: number;
+    ad: string;
+    version: number;
+    name: string;
+    body: string;
+    x: number | null;
+    y: number | null;
+    resolved: boolean;
+    createdAt: string;
+}
+
+// From studio/review.go
+export interface CommentInput {
+    ad: string;
+    name: string;
+    body: string;
+    x: number | null;
+    y: number | null;
+}
+
 // From research/schedules.go
 export interface ComparativeReport {
     id: number;
@@ -775,6 +890,31 @@ export interface CompleteTaskInput {
 
 // From evidence, runs
 export type Completeness = "complete" | "partial" | "unknown";
+
+// From studio/studio.go
+export interface Concept {
+    id: number;
+    code: string;
+    name: string;
+    why: string;
+    primaryText: string;
+    headline: string;
+    description: string;
+    cta: string;
+    copy: unknown;
+    ads: Ad[];
+}
+
+// From studio/ads.go
+export interface ConceptInput {
+    name: string;
+    why: string;
+    primaryText: string;
+    headline: string;
+    description: string;
+    cta: string;
+    copy: unknown;
+}
 
 // From brands/facts.go
 export interface Conflict {
@@ -872,8 +1012,7 @@ export interface CorrectSignalInput {
 
 // From api/workflows.go
 export interface CorrectTaskInput {
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    output: string;
+    output: unknown;
     reason: string;
 }
 
@@ -950,6 +1089,15 @@ export interface CreativeInput {
     planVersion: number;
 }
 
+// From studio/studio.go
+export interface CreativeProject {
+    settings: Settings;
+    concepts: Concept[];
+    renders: Render[];
+    picks: Pick[];
+    comments: Comment[];
+}
+
 // From api/creative.go
 export interface CreativeQueueResponse {
     items: QueueItem[];
@@ -980,6 +1128,14 @@ export type Day = string;
 export interface DecideCandidateInput {
     accept: boolean;
     note: string;
+}
+
+// From studio/studio.go
+export interface Decision {
+    ad: string;
+    name: string;
+    status: string;
+    createdAt: string;
 }
 
 // From api/proposals.go
@@ -1151,8 +1307,7 @@ export interface Evidence {
     observedAt: string;
     eventAt: string | null;
     payloadVersion: number;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    payload: string;
+    payload: unknown;
     completeness: Completeness;
     retainUntil: string | null;
     supersededById: number | null;
@@ -1302,8 +1457,7 @@ export interface FieldWrite {
     reason: string;
     attempts: number;
     idempotencyKey: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    conflict: string;
+    conflict: unknown;
     createdAt: string;
     updatedAt: string;
     sentAt: string | null;
@@ -1321,6 +1475,14 @@ export interface FieldWritesResponse {
     writes: FieldWrite[];
 }
 
+// From studio/studio.go
+export interface FileRef {
+    sha256: string;
+    contentType: string;
+    width: number | null;
+    height: number | null;
+}
+
 // From research/research.go
 export interface Finding {
     id: number;
@@ -1331,8 +1493,7 @@ export interface Finding {
     kind: FindingKind;
     class: Class;
     label: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    payload: string;
+    payload: unknown;
     sourceUrl: string;
     sourceObservedAt: string;
     geography: string;
@@ -1363,6 +1524,9 @@ export interface FitRule {
     present: number;
     statedOnly: boolean;
 }
+
+// From studio/naming.go
+export type Fmt = "4:5" | "1.91:1" | "1:1" | "9:16";
 
 // From pipeline/pipeline.go
 export interface FollowUpTask {
@@ -1470,6 +1634,22 @@ export interface GenerateReportInput {
 export interface GenerateReportResponse {
     report: Report;
     created: boolean;
+}
+
+// From studio/ads.go
+export interface GenerateResult {
+    ad: Ad;
+    hadPicture: boolean;
+}
+
+// From studio/ads.go
+export interface GeneratedAd {
+    fmt: Fmt;
+    lang: Lang;
+    cta: boolean;
+    slug: string;
+    renderCode: string;
+    design: unknown;
 }
 
 // From plans/generate.go
@@ -1600,8 +1780,7 @@ export interface ImportRow {
     enquiryId: number;
     leadId: number | null;
     action: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    detail: string;
+    detail: unknown;
     appliedAt: string | null;
 }
 
@@ -1808,6 +1987,9 @@ export interface LabelInput {
     note: string;
 }
 
+// From studio/naming.go
+export type Lang = "ar" | "en";
+
 // From assets/assets.go
 export type Language = "ar" | "en";
 
@@ -1986,8 +2168,7 @@ export interface LearningRecord {
     source: string;
     subjectKind: string;
     subjectRef: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    recommended: string;
+    recommended: unknown;
     decision: string;
     decisionNote: string;
     decidedBy: number | null;
@@ -2005,8 +2186,7 @@ export interface LearningRecordInput {
     source: string;
     subjectKind: string;
     subjectRef: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    recommended: string;
+    recommended: unknown;
     windowDays: number;
 }
 
@@ -2046,8 +2226,7 @@ export interface Link {
     kind: string;
     ref: string;
     matchLevel: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    matchEvidence: string;
+    matchEvidence: unknown;
     linkedAt: string;
     linkedBy: number | null;
     reversedAt: string | null;
@@ -2343,11 +2522,30 @@ export const MulawBytesPerMs = 8;
 // From voice/audio.go
 export const MulawCodec = "mulaw_8000";
 
+// From studio/ads.go
+export interface NewConcept {
+    code: string;
+    name: string;
+}
+
+// From studio/ads.go
+export interface NewRender {
+    file: string;
+    preview: string;
+    label: string;
+}
+
 // From outreach/outreach.go
 export interface NextStep {
     action: string;
     reason: string;
     draft: string;
+}
+
+// From studio/studio.go
+export interface NotSetUp {
+    projectId: number;
+    name: string;
 }
 
 // From outreach/outreach.go
@@ -2528,6 +2726,12 @@ export interface OutreachState {
     suggested: OutreachDocument;
 }
 
+// From studio/studio.go
+export interface Overview {
+    projects: ProjectSummary[];
+    notSetUp: NotSetUp[];
+}
+
 // From pipeline/pipeline.go
 export type Owner = "adx" | "crm";
 
@@ -2689,6 +2893,21 @@ export interface PersonSummary extends Person {
     enquiries: number;
     openCandidates: number;
     uncertain: boolean;
+}
+
+// From studio/studio.go
+export interface Pick {
+    concept: string;
+    render: string;
+    name: string;
+    createdAt: string;
+}
+
+// From studio/review.go
+export interface PickInput {
+    concept: string;
+    render: string;
+    name: string;
 }
 
 // From pipeline/pipeline.go
@@ -2981,6 +3200,22 @@ export interface ProjectOffersResponse {
     offers: Offer[];
 }
 
+// From studio/studio.go
+export interface ProjectSummary {
+    projectId: number;
+    name: string;
+    prefix: string;
+    reviewActive: boolean;
+    concepts: number;
+    ads: number;
+    renders: number;
+    approved: number;
+    revise: number;
+    waiting: number;
+    unpublished: number;
+    updatedAt: string;
+}
+
 // From api/projects.go
 export interface ProjectsResponse {
     projects: Project[];
@@ -3005,10 +3240,8 @@ export interface Proposal {
     targetKind: string;
     targetRef: string;
     targetVersion: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    expectedCurrent: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    proposed: string;
+    expectedCurrent: unknown;
+    proposed: unknown;
     reason: string;
     evidenceRefs: number[];
     amountMinor: number | null;
@@ -3034,10 +3267,8 @@ export interface ProposalInput {
     targetKind: string;
     targetRef: string;
     targetVersion: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    expectedCurrent: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    proposed: string;
+    expectedCurrent: unknown;
+    proposed: unknown;
     reason: string;
     evidenceRefs: number[];
     amountMinor: number;
@@ -3082,6 +3313,15 @@ export interface ProviderRef {
     kind: string;
     externalId: string;
     at: string;
+}
+
+// From studio/ads.go
+export interface PublishInput {
+    file: string;
+    preview: string;
+    design: unknown;
+    renderCode: string;
+    source: string;
 }
 
 // From api/pages.go
@@ -3347,8 +3587,7 @@ export interface RegistryEntry {
     version: number;
     state: string;
     source: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    document: string;
+    document: unknown;
     validation: string[];
     needsAdmin: boolean;
     reason: string;
@@ -3368,6 +3607,22 @@ export interface ReleaseReport {
     warning: string;
 }
 
+// From studio/studio.go
+export interface Render {
+    id: number;
+    code: string;
+    label: string;
+    hidden: boolean;
+    file: FileRef;
+    preview: FileRef;
+}
+
+// From studio/ads.go
+export interface RenderInput {
+    label: string;
+    hidden: boolean;
+}
+
 // From creative/production.go
 export interface RenderParams {
     creativeId: number;
@@ -3377,10 +3632,19 @@ export interface RenderParams {
 // From creative/production.go
 export const RenderRunKind = "creative.render";
 
+// From api/studio.go
+export interface RendersRequest {
+    renders: NewRender[];
+}
+
+// From api/studio.go
+export interface RendersResponse {
+    renders: Render[];
+}
+
 // From api/execution.go
 export interface RepairInput {
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    proposed: string;
+    proposed: unknown;
     note: string;
 }
 
@@ -3573,6 +3837,11 @@ export interface ResolveFieldConflictInput {
     reason: string;
 }
 
+// From api/studio.go
+export interface ResolveRequest {
+    resolved: boolean;
+}
+
 // From reporting/metrics.go
 export interface ResultFreshness {
     lastSuccessAt: string | null;
@@ -3614,6 +3883,9 @@ export interface ReviewInput {
 // From assets/assets.go
 export type ReviewState = "approved" | "draft" | "in_review" | "rendered" | "revise";
 
+// From studio/studio.go
+export type ReviewStatus = "approved" | "revise" | "unpublished" | "waiting";
+
 // From api/learning.go
 export interface ReviseInsightInput {
     statement: string;
@@ -3639,10 +3911,8 @@ export interface Run {
     accountId: number | null;
     state: State;
     completeness: Completeness;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    params: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    progress: string;
+    params: unknown;
+    progress: unknown;
     error: string | null;
     attempt: number;
     createdAt: string;
@@ -3875,6 +4145,38 @@ export interface SetValueInput {
     version: number;
 }
 
+// From studio/studio.go
+export interface Settings {
+    projectId: number;
+    projectName: string;
+    prefix: string;
+    kicker: string;
+    pageName: string;
+    reviewKey: string;
+    reviewActive: boolean;
+    brandKit: unknown;
+}
+
+// From studio/studio.go
+export interface SettingsInput {
+    prefix: string;
+    kicker: string;
+    pageName: string;
+    reviewActive: boolean;
+}
+
+// From studio/studio.go
+export interface SetupInput {
+    projectId: number;
+}
+
+// From studio/ads.go
+export interface Sibling {
+    id: number;
+    fmt: Fmt;
+    hasDraft: boolean;
+}
+
 // From signals/signals.go
 export interface SignalCorrection {
     id: number;
@@ -3896,10 +4198,8 @@ export interface SignalEvent {
     kind: string;
     occurrenceKey: string;
     confidence: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    identity: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    payload: string;
+    identity: unknown;
+    payload: unknown;
     occurredAt: string;
     receivedAt: string;
     evidenceId: number | null;
@@ -3936,8 +4236,7 @@ export interface SignalInput {
     occurredAt: string;
     identity: SignalIdentity;
     projectId: number;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    payload: string;
+    payload: unknown;
 }
 
 // From signals/signals.go
@@ -4124,8 +4423,7 @@ export interface TestHypothesis {
 export interface ToolCall {
     id: string;
     name: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    input: string;
+    input: unknown;
 }
 
 // From assistant/tools.go
@@ -4169,10 +4467,8 @@ export interface Turn {
     content: string;
     toolCalls: ToolCall[];
     toolName: string | null;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    toolInput: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    toolResult: string;
+    toolInput: unknown;
+    toolResult: unknown;
     evidenceRefs: EvidenceRef[];
     warnings: string[];
     model: string | null;
@@ -4194,6 +4490,29 @@ export interface UTM {
     campaign: string;
     content: string;
     term: string;
+}
+
+// From studio/ads.go
+export interface UploadResult {
+    concepts: number;
+    ads: number;
+    versions: number;
+}
+
+// From studio/ads.go
+export interface UploadedAd {
+    concept: string;
+    slug: string;
+    lang: Lang;
+    fmt: Fmt;
+    cta: boolean;
+    file: string;
+    preview: string;
+}
+
+// From api/studio.go
+export interface UploadsRequest {
+    ads: UploadedAd[];
 }
 
 // From assistant/model.go
@@ -4230,6 +4549,12 @@ export interface ValidationIssue {
 // From api/registry.go
 export interface ValidationResponse {
     problems: string[];
+}
+
+// From studio/ads.go
+export interface VariationInput {
+    renderCode: string;
+    design: unknown;
 }
 
 // From creative/creative.go
@@ -4310,8 +4635,7 @@ export interface WorkflowRun {
     definitionKey: string;
     definitionVersion: number;
     state: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    params: string;
+    params: unknown;
     budgetTokens: number;
     spentTokens: number;
     reason: string;
@@ -4329,8 +4653,7 @@ export interface WorkflowRunsResponse {
 // From workflows/workflows.go
 export interface WorkflowStartInput {
     definition: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    params: string;
+    params: unknown;
     budgetTokens: number;
 }
 
@@ -4359,13 +4682,10 @@ export interface WorkflowTask {
     maxAttempts: number;
     leaseOwner: string | null;
     leaseUntil: string | null;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    input: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    resolvedInput: string;
+    input: unknown;
+    resolvedInput: unknown;
     inputHash: string;
-    // this is likely an enum in an external package "encoding/json/jsontext.Value"
-    output: string;
+    output: unknown;
     outputVersion: number;
     external: boolean;
     operationKey: string | null;

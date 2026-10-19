@@ -1,4 +1,4 @@
-import type { FileRef } from "@/api/types.legacy";
+import type { FileRef } from "@/api/types.gen";
 
 // Where the browser loads an uploaded file. Files are named by their
 // SHA-256, so the address never points at different bytes.

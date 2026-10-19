@@ -1,111 +1,141 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { useState } from "react";
-import {
-  type Plan,
-  type PlanStatus,
-  useConfirmAssumption,
-  useDecidePlan,
-  usePlan,
-  usePlans,
-} from "@/api/create";
+import { useBrands } from "@/api/brands";
+import { useAcceptPlanVersion, useGeneratePlan, usePlan, usePlans } from "@/api/plans";
+import { useBriefs } from "@/api/research";
+import type {
+  ChannelInfo,
+  PlanDocument,
+  PlanState,
+  PlanSummary,
+  PlanVersion,
+  ValidationIssue,
+} from "@/api/types.gen";
+import { useSession } from "@/app/session";
 import { CountUp } from "@/components/front/count-up";
 import { HBars } from "@/components/front/pictures";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
-import { Button } from "@/components/ui/button";
-import { StatusChip, StatusMark } from "@/components/ui/status-chip";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { formatDate, formatMoneyShort, formatNumber, formatRelative } from "@/lib/format";
-import { SampleChip } from "./shared";
+import { formatDate, formatMoneyShort, formatRelative } from "@/lib/format";
 
-const STATUS: Record<
-  PlanStatus,
-  { chip: "ready" | "caution" | "pending" | "error"; label: string }
-> = {
-  draft: { chip: "pending", label: "Draft" },
-  waiting: { chip: "caution", label: "Waiting for approval" },
-  approved: { chip: "ready", label: "Approved" },
-  superseded: { chip: "pending", label: "Superseded" },
+// Plans are whole dirhams; cents would be noise.
+const money = (minor: number, currency: string) =>
+  `${currency} ${Math.round(minor / 100).toLocaleString("en")}`;
+
+const route = getRouteApi("/app/create/plans/$planId");
+
+// "Ready" is ready for acceptance; accepted is content only and authorizes
+// no spend. That stays separate on purpose (handover B2.4).
+const STATE: Record<PlanState, { status: Status; label: string }> = {
+  draft: { status: "pending", label: "Draft" },
+  validating: { status: "pending", label: "Validating" },
+  needs_input: { status: "caution", label: "Needs input" },
+  invalid: { status: "error", label: "Invalid" },
+  ready: { status: "caution", label: "Ready to accept" },
+  accepted: { status: "ready", label: "Accepted" },
 };
-const PLATFORM = {
-  meta: "Meta",
-  google: "Google",
-  snapchat: "Snapchat",
-  tiktok: "TikTok",
-} as const;
+
 const shortDate = (d: string) => formatDate(`${d}T00:00:00Z`, { day: "numeric", month: "short" });
 
-// A media plan is the bible for a campaign: budget by channel and week, the
-// assumptions behind it, and the targets. Adx drafts one from the brand and
-// the research; a person approves it, and launch starts from there.
+// A media plan is the bible for a campaign: where the money goes by channel,
+// what has to exist before it runs, what it will test, and what it merely
+// assumes. Adx drafts a version from research; code validates it; a person
+// accepts one. Acceptance is of the content and grants nothing in any ad
+// account.
 export function PlansPage() {
   const plans = usePlans();
+  const brands = useBrands();
+  const brandName = (id: number) => brands.data?.brands.find((b) => b.id === id)?.name ?? "";
+  const list = plans.data?.plans ?? [];
   return (
     <>
       <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            Media plans <SampleChip phase={2} />
-          </span>
+        title="Media plans"
+        subtitle="Adx drafts a plan from a brand's research. Code checks it; you accept one. Nothing spends until a launch is authorized."
+        actions={
+          <Link to="/engine/plans" className={buttonVariants({ variant: "outline", size: "sm" })}>
+            New plan
+          </Link>
         }
-        subtitle="Adx drafts a plan from the brand and the research. Approving one starts the launch."
       />
       {plans.isPending && <LoadingRows rows={5} />}
       {plans.error && <ErrorNote error={plans.error} />}
-      {plans.data && (
+      {plans.data && list.length === 0 && (
+        <Panel>
+          <EmptyState title="No plans yet">
+            Open a plan on the{" "}
+            <Link to="/engine/plans" className="underline underline-offset-4">
+              engine's plans screen
+            </Link>{" "}
+            with a brand, a budget and dates, then draft a version here from its research.
+          </EmptyState>
+        </Panel>
+      )}
+      {list.length > 0 && (
         <Panel bodyClassName="p-0">
           <Table>
             <THead>
               <TR>
                 <TH>Plan</TH>
-                <TH>Status</TH>
-                <TH>Runs</TH>
-                <TH numeric>Budget</TH>
-                <TH numeric>Expected qualified</TH>
-                <TH numeric>Per qualified</TH>
+                <TH>Brand</TH>
+                <TH>State</TH>
+                <TH numeric>Version</TH>
                 <TH>Changed</TH>
               </TR>
             </THead>
             <TBody>
-              {plans.data.map((p) => (
-                <TR
-                  key={p.id}
-                  className={p.status === "superseded" ? "text-muted-foreground" : undefined}
-                >
+              {list.map((p: PlanSummary) => (
+                <TR key={p.id}>
                   <TD>
                     <Link
                       to="/create/plans/$planId"
-                      params={{ planId: p.id }}
+                      params={{ planId: String(p.id) }}
                       className="font-medium hover:underline"
                     >
-                      {p.projectName} · v{p.version}
+                      {p.title}
                     </Link>
                   </TD>
+                  <TD>{brandName(p.brandId)}</TD>
                   <TD>
-                    <StatusChip status={STATUS[p.status].chip}>{STATUS[p.status].label}</StatusChip>
+                    <StatusChip status={STATE[p.latestState].status}>
+                      {STATE[p.latestState].label}
+                    </StatusChip>
                   </TD>
-                  <TD className="whitespace-nowrap">
-                    {shortDate(p.from)} – {shortDate(p.to)}
-                  </TD>
-                  <TD numeric>{formatMoneyShort(p.budgetMinor)}</TD>
-                  <TD numeric>{formatNumber(p.expectedQualified)}</TD>
-                  <TD numeric>{formatMoneyShort(p.expectedCpqMinor)}</TD>
-                  <TD className="text-muted-foreground">{formatRelative(p.createdAt)}</TD>
+                  <TD numeric>v{p.latestVersion}</TD>
+                  <TD>{formatRelative(p.updatedAt)}</TD>
                 </TR>
               ))}
             </TBody>
           </Table>
         </Panel>
       )}
+      {plans.data && !plans.data.templates.exact.available && (
+        <p className="mt-4 text-xs text-muted-foreground">
+          Exports are generic ({plans.data.templates.generic.join(", ")}) until Reportage's Excel
+          media-plan template is supplied.
+        </p>
+      )}
     </>
   );
 }
 
-const route = getRouteApi("/app/create/plans/$planId");
-
 export function PlanPage() {
   const { planId } = route.useParams();
-  const plan = usePlan(planId);
+  const id = Number(planId);
+  const plan = usePlan(id);
+  const plans = usePlans();
+  const [picked, setPicked] = useState<number | null>(null);
+  if (plan.isPending || plans.isPending) return <LoadingRows rows={8} />;
+  if (plan.error) return <ErrorNote error={plan.error} />;
+  if (!plan.data || !plans.data) return <LoadingRows rows={8} />;
+  const d = plan.data;
+  const versions = [...d.versions].sort((a, b) => b.version - a.version);
+  const latest = versions[0];
+  const v = versions.find((x) => x.version === picked) ?? latest;
   return (
     <>
       <Link
@@ -114,201 +144,376 @@ export function PlanPage() {
       >
         <ArrowLeft className="size-4" /> Media plans
       </Link>
-      {plan.isPending && <LoadingRows rows={8} />}
-      {plan.error && <ErrorNote error={plan.error} />}
-      {plan.data === null && (
-        <Panel>
-          <EmptyState title="This plan doesn't exist" />
-        </Panel>
-      )}
-      {plan.data && <PlanBody plan={plan.data} />}
+      <PageHeader
+        title={d.plan.title}
+        subtitle={
+          v
+            ? `v${v.version} of ${versions.length} · ${v.source} · ${formatRelative(v.createdAt)}${v.acceptance ? ` · accepted ${formatRelative(v.acceptance.acceptedAt)}` : ""}`
+            : "No version yet"
+        }
+        actions={
+          versions.length > 1 && (
+            <Select
+              aria-label="Version"
+              value={String(v?.version ?? "")}
+              onValueChange={(x) => setPicked(Number(x))}
+              options={versions.map((x) => ({
+                value: String(x.version),
+                label: `v${x.version} · ${STATE[x.state].label}`,
+              }))}
+            />
+          )
+        }
+      />
+      <div className="space-y-5">
+        {v ? (
+          <VersionView
+            planId={id}
+            v={v}
+            channels={plans.data.channels}
+            latest={v.id === latest?.id}
+          />
+        ) : (
+          <Panel>
+            <EmptyState title="Nothing drafted yet">
+              Draft the first version from research below.
+            </EmptyState>
+          </Panel>
+        )}
+        <Draft planId={id} brandId={d.plan.brandId} onDone={(n) => setPicked(n)} />
+      </div>
     </>
   );
 }
 
-function PlanBody({ plan: p }: { plan: Plan }) {
-  const confirm = useConfirmAssumption();
-  const decide = useDecidePlan();
-  const [note, setNote] = useState("");
-  const unconfirmed = p.assumptions.filter((a) => !a.confirmed).length;
-  const canDecide = p.status === "waiting" || p.status === "draft";
+function VersionView({
+  planId,
+  v,
+  channels,
+  latest,
+}: {
+  planId: number;
+  v: PlanVersion;
+  channels: ChannelInfo[];
+  latest: boolean;
+}) {
+  const session = useSession();
+  const accept = useAcceptPlanVersion(planId);
+  const doc = v.document;
+  const label = (key: string) => channels.find((c) => c.key === key)?.label ?? key;
+  const st = STATE[v.state];
+  const unproven = doc.assumptions.filter((a) => a.class !== "cited").length;
+  const canAccept = session.role === "admin" && v.state === "ready" && latest;
   return (
     <>
-      <PageHeader
-        title={
-          <span className="flex items-center gap-3">
-            {p.projectName} · plan v{p.version}
-            <StatusChip status={STATUS[p.status].chip}>{STATUS[p.status].label}</StatusChip>
-          </span>
-        }
-        subtitle={`${shortDate(p.from)} – ${shortDate(p.to)} · drafted by ${p.author} ${formatRelative(p.createdAt)}${p.decidedBy ? ` · ${STATUS[p.status].label.toLowerCase()} by ${p.decidedBy} ${formatRelative(p.decidedAt ?? p.createdAt)}` : ""}`}
-      />
-      <div className="space-y-5">
-        <section className="grid animate-rise gap-8 border bg-card px-7 py-8 md:grid-cols-[1.2fr_1fr] md:px-9">
-          <div>
-            <StatusMark status={STATUS[p.status].chip} className="size-3" />
-            <p className="mt-4 flex items-baseline gap-3 font-heading text-6xl font-semibold tracking-[-0.035em] tabular-nums md:text-7xl">
-              <CountUp
-                value={formatMoneyShort(p.budgetMinor).replace("AED ", "")}
-                to={p.budgetMinor / 100 / 1000}
-              />
-              <span className="text-xl font-medium tracking-normal text-muted-foreground">AED</span>
-            </p>
-            <h2 className="mt-5 font-heading text-2xl font-semibold leading-tight">
-              {formatNumber(p.expectedQualified)} qualified leads at{" "}
-              {formatMoneyShort(p.expectedCpqMinor)} each, if the assumptions hold.
-            </h2>
-            <p className="mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-muted-foreground">
-              {p.changes}
-            </p>
-            {canDecide && (
-              <div className="mt-5 flex flex-wrap items-center gap-2">
-                <Button
-                  disabled={decide.isPending}
-                  onClick={() => decide.mutate({ planId: p.id, decision: "approve" })}
-                >
-                  Approve v{p.version}
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={decide.isPending}
-                  onClick={() => decide.mutate({ planId: p.id, decision: "changes", note })}
-                >
-                  Ask for changes
-                </Button>
-                {unconfirmed > 0 && (
-                  <span className="text-sm text-muted-foreground">
-                    {unconfirmed} {unconfirmed === 1 ? "assumption" : "assumptions"} not confirmed
-                  </span>
-                )}
-              </div>
+      <section className="grid animate-rise gap-8 border bg-card px-7 py-8 md:grid-cols-[1.2fr_1fr] md:px-9">
+        <div>
+          <StatusChip status={st.status}>{st.label}</StatusChip>
+          <p className="mt-4 flex items-baseline gap-3 font-heading text-6xl font-semibold tracking-[-0.035em] tabular-nums md:text-7xl">
+            <CountUp
+              value={formatMoneyShort(doc.budgetMinor, doc.currency).replace(
+                `${doc.currency} `,
+                "",
+              )}
+              to={doc.budgetMinor / 100 / 1000}
+            />
+            <span className="text-xl font-medium tracking-normal text-muted-foreground">
+              {doc.currency}
+            </span>
+          </p>
+          <h2 className="mt-5 font-heading text-2xl font-semibold leading-tight">
+            {doc.objective || "No objective set"}
+          </h2>
+          <p className="mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-muted-foreground">
+            {shortDate(doc.periodFrom)} to {shortDate(doc.periodTo)}
+            {doc.notes && ` · ${doc.notes}`}
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            {canAccept && (
+              <Button disabled={accept.isPending} onClick={() => accept.mutate(v.version)}>
+                Accept v{v.version}
+              </Button>
+            )}
+            {v.state === "accepted" && (
+              <Link to="/create/launch" className={buttonVariants()}>
+                Go to launch
+              </Link>
+            )}
+            <span className="text-sm text-muted-foreground">
+              {v.validation.blocking.length > 0
+                ? `${v.validation.blocking.length} ${v.validation.blocking.length === 1 ? "thing blocks" : "things block"} acceptance`
+                : unproven > 0
+                  ? `${unproven} ${unproven === 1 ? "assumption" : "assumptions"} not backed by evidence`
+                  : "Every assumption cites evidence"}
+            </span>
+            {accept.error && (
+              <span className="text-sm text-destructive">{accept.error.message}</span>
             )}
           </div>
-          <div className="flex flex-col justify-center gap-3">
-            <Eyebrow>By channel</Eyebrow>
+        </div>
+        <div className="flex flex-col justify-center gap-3">
+          <Eyebrow>By channel</Eyebrow>
+          {doc.allocations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No allocations yet.</p>
+          ) : (
             <HBars
-              rows={p.channels.map((c) => ({
-                label: PLATFORM[c.platform],
-                value: `${c.share}%`,
-                share: c.share,
+              rows={doc.allocations.map((a) => ({
+                label: label(a.channel),
+                value: `${Math.round((a.budgetMinor / Math.max(doc.budgetMinor, 1)) * 100)}%`,
+                share: (a.budgetMinor / Math.max(doc.budgetMinor, 1)) * 100,
               }))}
-              labelWidth="6rem"
+              labelWidth="8rem"
             />
-          </div>
-        </section>
+          )}
+        </div>
+      </section>
 
-        <div className="grid gap-5 lg:grid-cols-2">
-          <Panel title="Channels" bodyClassName="p-0">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Channel</TH>
-                  <TH numeric>Budget</TH>
-                  <TH numeric>Expected qualified</TH>
-                  <TH numeric>Per qualified</TH>
+      {(v.validation.blocking.length > 0 || v.validation.warnings.length > 0) && (
+        <Panel
+          title="What the check found"
+          description={`Allocated ${money(v.validation.allocatedMinor, doc.currency)} of ${money(doc.budgetMinor, doc.currency)}.`}
+          className={v.validation.blocking.length > 0 ? "border-status-error/50" : undefined}
+          bodyClassName="p-0"
+        >
+          <ul className="divide-y">
+            {v.validation.blocking.map((i) => (
+              <Issue key={`${i.code}-${i.path}`} issue={i} blocking />
+            ))}
+            {v.validation.warnings.map((i) => (
+              <Issue key={`${i.code}-${i.path}`} issue={i} />
+            ))}
+          </ul>
+        </Panel>
+      )}
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel title="Allocations" bodyClassName="p-0">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Channel</TH>
+                <TH>Objective</TH>
+                <TH numeric>Budget</TH>
+                <TH numeric>Expected per lead</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {doc.allocations.map((a) => (
+                <TR key={`${a.channel}|${a.objective}|${a.audience}|${a.geography}`}>
+                  <TD>
+                    <span className="font-medium">{label(a.channel)}</span>
+                    {(a.geography || a.audience) && (
+                      <span className="block text-xs text-muted-foreground">
+                        {[a.geography, a.audience].filter(Boolean).join(" · ")}
+                      </span>
+                    )}
+                  </TD>
+                  <TD>{a.objective}</TD>
+                  <TD numeric>{money(a.budgetMinor, doc.currency)}</TD>
+                  <TD
+                    numeric
+                    className={a.expectedCplMinor === null ? "text-muted-foreground" : ""}
+                  >
+                    {a.expectedCplMinor === null
+                      ? "Not available"
+                      : money(a.expectedCplMinor, doc.currency)}
+                  </TD>
                 </TR>
-              </THead>
-              <TBody>
-                {p.channels.map((c) => (
-                  <TR key={c.platform}>
-                    <TD className="font-medium">{PLATFORM[c.platform]}</TD>
-                    <TD numeric>{formatMoneyShort(c.budgetMinor)}</TD>
-                    <TD numeric>{formatNumber(c.expectedQualified)}</TD>
-                    <TD numeric>{formatMoneyShort(c.expectedCpqMinor)}</TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          </Panel>
-          <Panel title="By week" bodyClassName="p-0">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Week of</TH>
-                  <TH numeric>Budget</TH>
-                  <TH>Note</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {p.weekly.map((w) => (
-                  <TR key={w.week}>
-                    <TD className="font-medium">{w.week}</TD>
-                    <TD numeric>{formatMoneyShort(w.budgetMinor)}</TD>
-                    <TD className="text-muted-foreground">{w.note ?? ""}</TD>
-                  </TR>
-                ))}
-              </TBody>
-            </Table>
-          </Panel>
-          <Panel
-            title="Assumptions"
-            description="Tick each one you've checked. Adx says where it got it."
-            bodyClassName="p-0"
-          >
+              ))}
+            </TBody>
+          </Table>
+        </Panel>
+
+        <Panel
+          title="Assumptions"
+          description="What the plan relies on without proof. A cited one points at evidence."
+          bodyClassName="p-0"
+        >
+          {doc.assumptions.length === 0 ? (
+            <EmptyState title="None recorded" />
+          ) : (
             <ul className="divide-y">
-              {p.assumptions.map((a) => (
-                <li key={a.id} className="flex items-start gap-3 px-5 py-3">
-                  <input
-                    type="checkbox"
-                    aria-label={`Confirm: ${a.text}`}
-                    className="mt-1"
-                    checked={a.confirmed}
-                    disabled={!canDecide}
-                    onChange={(e) =>
-                      confirm.mutate({
-                        planId: p.id,
-                        assumptionId: a.id,
-                        confirmed: e.target.checked,
-                      })
+              {doc.assumptions.map((a) => (
+                <li key={a.key} className="flex items-start gap-3 px-5 py-3 text-sm">
+                  <StatusMark
+                    status={
+                      a.class === "cited"
+                        ? "ready"
+                        : a.class === "unavailable"
+                          ? "pending"
+                          : "caution"
                     }
+                    className="mt-1.5"
                   />
-                  <div>
-                    <p className="text-sm">{a.text}</p>
-                    <p className="text-xs text-muted-foreground">{a.source}</p>
-                  </div>
+                  <span className="min-w-0 flex-1">
+                    {a.text}
+                    {a.value && (
+                      <span className="ml-2 font-mono text-xs text-muted-foreground">
+                        {a.value}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 font-mono text-xs text-muted-foreground">
+                    {a.class === "cited"
+                      ? "Cited"
+                      : a.class === "unavailable"
+                        ? "Nobody has it"
+                        : "Assumed"}
+                  </span>
                 </li>
               ))}
             </ul>
-          </Panel>
-          <Panel
-            title="Targets"
-            description="What the weekly review measures the campaign against."
-          >
-            <dl className="grid grid-cols-2 gap-4">
-              {p.kpis.map((k) => (
-                <div key={k.label}>
-                  <dt className="text-xs text-muted-foreground">{k.label}</dt>
-                  <dd className="font-medium">{k.target}</dd>
-                </div>
+          )}
+        </Panel>
+
+        <Panel title="What must exist first" bodyClassName="p-0">
+          <Requirements doc={doc} />
+        </Panel>
+
+        <Panel title="Tests and windows" bodyClassName="p-0">
+          {doc.testHypotheses.length === 0 && doc.observationWindows.length === 0 ? (
+            <EmptyState title="No tests planned" />
+          ) : (
+            <ul className="divide-y">
+              {doc.testHypotheses.map((t) => (
+                <li key={t.hypothesis} className="px-5 py-3 text-sm">
+                  <p>{t.hypothesis}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Measured by {t.metric} over {t.windowDays} days
+                  </p>
+                </li>
               ))}
-            </dl>
-            {canDecide && (
-              <div className="mt-5">
-                <label htmlFor="plan-note" className="text-xs text-muted-foreground">
-                  Note for Adx when asking for changes
-                </label>
-                <textarea
-                  id="plan-note"
-                  rows={2}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Move more to Google; keep Snapchat under 5%"
-                  className="mt-1 w-full border bg-card px-3 py-2 text-sm outline-none focus:border-foreground"
-                />
-              </div>
-            )}
-          </Panel>
-        </div>
-        {p.status === "approved" && (
-          <p className="text-sm text-muted-foreground">
-            Approved. Launch picks it up:{" "}
-            <Link to="/create/launch" className="underline underline-offset-4">
-              see where {p.projectName} is
-            </Link>
-            .
-          </p>
-        )}
+              {doc.observationWindows.map((w) => (
+                <li key={w.name} className="flex justify-between px-5 py-3 text-sm">
+                  <span>{w.name}</span>
+                  <span className="font-mono text-xs text-muted-foreground">{w.days} days</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Panel>
       </div>
     </>
+  );
+}
+
+function Issue({ issue: i, blocking }: { issue: ValidationIssue; blocking?: boolean }) {
+  return (
+    <li className="flex items-start gap-3 px-5 py-2.5 text-sm">
+      <StatusMark status={blocking ? "error" : "caution"} className="mt-1.5" />
+      <span className="min-w-0 flex-1">{i.message}</span>
+      {i.path && <span className="shrink-0 font-mono text-xs text-muted-foreground">{i.path}</span>}
+    </li>
+  );
+}
+
+function Requirements({ doc }: { doc: PlanDocument }) {
+  const rows = [
+    ...doc.assetRequirements.map((r) => ({
+      k: "Creative",
+      t: `${r.count} × ${r.format} · ${r.language}${r.note ? ` · ${r.note}` : ""}`,
+    })),
+    ...doc.pageRequirements.map((r) => ({
+      k: r.kind === "thank_you" ? "Thank-you page" : "Landing page",
+      t: `${r.language}${r.url ? ` · ${r.url}` : ""}${r.note ? ` · ${r.note}` : ""}`,
+    })),
+    ...doc.measurementRequirements.map((r) => ({
+      k: "Measurement",
+      t: `${r.name} (${r.kind}, ${r.platform})${r.required ? "" : " · optional"}`,
+    })),
+  ];
+  if (rows.length === 0) return <EmptyState title="Nothing listed" />;
+  return (
+    <ul className="divide-y">
+      {rows.map((r) => (
+        <li key={`${r.k}:${r.t}`} className="flex gap-3 px-5 py-2.5 text-sm">
+          <span className="w-28 shrink-0 text-muted-foreground">{r.k}</span>
+          <span className="min-w-0">{r.t}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Draft asks Adx for a version from the brand's research. The model fills a
+// frame; code pins budget and period, drops evidence it can't find and
+// rejects channels it can't run. Nothing drafted is accepted.
+function Draft({
+  planId,
+  brandId,
+  onDone,
+}: {
+  planId: number;
+  brandId: number;
+  onDone: (version: number) => void;
+}) {
+  const briefs = useBriefs();
+  const generate = useGeneratePlan(planId);
+  const [instructions, setInstructions] = useState("");
+  const mine = briefs.data?.briefs.filter((b) => b.brandId === brandId) ?? [];
+  const [chosen, setChosen] = useState<number[] | null>(null);
+  const picked = chosen ?? mine.map((b) => b.id);
+  return (
+    <Panel
+      title="Draft the next version"
+      description="From the research briefs ticked. Adx proposes; the check and you decide."
+    >
+      <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+        <div className="space-y-3">
+          {mine.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No research for this brand yet. Start it from the brand page.
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {mine.map((b) => (
+                <li key={b.id}>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={picked.includes(b.id)}
+                      onChange={(e) =>
+                        setChosen(
+                          e.target.checked ? [...picked, b.id] : picked.filter((x) => x !== b.id),
+                        )
+                      }
+                    />
+                    {b.title}
+                  </label>
+                </li>
+              ))}
+            </ul>
+          )}
+          <textarea
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
+            rows={2}
+            placeholder="Anything to steer it: lean on Meta, keep Snapchat under 10%, test the cash offer first."
+            className="w-full resize-y border border-input bg-transparent px-2.5 py-2 text-sm outline-none placeholder:text-muted-foreground hover:border-ring focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          />
+        </div>
+        <div className="flex flex-col items-start gap-2">
+          <Button
+            disabled={generate.isPending || picked.length === 0}
+            onClick={() =>
+              generate.mutate(
+                { briefIds: picked, instructions },
+                { onSuccess: (g) => onDone(g.version.version) },
+              )
+            }
+          >
+            <Sparkles /> {generate.isPending ? "Drafting…" : "Draft a version"}
+          </Button>
+          {generate.error && <p className="text-xs text-destructive">{generate.error.message}</p>}
+          {generate.data && (
+            <ul className="text-xs text-muted-foreground">
+              {generate.data.notes.map((n) => (
+                <li key={n.code}>{n.message}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </Panel>
   );
 }

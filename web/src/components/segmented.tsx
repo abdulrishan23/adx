@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import { type Status, StatusMark } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 
@@ -5,7 +6,8 @@ import { cn } from "@/lib/utils";
 export type SegmentTone = Status;
 
 // Segmented is a row of mutually exclusive tabs, with optional counts that
-// only show when they're above zero.
+// only show when they're above zero. An option with an icon shows only the
+// icon and keeps its label for screen readers and the tooltip.
 export function Segmented<T extends string>({
   value,
   onChange,
@@ -15,7 +17,7 @@ export function Segmented<T extends string>({
 }: {
   value: T;
   onChange: (value: T) => void;
-  options: { value: T; label: string; count?: number; tone?: SegmentTone }[];
+  options: { value: T; label: string; count?: number; tone?: SegmentTone; icon?: LucideIcon }[];
   label: string;
   className?: string;
 }) {
@@ -34,15 +36,18 @@ export function Segmented<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(o.value)}
+            aria-label={o.icon ? o.label : undefined}
+            title={o.icon ? o.label : undefined}
             className={cn(
-              "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md px-3 text-sm whitespace-nowrap transition-colors",
+              "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md text-sm whitespace-nowrap transition-colors",
+              o.icon ? "w-8 justify-center" : "px-3",
               active
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             {o.tone && <StatusMark status={o.tone} />}
-            {o.label}
+            {o.icon ? <o.icon className="size-4" /> : o.label}
             {o.count !== undefined && o.count > 0 && (
               <span
                 className={cn("font-mono text-[0.7rem] tabular-nums", active ? "opacity-80" : "")}

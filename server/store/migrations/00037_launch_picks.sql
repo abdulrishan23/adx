@@ -1,6 +1,6 @@
 -- +goose Up
 -- A person's choice for a plan line that matched more than one running
--- campaign (BD-58: ADX never updates both unasked). Keyed by the plan
+-- campaign (BD-60: ADX never updates both unasked). Keyed by the plan
 -- version and the line's position in it, which an immutable version keeps
 -- stable. Recorded before any intent is written, so the choice outlives the
 -- screen that asked for it.

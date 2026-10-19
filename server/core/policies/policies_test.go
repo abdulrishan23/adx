@@ -211,7 +211,7 @@ func requireKind(t *testing.T, err error, kind core.Kind) {
 var _ = context.Background
 
 // Catches: resuming a paused campaign waiting on the CMO under the suggested
-// defaults (BD-58 rule 5), and the new action missing from the catalog.
+// defaults (BD-60 rule 5), and the new action missing from the catalog.
 func TestResumeIsAMarketersOwnAction(t *testing.T) {
 	e := setup(t)
 	acct := e.account(t, "resume", true)
@@ -229,7 +229,7 @@ func TestResumeIsAMarketersOwnAction(t *testing.T) {
 
 // Catches: a campaign with no plan behind it taking a raise, a resume or a
 // targeting change because the checklist allows the role to; and the safety
-// actions (pause, lower) being blocked on it (BD-58 rules 3 and 4).
+// actions (pause, lower) being blocked on it (BD-60 rules 3 and 4).
 func TestUnplannedCampaignAllowsOnlyPauseAndLower(t *testing.T) {
 	e := setup(t)
 	acct := e.account(t, "unplanned", true)

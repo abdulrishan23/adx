@@ -24,7 +24,7 @@ describe("nav", () => {
   // Catches a screen under a door that leaves the sidebar closed, or Settings
   // opening a door by accident.
   it("knows which door a path belongs to", () => {
-    expect(doorOf("/engine/creatives")?.label).toBe("Create");
+    expect(doorOf("/creative")?.label).toBe("Create");
     expect(doorOf("/brands/3")?.label).toBe("Create");
     expect(doorOf("/leads/1001")?.label).toBe("Convert");
     expect(doorOf("/perform/projects")?.label).toBe("Perform");
@@ -55,7 +55,7 @@ describe("nav", () => {
   });
 });
 
-// The door from Perform › Campaigns into Create › Launch (BD-58). Catches the
+// The door from Perform › Campaigns into Create › Launch (BD-60). Catches the
 // project being dropped on the way, or a junk value opening some brand.
 describe("launch door", () => {
   const parse = router.routesByPath["/create/launch"].options.validateSearch as (

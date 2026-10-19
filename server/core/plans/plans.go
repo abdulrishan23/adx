@@ -41,7 +41,7 @@ type ChannelInfo struct {
 	Supported bool   `json:"supported"`
 	// CampaignType is the platform's own type for a campaign of this
 	// channel: Google's advertising channel type or Meta's objective. A plan
-	// line matches campaigns by project, platform and this type (BD-58,
+	// line matches campaigns by project, platform and this type (BD-60,
 	// confirmed by the owner 2026-10-19). Empty for channels ADX cannot
 	// deploy. One row is still pending: whoever runs Reportage's Meta
 	// account has to say whether click-to-WhatsApp campaigns run under
@@ -58,7 +58,7 @@ var Channels = []ChannelInfo{
 	{"meta_lead_form", "meta", "Meta lead form", true, "OUTCOME_LEADS"},
 	{"meta_traffic", "meta", "Meta traffic to landing page", true, "OUTCOME_TRAFFIC"},
 	{"meta_awareness", "meta", "Meta awareness", true, "OUTCOME_AWARENESS"},
-	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true, "OUTCOME_ENGAGEMENT"}, // pending the Meta account owner's check (decisions.md BD-58)
+	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true, "OUTCOME_ENGAGEMENT"}, // pending the Meta account owner's check (decisions.md BD-60)
 	{"tiktok", "tiktok", "TikTok", false, ""},
 	{"snapchat", "snapchat", "Snapchat", false, ""},
 	{"linkedin", "linkedin", "LinkedIn", false, ""},

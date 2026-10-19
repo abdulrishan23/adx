@@ -29,7 +29,7 @@ import (
 // or dev refusing to start because data/ isn't there yet.
 func TestProductionNeedsExistingStorage(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "volume")
-	cfg := config{DBPath: filepath.Join(missing, "adx.db"), AssetsDir: filepath.Join(missing, "assets")}
+	cfg := config{DBPath: filepath.Join(missing, "adx.db"), AssetsDir: filepath.Join(missing, "assets"), FilesDir: filepath.Join(missing, "files")}
 
 	err := checkStorage(cfg, false)
 	require.Error(t, err)
@@ -43,7 +43,7 @@ func TestProductionNeedsExistingStorage(t *testing.T) {
 
 	file := filepath.Join(t.TempDir(), "file")
 	require.NoError(t, os.WriteFile(file, nil, 0o600))
-	err = checkStorage(config{DBPath: filepath.Join(file, "adx.db"), AssetsDir: cfg.AssetsDir}, false)
+	err = checkStorage(config{DBPath: filepath.Join(file, "adx.db"), AssetsDir: cfg.AssetsDir, FilesDir: cfg.FilesDir}, false)
 	assert.Error(t, err)
 }
 
@@ -85,7 +85,7 @@ func TestBackupRestoresRecordsAndCredentialsWithTheKey(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, db.Close())
 
-	dir, err := backup(ctx, dbPath, assetsDir, filepath.Join(root, "backups"), time.Date(2026, 10, 17, 3, 0, 0, 0, time.UTC))
+	dir, err := backup(ctx, dbPath, assetsDir, filepath.Join(root, "files"), filepath.Join(root, "backups"), time.Date(2026, 10, 17, 3, 0, 0, 0, time.UTC))
 	require.NoError(t, err)
 	assert.True(t, strings.HasSuffix(dir, "20261017T030000Z"))
 	asset, err := os.ReadFile(filepath.Join(dir, "assets", "renders", "wadi.jpg"))
@@ -177,7 +177,7 @@ func TestRestoreReproducesLinkedStateAndRecoversInterruptedRuns(t *testing.T) {
 	require.NoError(t, err, "the run is leased, as it would be when the host dies mid-work")
 	require.NoError(t, db.Close())
 
-	dir, err := backup(ctx, dbPath, assetsDir, filepath.Join(root, "backups"), clock.Now())
+	dir, err := backup(ctx, dbPath, assetsDir, filepath.Join(root, "files"), filepath.Join(root, "backups"), clock.Now())
 	require.NoError(t, err)
 	restoredPath := filepath.Join(root, "restored", "adx.db")
 	require.NoError(t, os.MkdirAll(filepath.Dir(restoredPath), 0o755))

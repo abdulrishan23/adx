@@ -1,7 +1,6 @@
 import type { RegisteredRouter } from "@tanstack/react-router";
 import {
   Activity,
-  BookOpenText,
   Bot,
   Building2,
   CalendarRange,
@@ -102,15 +101,6 @@ export const NAV: readonly NavGroup[] = [
           "Each brand Reportage markets, such as The Wadi, and where it is on the way from brand knowledge to live campaign. Setting one up is how Create starts.",
       },
       {
-        label: "Brand knowledge",
-        to: "/create/brand",
-        icon: BookOpenText,
-        phase: 2,
-        status: "live",
-        summary:
-          "Approved facts about each project: prices, payment plans, handover, USPs, with their sources and conflicts.",
-      },
-      {
         label: "Research",
         to: "/create/research",
         icon: Telescope,
@@ -129,7 +119,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Creatives",
-        to: "/engine/creatives",
+        to: "/creative",
         icon: Palette,
         phase: 1,
         status: "live",

@@ -29,7 +29,7 @@ func runBackup(args []string) error {
 		return err
 	}
 	now := time.Now().UTC()
-	dir, err := backup(context.Background(), cfg.DBPath, cfg.AssetsDir, args[0], now)
+	dir, err := backup(context.Background(), cfg.DBPath, cfg.AssetsDir, cfg.FilesDir, args[0], now)
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func prune(dest string, now time.Time, days int) ([]string, error) {
 	return pruned, nil
 }
 
-func backup(ctx context.Context, dbPath, assetsDir, dest string, now time.Time) (string, error) {
+func backup(ctx context.Context, dbPath, assetsDir, filesDir, dest string, now time.Time) (string, error) {
 	dir := filepath.Join(dest, now.Format("20060102T150405Z"))
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -89,6 +89,9 @@ func backup(ctx context.Context, dbPath, assetsDir, dest string, now time.Time) 
 	}
 	if err := copyTree(assetsDir, filepath.Join(dir, "assets")); err != nil {
 		return "", fmt.Errorf("copy assets: %w", err)
+	}
+	if err := copyTree(filesDir, filepath.Join(dir, "files")); err != nil {
+		return "", fmt.Errorf("copy files: %w", err)
 	}
 	return dir, nil
 }

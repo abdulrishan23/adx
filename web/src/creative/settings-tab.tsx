@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useRotateReviewKey, useUpdateCreativeSettings } from "@/api/creative";
-import type { Settings } from "@/api/types.legacy";
+import type { Settings } from "@/api/types.gen";
 import { Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

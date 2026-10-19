@@ -55,6 +55,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/research"
 	"github.com/WokeWorks/adx/server/core/runs"
 	"github.com/WokeWorks/adx/server/core/signals"
+	"github.com/WokeWorks/adx/server/core/studio"
 	"github.com/WokeWorks/adx/server/core/supervisor"
 	"github.com/WokeWorks/adx/server/core/users"
 	"github.com/WokeWorks/adx/server/core/voice"
@@ -71,6 +72,7 @@ import (
 	"github.com/WokeWorks/adx/server/providers/webfetch"
 	"github.com/WokeWorks/adx/server/providers/whatsapp"
 	"github.com/WokeWorks/adx/server/store"
+	"github.com/WokeWorks/adx/server/store/blobs"
 
 	// Containers often ship without time zone data, and reports need Asia/Dubai.
 	_ "time/tzdata"
@@ -84,8 +86,11 @@ type config struct {
 	// DBPath and AssetsDir are the persistent state. Outside dev their
 	// directories must already exist, so a missing mount stops the server
 	// instead of starting it empty on a disk that goes away.
-	DBPath             string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
-	AssetsDir          string `env:"ADX_ASSETS_DIR" envDefault:"data/assets"`
+	DBPath    string `env:"ADX_DB_PATH" envDefault:"data/adx.db"`
+	AssetsDir string `env:"ADX_ASSETS_DIR" envDefault:"data/assets"`
+	// FilesDir holds the creative screens' uploads: ad pictures, renders,
+	// logos and fonts, stored once each by SHA-256 (core/studio).
+	FilesDir           string `env:"ADX_FILES_DIR" envDefault:"data/files"`
 	GHLCredentialsFile string `env:"ADX_GHL_CREDENTIALS_FILE"`
 	ConnectionKeyFile  string `env:"ADX_CONNECTION_KEY_FILE"`
 	// BootstrapAdmin becomes an admin at startup if ADX has no enabled admin.
@@ -348,6 +353,11 @@ func run() error {
 	planService := plans.New(db, brandService, plans.Config{Model: model, Evidence: evidenceStore, Memory: learningService})
 	// No AI image generator is wired; outputs are template layouts and say so.
 	creativeService := creative.New(db, assetStore, svgrender.New(), creative.Config{Brands: brandService, Plans: planService})
+	files, err := blobs.New(cfg.FilesDir)
+	if err != nil {
+		return fmt.Errorf("files dir: %w", err)
+	}
+	studioService := studio.New(db, files)
 	// Keyword Planner rides on the Google Ads connection; without one the
 	// keyword items of a brief fail as unconfigured.
 	var keywordProvider research.KeywordProvider
@@ -364,7 +374,7 @@ func run() error {
 	policyService := policies.New(db)
 	// Launch resolves plan lines to campaigns and says which campaigns an
 	// accepted plan stands behind; proposals ask it before letting anything
-	// but a pause or a budget cut through on a campaign (BD-58).
+	// but a pause or a budget cut through on a campaign (BD-60).
 	launchService := launch.New(db, planService, reportingService, launch.Config{})
 	proposalService := proposals.New(db, policyService, planService, proposals.Config{Coverage: launchService})
 	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write
@@ -601,6 +611,7 @@ func run() error {
 			Alerts:        alertsService,
 			Assistant:     assistantService,
 			Creative:      creativeService,
+			Studio:        studioService,
 			Brands:        brandService,
 			Research:      researchService,
 			Plans:         planService,
@@ -689,7 +700,7 @@ func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research,
 // database would quietly start from nothing.
 func checkStorage(cfg config, dev bool) error {
 	for name, dir := range map[string]string{
-		"ADX_DB_PATH": filepath.Dir(cfg.DBPath), "ADX_ASSETS_DIR": cfg.AssetsDir,
+		"ADX_DB_PATH": filepath.Dir(cfg.DBPath), "ADX_ASSETS_DIR": cfg.AssetsDir, "ADX_FILES_DIR": cfg.FilesDir,
 	} {
 		info, err := os.Stat(dir)
 		switch {

@@ -1,5 +1,5 @@
 import { type ReactNode, useRef, useState } from "react";
-import type { ReviewStatus } from "@/api/types.legacy";
+import type { ReviewStatus } from "@/api/types.gen";
 import { Button } from "@/components/ui/button";
 import { type Status, StatusMark } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";

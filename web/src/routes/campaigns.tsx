@@ -113,7 +113,7 @@ export function CampaignsPage() {
           <span className="flex flex-wrap items-center gap-2">
             <ScopeBar />
             {/* A new campaign starts from a plan, so this is a door into Create's
-                Launch (BD-58), not a second launch flow. Phase 3 with Launch. */}
+                Launch (BD-60), not a second launch flow. Phase 3 with Launch. */}
             {released(3) && (
               <Link
                 to="/create/launch"
