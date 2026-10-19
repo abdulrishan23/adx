@@ -286,6 +286,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/api/creative/concepts/{id}", h.studioRoute("id", "concept", h.saveConcept))
 			r.Post("/api/creative/concepts/{id}/ads", h.studioRoute("id", "concept", h.saveGenerated))
 			r.Post("/api/creative/concepts/{id}/imagery", h.studioRoute("id", "concept", h.generateImagery))
+			r.Post("/api/creative/concepts/{id}/video", h.studioRoute("id", "concept", h.startVideo))
 			ad := func(fn func(w http.ResponseWriter, r *http.Request, id int64)) http.HandlerFunc {
 				return h.studioRoute("id", "ad", fn)
 			}

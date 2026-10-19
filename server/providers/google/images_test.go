@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,4 +62,58 @@ func TestGenerateImageRequestAndResponses(t *testing.T) {
 	_, err = c.GenerateImage(t.Context(), ImageRequest{Prompt: "x"})
 	require.ErrorAs(t, err, &ge)
 	assert.True(t, ge.Retryable)
+}
+
+// Catches: the clip reported before the operation is done, a filtered clip
+// reported as a clip, and the download sent without the key.
+func TestGenerateVideoPollsAndDownloads(t *testing.T) {
+	polls := 0
+	var startBody map[string]any
+	var downloadKey string
+	mode := "ok"
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.HasSuffix(r.URL.Path, ":predictLongRunning"):
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&startBody))
+			_, _ = w.Write([]byte(`{"name":"models/veo/operations/abc"}`))
+		case strings.HasPrefix(r.URL.Path, "/models/veo/operations/"):
+			polls++
+			if polls < 2 {
+				_, _ = w.Write([]byte(`{"done":false}`))
+				return
+			}
+			if mode == "filtered" {
+				_, _ = w.Write([]byte(`{"done":true,"response":{"generateVideoResponse":{"generatedSamples":[],"raiMediaFilteredCount":1,"raiMediaFilteredReasons":["people"]}}}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"done":true,"response":{"generateVideoResponse":{"generatedSamples":[{"video":{"uri":"` + srv.URL + `/download/clip"}}]}}}`))
+		case r.URL.Path == "/download/clip":
+			downloadKey = r.Header.Get("x-goog-api-key")
+			w.Header().Set("Content-Type", "video/mp4")
+			_, _ = w.Write([]byte("MP4BYTES"))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer srv.Close()
+	c, err := New(Config{APIKey: "k", BaseURL: srv.URL, Poll: time.Millisecond})
+	require.NoError(t, err)
+	v, err := c.GenerateVideo(t.Context(), VideoRequest{Prompt: "slow push in over the lagoon", AspectRatio: "9:16", Seconds: 8, Resolution: "720p", Image: &Reference{MIME: "image/jpeg", Data: []byte("JPG")}})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("MP4BYTES"), v.Data)
+	assert.Equal(t, "video/mp4", v.MIME)
+	assert.Equal(t, "k", downloadKey)
+	assert.Equal(t, 2, polls)
+	params := startBody["parameters"].(map[string]any)
+	assert.Equal(t, "9:16", params["aspectRatio"])
+	assert.Equal(t, "8", params["durationSeconds"])
+	inst := startBody["instances"].([]any)[0].(map[string]any)
+	assert.NotNil(t, inst["image"])
+
+	polls, mode = 0, "filtered"
+	_, err = c.GenerateVideo(t.Context(), VideoRequest{Prompt: "x"})
+	var ge *Error
+	require.ErrorAs(t, err, &ge)
+	assert.Contains(t, ge.Safe, "filtered")
 }

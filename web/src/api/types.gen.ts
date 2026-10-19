@@ -64,6 +64,7 @@ export interface ActionPreview {
 export interface Ad {
     id: number;
     code: string;
+    kind: string;
     fileName: string;
     fmt: Fmt;
     lang: Lang;
@@ -107,6 +108,7 @@ export interface AdVersion {
     file: FileRef;
     preview: FileRef;
     source: string;
+    method: string;
     createdAt: string;
 }
 
@@ -4231,6 +4233,13 @@ export interface StartRunResponse {
     created: boolean;
 }
 
+// From studio/video.go
+export interface StartedVideo {
+    ad: Ad;
+    run: Run;
+    started: boolean;
+}
+
 // From runs/runs.go
 export type State = "failed" | "interrupted" | "partial" | "queued" | "running" | "succeeded";
 
@@ -4518,6 +4527,24 @@ export interface VersionInput {
 
 // From core/core.go
 export type Via = "assistant" | "job" | "mcp" | "startup" | "web";
+
+// From studio/video.go
+export interface VideoInput {
+    lang: Lang;
+    mode: string;
+    renderCodes: string[];
+    prompt: string;
+    slug: string;
+}
+
+// From studio/video.go
+export const VideoModel = "model";
+
+// From studio/video.go
+export const VideoMotion = "motion";
+
+// From studio/video.go
+export const VideoRunKind = "studio_video";
 
 // From api/evaluation.go
 export interface VoiceInput {

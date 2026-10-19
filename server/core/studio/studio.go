@@ -83,6 +83,7 @@ type AdVersion struct {
 	File      FileRef   `json:"file"`
 	Preview   FileRef   `json:"preview"`
 	Source    string    `json:"source"`
+	Method    string    `json:"method"` // "", motion or model
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -106,6 +107,7 @@ type Decision struct {
 type Ad struct {
 	ID         int64        `json:"id"`
 	Code       string       `json:"code"`
+	Kind       string       `json:"kind"` // static or video
 	FileName   string       `json:"fileName"`
 	Fmt        Fmt          `json:"fmt"`
 	Lang       Lang         `json:"lang"`
@@ -457,7 +459,7 @@ func (c *Studio) ads(ctx context.Context, q *store.Queries, projectID int64) ([]
 	out := make([]adRow, 0, len(rows))
 	for _, r := range rows {
 		a := adRow{conceptID: r.ConceptID, Ad: Ad{
-			ID: r.ID, Code: r.Code, FileName: r.FileName, Fmt: Fmt(r.Fmt), Lang: Lang(r.Lang),
+			ID: r.ID, Code: r.Code, Kind: r.Kind, FileName: r.FileName, Fmt: Fmt(r.Fmt), Lang: Lang(r.Lang),
 			HasCTA: r.HasCta == 1, RenderCode: r.RenderCode, HasDraft: r.Draft.Valid,
 			Decisions: []Decision{}, Comments: commentCount[r.ID], Status: StatusUnpublished,
 		}}
@@ -613,7 +615,7 @@ func (f *fileCache) version(ctx context.Context, v store.CreativeAdVersion) (AdV
 	if err != nil {
 		return AdVersion{}, err
 	}
-	return AdVersion{ID: v.ID, Version: v.Version, File: file, Preview: preview, Source: v.Source, CreatedAt: v.CreatedAt}, nil
+	return AdVersion{ID: v.ID, Version: v.Version, File: file, Preview: preview, Source: v.Source, Method: v.Method, CreatedAt: v.CreatedAt}, nil
 }
 
 func fileRef(f store.File) FileRef {
@@ -663,7 +665,7 @@ func (c *Studio) Upload(ctx context.Context, actor core.Actor, r io.Reader) (Fil
 	}
 	f.Close()
 	if contentType == "" {
-		return FileRef{}, core.Invalid("upload a JPG, PNG, WebP or SVG picture, or a TTF, OTF, WOFF or WOFF2 font")
+		return FileRef{}, core.Invalid("upload a JPG, PNG, WebP or SVG picture, an MP4 video, or a TTF, OTF, WOFF or WOFF2 font")
 	}
 	row, err := c.db.Writer().InsertFile(ctx, store.InsertFileParams{
 		Sha256: sum, ContentType: contentType, Bytes: size, Width: width, Height: height,
@@ -708,6 +710,9 @@ func sniff(head []byte) string {
 		return "font/otf"
 	case bytes.HasPrefix(head, []byte{0, 1, 0, 0}), bytes.HasPrefix(head, []byte("true")):
 		return "font/ttf"
+	}
+	if len(head) >= 12 && bytes.Equal(head[4:8], []byte("ftyp")) {
+		return "video/mp4"
 	}
 	switch ct := http.DetectContentType(head); ct {
 	case "image/jpeg", "image/png", "image/webp":

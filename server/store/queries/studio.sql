@@ -108,14 +108,17 @@ SELECT * FROM creative_ads WHERE project_id = ? AND code = ?;
 SELECT CAST(COALESCE(MAX(pos), 0) AS INTEGER) FROM creative_ads WHERE concept_id = ?;
 
 -- name: InsertAd :one
-INSERT INTO creative_ads (project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO creative_ads (project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateAdShape :exec
 UPDATE creative_ads
 SET concept_id = ?, file_name = ?, fmt = ?, lang = ?, has_cta = ?, render_code = ?, updated_at = ?
 WHERE id = ?;
+
+-- name: SetAdKind :exec
+UPDATE creative_ads SET kind = ?, file_name = ?, updated_at = ? WHERE id = ?;
 
 -- name: SaveAdDraft :exec
 UPDATE creative_ads SET draft = ?, render_code = ?, updated_at = ? WHERE id = ?;
@@ -135,8 +138,8 @@ WHERE a.project_id = ?
   AND v.version = (SELECT MAX(x.version) FROM creative_ad_versions x WHERE x.ad_id = v.ad_id);
 
 -- name: InsertVersion :one
-INSERT INTO creative_ad_versions (ad_id, version, file_id, preview_file_id, design, source, created_by, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO creative_ad_versions (ad_id, version, file_id, preview_file_id, design, source, method, created_by, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: ListCurrentDecisions :many

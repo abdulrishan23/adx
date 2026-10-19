@@ -73,7 +73,7 @@ Ported from Creative Studio into ADX's design. Images are files on the server ne
 
 | Screen | Route | What it does |
 |---|---|---|
-| Creatives | `/creative` | Projects with their concepts, ads and review state: approved, needs changes, waiting. On the engine through `core/studio` (BD-59) |
+| Creatives | `/creative` | Projects with their concepts, ads and review state: approved, needs changes, waiting. On the engine through `core/studio` (BD-59). Adx writes concepts from approved facts, pictures them and makes motion or Veo video ads (BD-61) |
 | Project | `/creative/$projectId` | Concepts, renders and brand kit tabs. Upload, new concept, copy review link, download approved |
 | Upload | `/creative/$projectId/upload` | Drop many images. Size comes from the pixels, and concept, language and CTA from the file name. A check table before saving |
 | Concept | `/creative/$projectId/concepts/$conceptId` | Copy in English and Arabic, default render, generate all sizes, each ad with its house-rule checks and review state |

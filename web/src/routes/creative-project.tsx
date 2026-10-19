@@ -338,10 +338,22 @@ function ConceptSection({
 
 function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit: boolean }) {
   const f = FORMATS[ad.fmt];
+  const video = ad.kind === "video";
   return (
     <li className="min-w-0 space-y-1.5">
       <div className="relative grid h-56 place-items-center border bg-muted p-2">
-        {ad.current ? (
+        {ad.current && video ? (
+          <video
+            src={fileUrl(ad.current.file)}
+            poster={fileUrl(ad.current.preview)}
+            controls
+            muted
+            playsInline
+            preload="none"
+            className="max-h-52 max-w-full"
+            style={{ aspectRatio: `${f.width} / ${f.height}` }}
+          />
+        ) : ad.current ? (
           <a href={fileUrl(ad.current.file)} target="_blank" rel="noreferrer">
             <img
               src={fileUrl(ad.current.preview)}
@@ -353,13 +365,13 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
           </a>
         ) : (
           <span className="absolute inset-0 grid place-items-center p-2 text-center text-xs text-muted-foreground">
-            Not published yet
+            {video ? "Being made" : "Not published yet"}
           </span>
         )}
       </div>
       <div className="flex items-center justify-between gap-2">
         <ReviewState status={ad.status} />
-        {canEdit && (
+        {canEdit && !video && (
           <Link
             to="/creative/$projectId/ads/$adId/edit"
             params={{ projectId: String(projectId), adId: String(ad.id) }}
@@ -371,7 +383,14 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        {ad.fmt} · {ad.hasCta ? "With CTA" : "No CTA"}
+        {video ? "Video" : ad.fmt} ·{" "}
+        {video
+          ? ad.current?.method === "model"
+            ? "Veo"
+            : "Motion"
+          : ad.hasCta
+            ? "With CTA"
+            : "No CTA"}
         {ad.lang === "ar" && " · Arabic"}
         {ad.current && ad.current.version > 1 && ` · v${ad.current.version}`}
         {ad.comments > 0 && ` · ${ad.comments} ${ad.comments === 1 ? "comment" : "comments"}`}

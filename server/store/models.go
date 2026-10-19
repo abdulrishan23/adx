@@ -380,6 +380,7 @@ type CreativeAd struct {
 	Draft      sql.NullString
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	Kind       string
 }
 
 type CreativeAdVersion struct {
@@ -392,6 +393,7 @@ type CreativeAdVersion struct {
 	Source        string
 	CreatedBy     sql.NullInt64
 	CreatedAt     time.Time
+	Method        string
 }
 
 type CreativeComment struct {

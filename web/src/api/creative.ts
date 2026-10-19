@@ -31,9 +31,11 @@ import type {
   RendersResponse,
   Settings,
   SettingsInput,
+  StartedVideo,
   UploadedAd,
   UploadResult,
   VariationInput,
+  VideoInput,
 } from "./types.gen";
 
 const KEY = ["creative"] as const;
@@ -119,6 +121,13 @@ export const useGenerateConcepts = (projectId: number) =>
 export const useGenerateImagery = (conceptId: number) =>
   useCreativeMutation((input: GenerateImageryInput) =>
     postJSON<GeneratedImagery>(`/api/creative/concepts/${conceptId}/imagery`, input),
+  );
+
+// A video ad is made in the background: motion from the project's renders
+// ending on the finished story ad, or a clip from the video model.
+export const useStartVideo = (conceptId: number) =>
+  useCreativeMutation((input: VideoInput) =>
+    postJSON<StartedVideo>(`/api/creative/concepts/${conceptId}/video`, input),
   );
 
 export const useSaveConcept = (conceptId: number) =>

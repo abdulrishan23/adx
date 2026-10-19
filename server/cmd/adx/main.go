@@ -64,6 +64,7 @@ import (
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
 	"github.com/WokeWorks/adx/server/providers/elevenlabs"
+	"github.com/WokeWorks/adx/server/providers/ffmpeg"
 	"github.com/WokeWorks/adx/server/providers/filestore"
 	"github.com/WokeWorks/adx/server/providers/google"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
@@ -167,6 +168,8 @@ type config struct {
 	// GeminiAPIKey turns on picture generation in the studio (providers/google).
 	GeminiAPIKey           string `env:"ADX_GEMINI_API_KEY"`
 	ImageModel             string `env:"ADX_IMAGE_MODEL"`
+	VideoModel             string `env:"ADX_VIDEO_MODEL"`
+	FFmpegBin              string `env:"ADX_FFMPEG"` // path to ffmpeg; found on PATH when unset
 	ModelName              string `env:"ADX_MODEL_NAME" envDefault:"claude-opus-5-5"`
 	ModelEffort            string `env:"ADX_MODEL_EFFORT" envDefault:"medium"`
 	ModelBaseURL           string `env:"ADX_MODEL_BASE_URL"`
@@ -365,13 +368,19 @@ func run() error {
 	studioService := studio.New(db, files)
 	studioGen := studio.Generation{Model: model, Brands: brandService}
 	if cfg.GeminiAPIKey != "" {
-		gc, err := google.New(google.Config{APIKey: cfg.GeminiAPIKey, ImageModel: cfg.ImageModel})
+		gc, err := google.New(google.Config{APIKey: cfg.GeminiAPIKey, ImageModel: cfg.ImageModel, VideoModel: cfg.VideoModel})
 		if err != nil {
 			return err
 		}
 		studioGen.Images = googleImages{gc}
+		studioGen.Video = googleVideo{gc}
 	} else {
 		log.Warn("picture generation is off (ADX_GEMINI_API_KEY unset); the studio takes uploaded renders only")
+	}
+	if ff, err := ffmpeg.New(cfg.FFmpegBin); err == nil {
+		studioGen.Motion = motionMaker{ff}
+	} else {
+		log.Warn("motion video is off", "error", err)
 	}
 	studioService.Generate(studioGen)
 	// Keyword Planner rides on the Google Ads connection; without one the
@@ -452,7 +461,7 @@ func run() error {
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
-		Executors: runExecutors(leadsService, reportingService, researchService, creativeService),
+		Executors: runExecutors(leadsService, reportingService, researchService, creativeService, studioService),
 		Periodic: []jobs.Periodic{
 			{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
 				started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
@@ -701,8 +710,8 @@ func configuredMailer(cfg config) (reports.Mailer, error) {
 }
 
 // runExecutors maps run kinds to the code that works them.
-func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research, c *creative.Service) map[string]jobs.Executor {
-	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs, creative.RenderRunKind: c}
+func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research, c *creative.Service, st *studio.Studio) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs, creative.RenderRunKind: c, studio.VideoRunKind: st}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates
@@ -925,4 +934,32 @@ func (g googleImages) GenerateImage(ctx context.Context, in studio.PictureReques
 		return studio.Picture{}, err
 	}
 	return studio.Picture{MIME: img.MIME, Data: img.Data}, nil
+}
+
+type googleVideo struct{ c *google.Client }
+
+func (g googleVideo) GenerateVideo(ctx context.Context, in studio.ClipRequest) (studio.Clip, error) {
+	req := google.VideoRequest{Prompt: in.Prompt, AspectRatio: in.AspectRatio, Seconds: in.Seconds, Resolution: "720p"}
+	if in.Image != nil {
+		req.Image = &google.Reference{MIME: in.Image.MIME, Data: in.Image.Data}
+	}
+	v, err := g.c.GenerateVideo(ctx, req)
+	if err != nil {
+		var ge *google.Error
+		if errors.As(err, &ge) {
+			return studio.Clip{}, &studio.PictureError{Safe: ge.Safe, Retryable: ge.Retryable, Cause: err}
+		}
+		return studio.Clip{}, err
+	}
+	return studio.Clip{MIME: v.MIME, Data: v.Data}, nil
+}
+
+type motionMaker struct{ b *ffmpeg.Builder }
+
+func (m motionMaker) Build(ctx context.Context, spec studio.MotionSpec) ([]byte, []byte, error) {
+	return m.b.Build(ctx, ffmpeg.Motion{Pictures: spec.Pictures, Card: spec.Card, Width: spec.Width, Height: spec.Height})
+}
+
+func (m motionMaker) Poster(ctx context.Context, mp4 []byte) ([]byte, error) {
+	return m.b.Poster(ctx, mp4)
 }

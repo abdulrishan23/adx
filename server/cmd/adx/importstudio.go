@@ -240,7 +240,7 @@ func (s *studioImport) importProject(oldID, newID int64, n *importCounts) error 
 			arows.Close()
 			return err
 		}
-		a, err := s.q.InsertAd(s.ctx, store.InsertAdParams{ProjectID: newID, ConceptID: conceptIDs[conceptID], Code: code, FileName: fileName, Pos: pos, Fmt: format, Lang: lang, HasCta: hasCTA, RenderCode: render, Draft: draft, CreatedAt: created, UpdatedAt: updated})
+		a, err := s.q.InsertAd(s.ctx, store.InsertAdParams{ProjectID: newID, ConceptID: conceptIDs[conceptID], Code: code, FileName: fileName, Pos: pos, Fmt: format, Lang: lang, HasCta: hasCTA, RenderCode: render, Draft: draft, Kind: "static", CreatedAt: created, UpdatedAt: updated})
 		if err != nil {
 			arows.Close()
 			return err

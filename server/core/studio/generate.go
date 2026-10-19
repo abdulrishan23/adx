@@ -22,6 +22,8 @@ type Generation struct {
 	Model  assistant.Model
 	Brands *brands.Brands
 	Images ImageMaker
+	Motion MotionMaker
+	Video  VideoMaker
 }
 
 // Generate configures the studio's model-backed functions.

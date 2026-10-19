@@ -1,5 +1,6 @@
 // Package google is ADX's client for Google's generative media on the Gemini
-// API: pictures now, video later. One API key covers both. Nothing here
+// API: pictures through the image model and clips through Veo. One API key
+// covers both. Nothing here
 // decides what to make; core/studio writes the prompt and keeps the result.
 package google
 
@@ -25,20 +26,24 @@ const (
 type Config struct {
 	APIKey     string
 	ImageModel string // defaults to gemini-3.1-flash-image
+	VideoModel string // defaults to veo-3.1-generate-preview
 	BaseURL    string
 	HTTPClient *http.Client
+	// Poll is how often a video operation is checked; tests shorten it.
+	Poll time.Duration
 }
 
 type Client struct {
-	key, model, base string
-	http             *http.Client
+	key, model, videoModel, base string
+	http                         *http.Client
+	poll                         time.Duration
 }
 
 func New(cfg Config) (*Client, error) {
 	if strings.TrimSpace(cfg.APIKey) == "" {
 		return nil, errors.New("google: an API key is required")
 	}
-	c := &Client{key: cfg.APIKey, model: cfg.ImageModel, base: strings.TrimRight(cfg.BaseURL, "/"), http: cfg.HTTPClient}
+	c := &Client{key: cfg.APIKey, model: cfg.ImageModel, videoModel: cfg.VideoModel, base: strings.TrimRight(cfg.BaseURL, "/"), http: cfg.HTTPClient, poll: cfg.Poll}
 	if c.model == "" {
 		c.model = defaultImageModel
 	}

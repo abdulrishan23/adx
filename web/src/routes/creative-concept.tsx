@@ -9,6 +9,7 @@ import {
   useGenerateImagery,
   useRefreshCreative,
   useSaveConcept,
+  useStartVideo,
 } from "@/api/creative";
 import type { Concept, CreativeProject } from "@/api/types.gen";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
@@ -26,6 +27,7 @@ import { layoutDoc } from "@/creative/layout";
 import { FMT_ORDER, type Fmt, type Lang, slugFromCode, slugFromName } from "@/creative/naming";
 import { loadGoogleFonts, registerFonts, renderDoc } from "@/creative/render";
 import { Field, Progress, textareaClass } from "@/creative/ui";
+import { useRun } from "@/engine/api/runs";
 import { cn } from "@/lib/utils";
 
 export function CreativeConceptPage({
@@ -135,6 +137,7 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
               <Input id="why" value={f.why} onChange={(e) => set({ why: e.target.value })} />
             </Field>
             <PictureIt concept={concept} />
+            <MakeVideo concept={concept} project={project} />
             <div className="space-y-2 md:col-span-2">
               <p className="text-sm font-medium">Render behind generated ads</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -298,6 +301,88 @@ function PictureIt({ concept }: { concept: Concept }) {
           {n}
         </p>
       ))}
+    </div>
+  );
+}
+
+// A video ad per language: motion moves the chosen renders and ends on the
+// finished story ad; the video model grows a clip from the first render and
+// the concept's picture prompt. Either is made in the background and lands
+// on the project page as an ad to review.
+function MakeVideo({ concept, project }: { concept: Concept; project: CreativeProject }) {
+  const [mode, setMode] = useState<"motion" | "model">("motion");
+  const [lang, setLang] = useState<Lang>("en");
+  const [picked, setPicked] = useState<string[]>([]);
+  const start = useStartVideo(concept.id);
+  const refresh = useRefreshCreative();
+  const run = useRun(start.data?.run.id ?? "");
+  const state = run.data?.state;
+  useEffect(() => {
+    if (state === "succeeded" || state === "failed") refresh();
+  }, [state, refresh]);
+  const renders = project.renders.filter((r) => !r.hidden);
+  const toggle = (code: string) =>
+    setPicked((xs) => (xs.includes(code) ? xs.filter((x) => x !== code) : [...xs, code]));
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <p className="text-sm font-medium">Video</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented
+          label="How"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "motion", label: "Motion from renders" },
+            { value: "model", label: "Veo clip" },
+          ]}
+        />
+        <Segmented
+          label="Language"
+          value={lang}
+          onChange={setLang}
+          options={[
+            { value: "en", label: "English" },
+            { value: "ar", label: "Arabic" },
+          ]}
+        />
+        <Button
+          size="sm"
+          disabled={start.isPending || state === "queued" || state === "running"}
+          onClick={() => start.mutate({ mode, lang, renderCodes: picked, prompt: "", slug: "" })}
+        >
+          <Sparkles />
+          {state === "queued" || state === "running" ? "Making" : "Make video"}
+        </Button>
+      </div>
+      {mode === "motion" && renders.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {renders.map((r) => (
+            <RenderChoice
+              key={r.code}
+              selected={picked.includes(r.code)}
+              onClick={() => toggle(r.code)}
+              title={`${r.code} ${r.label}`}
+            >
+              <img src={fileUrl(r.preview)} alt={r.code} className="size-full object-cover" />
+            </RenderChoice>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {mode === "motion"
+          ? "Pick the renders to move, in order, or leave them for Adx to choose. The finished story ad in that language closes the video."
+          : "Veo grows an eight-second clip from the first render and the picture prompt above."}
+      </p>
+      {start.error && <p className="text-sm text-destructive">{start.error.message}</p>}
+      {run.data && (
+        <p className="text-sm text-muted-foreground">
+          {state === "succeeded"
+            ? "Done. The video is on the project page, waiting for review."
+            : state === "failed"
+              ? `Failed: ${run.data.error ?? "unknown"}`
+              : `${state}…`}
+        </p>
+      )}
     </div>
   );
 }
