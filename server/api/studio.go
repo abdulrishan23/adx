@@ -154,6 +154,15 @@ func (h *handlers) generateConcepts(w http.ResponseWriter, r *http.Request, id i
 	respond(h, w, r, http.StatusCreated, out, err)
 }
 
+func (h *handlers) generateImagery(w http.ResponseWriter, r *http.Request, id int64) {
+	var in studio.GenerateImageryInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	out, err := h.studio.GenerateImagery(r.Context(), actorFrom(r), id, in)
+	respond(h, w, r, http.StatusCreated, out, err)
+}
+
 func (h *handlers) saveConcept(w http.ResponseWriter, r *http.Request, id int64) {
 	var in studio.ConceptInput
 	if !readJSON(w, r, &in) {

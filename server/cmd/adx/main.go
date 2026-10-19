@@ -65,6 +65,7 @@ import (
 	"github.com/WokeWorks/adx/server/providers/authentik"
 	"github.com/WokeWorks/adx/server/providers/elevenlabs"
 	"github.com/WokeWorks/adx/server/providers/filestore"
+	"github.com/WokeWorks/adx/server/providers/google"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/providers/svgrender"
 	"github.com/WokeWorks/adx/server/providers/twilio"
@@ -161,8 +162,11 @@ type config struct {
 	// Ask ADX (B1.5). The model is configuration: provider, name, key,
 	// effort, timeout, daily token budget and prices for cost accounting.
 	// Without a key the assistant answers "not configured" and invents nothing.
-	ModelProvider          string `env:"ADX_MODEL_PROVIDER" envDefault:"anthropic"`
-	ModelAPIKey            string `env:"ADX_MODEL_API_KEY"`
+	ModelProvider string `env:"ADX_MODEL_PROVIDER" envDefault:"anthropic"`
+	ModelAPIKey   string `env:"ADX_MODEL_API_KEY"`
+	// GeminiAPIKey turns on picture generation in the studio (providers/google).
+	GeminiAPIKey           string `env:"ADX_GEMINI_API_KEY"`
+	ImageModel             string `env:"ADX_IMAGE_MODEL"`
 	ModelName              string `env:"ADX_MODEL_NAME" envDefault:"claude-opus-5-5"`
 	ModelEffort            string `env:"ADX_MODEL_EFFORT" envDefault:"medium"`
 	ModelBaseURL           string `env:"ADX_MODEL_BASE_URL"`
@@ -359,7 +363,17 @@ func run() error {
 		return fmt.Errorf("files dir: %w", err)
 	}
 	studioService := studio.New(db, files)
-	studioService.Generate(studio.Generation{Model: model, Brands: brandService})
+	studioGen := studio.Generation{Model: model, Brands: brandService}
+	if cfg.GeminiAPIKey != "" {
+		gc, err := google.New(google.Config{APIKey: cfg.GeminiAPIKey, ImageModel: cfg.ImageModel})
+		if err != nil {
+			return err
+		}
+		studioGen.Images = googleImages{gc}
+	} else {
+		log.Warn("picture generation is off (ADX_GEMINI_API_KEY unset); the studio takes uploaded renders only")
+	}
+	studioService.Generate(studioGen)
 	// Keyword Planner rides on the Google Ads connection; without one the
 	// keyword items of a brief fail as unconfigured.
 	var keywordProvider research.KeywordProvider
@@ -892,4 +906,23 @@ func candidateModels(db *store.DB, cfg config) evaluation.ModelFactory {
 		}
 		return ops.NewMeter(db, m, cfg.ModelDailyTokenCap, nil), nil
 	}
+}
+
+// googleImages adapts the Google client to what the studio asks for.
+type googleImages struct{ c *google.Client }
+
+func (g googleImages) GenerateImage(ctx context.Context, in studio.PictureRequest) (studio.Picture, error) {
+	refs := make([]google.Reference, 0, len(in.References))
+	for _, r := range in.References {
+		refs = append(refs, google.Reference{MIME: r.MIME, Data: r.Data})
+	}
+	img, err := g.c.GenerateImage(ctx, google.ImageRequest{Prompt: in.Prompt, AspectRatio: in.AspectRatio, Size: "1K", References: refs})
+	if err != nil {
+		var ge *google.Error
+		if errors.As(err, &ge) {
+			return studio.Picture{}, &studio.PictureError{Safe: ge.Safe, Retryable: ge.Retryable, Cause: err}
+		}
+		return studio.Picture{}, err
+	}
+	return studio.Picture{MIME: img.MIME, Data: img.Data}, nil
 }

@@ -1624,6 +1624,14 @@ export interface GenerateConceptsInput {
     instructions: string;
 }
 
+// From studio/imagery.go
+export interface GenerateImageryInput {
+    count: number;
+    prompt: string;
+    aspectRatio: string;
+    useRenders: boolean;
+}
+
 // From plans/generate.go
 export interface GenerateInput {
     briefIds: number[];
@@ -1664,6 +1672,12 @@ export interface GeneratedConcepts {
     notes: string[];
     model: string;
     usage: Usage;
+}
+
+// From studio/imagery.go
+export interface GeneratedImagery {
+    renders: Render[];
+    notes: string[];
 }
 
 // From plans/generate.go

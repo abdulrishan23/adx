@@ -21,6 +21,7 @@ import (
 type Generation struct {
 	Model  assistant.Model
 	Brands *brands.Brands
+	Images ImageMaker
 }
 
 // Generate configures the studio's model-backed functions.

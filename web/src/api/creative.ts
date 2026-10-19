@@ -18,6 +18,8 @@ import type {
   GenerateConceptsInput,
   GeneratedAd,
   GeneratedConcepts,
+  GeneratedImagery,
+  GenerateImageryInput,
   GenerateResult,
   NewConcept,
   NewRender,
@@ -110,6 +112,13 @@ export const useCreateConcept = (projectId: number) =>
 export const useGenerateConcepts = (projectId: number) =>
   useCreativeMutation((input: GenerateConceptsInput) =>
     postJSON<GeneratedConcepts>(`/api/creative/projects/${projectId}/concepts/generate`, input),
+  );
+
+// Adx pictures a concept: each picture becomes a render of the project,
+// labelled with the concept's code, for the generator and the editor.
+export const useGenerateImagery = (conceptId: number) =>
+  useCreativeMutation((input: GenerateImageryInput) =>
+    postJSON<GeneratedImagery>(`/api/creative/concepts/${conceptId}/imagery`, input),
   );
 
 export const useSaveConcept = (conceptId: number) =>

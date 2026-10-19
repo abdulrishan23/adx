@@ -1,7 +1,11 @@
 package studio
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
+	"image"
+	"image/png"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -87,4 +91,72 @@ func TestGenerateConceptsKeepsToApprovedFacts(t *testing.T) {
 	var ce *core.Error
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindConflict, ce.Kind)
+}
+
+type fakeImages struct {
+	calls []PictureRequest
+	fail  error
+}
+
+func (f *fakeImages) GenerateImage(_ context.Context, in PictureRequest) (Picture, error) {
+	f.calls = append(f.calls, in)
+	if f.fail != nil {
+		return Picture{}, f.fail
+	}
+	img := image.NewRGBA(image.Rect(0, 0, 720, 1280))
+	for i := range img.Pix {
+		img.Pix[i] = uint8(len(f.calls) * 40)
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, img); err != nil {
+		return Picture{}, err
+	}
+	return Picture{MIME: "image/png", Data: buf.Bytes()}, nil
+}
+
+// Catches: a picture kept without a preview, the concept's prompt not
+// reaching the model, the project's renders not sent as references when
+// asked, and an outage reported as a bad request.
+func TestGenerateImageryKeepsPicturesAsRenders(t *testing.T) {
+	f := setup(t)
+	ctx := t.Context()
+	k, err := f.c.CreateConcept(ctx, marketer, f.project, NewConcept{Code: "C1", Name: "Launch"})
+	require.NoError(t, err)
+	fake := &fakeImages{}
+	f.c.Generate(Generation{Images: fake})
+
+	_, err = f.c.GenerateImagery(ctx, marketer, k.ID, GenerateImageryInput{})
+	assert.Error(t, err, "no prompt anywhere yet")
+
+	out, err := f.c.GenerateImagery(ctx, marketer, k.ID, GenerateImageryInput{Count: 2, Prompt: "Dusk over the lagoon"})
+	require.NoError(t, err)
+	require.Len(t, out.Renders, 2)
+	assert.Equal(t, "R01", out.Renders[0].Code)
+	assert.Equal(t, "C1 · Adx", out.Renders[0].Label)
+	assert.Equal(t, "image/jpeg", out.Renders[0].File.ContentType)
+	assert.Equal(t, int64(720), *out.Renders[0].File.Width)
+	assert.Equal(t, int64(360), *out.Renders[0].Preview.Width, "a preview is made")
+	require.Len(t, fake.calls, 2)
+	assert.Contains(t, fake.calls[0].Prompt, "Dusk over the lagoon")
+	assert.Contains(t, fake.calls[0].Prompt, "No text")
+	assert.Equal(t, "9:16", fake.calls[0].AspectRatio)
+	assert.Empty(t, fake.calls[0].References)
+	p, err := f.c.Project(ctx, viewer, f.project)
+	require.NoError(t, err)
+	assert.Equal(t, "Dusk over the lagoon", p.Concepts[0].Imagery, "the prompt is kept on the concept")
+
+	// With renders as references, the previews go along.
+	_, err = f.c.GenerateImagery(ctx, marketer, k.ID, GenerateImageryInput{Count: 1, UseRenders: true, AspectRatio: "1:1"})
+	require.NoError(t, err)
+	assert.Len(t, fake.calls[2].References, 2)
+	assert.Equal(t, "1:1", fake.calls[2].AspectRatio)
+
+	fake.fail = &PictureError{Safe: "the image service is having trouble", Retryable: true}
+	_, err = f.c.GenerateImagery(ctx, marketer, k.ID, GenerateImageryInput{Count: 1})
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindUnavailable, ce.Kind)
+
+	_, err = f.c.GenerateImagery(ctx, viewer, k.ID, GenerateImageryInput{Count: 1})
+	assert.ErrorIs(t, err, core.ErrForbidden)
 }

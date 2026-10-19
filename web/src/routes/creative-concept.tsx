@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { Plus, X } from "lucide-react";
+import { Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   publishAd,
   saveGenerated,
   upload,
   useCreativeProject,
+  useGenerateImagery,
   useRefreshCreative,
   useSaveConcept,
 } from "@/api/creative";
@@ -133,6 +134,7 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
             >
               <Input id="why" value={f.why} onChange={(e) => set({ why: e.target.value })} />
             </Field>
+            <PictureIt concept={concept} />
             <div className="space-y-2 md:col-span-2">
               <p className="text-sm font-medium">Render behind generated ads</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -231,6 +233,72 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
         <Generate project={project} concept={concept} slug={slug} copy={f.copy} dirty={dirty} />
       </div>
     </section>
+  );
+}
+
+// Adx pictures the concept from its imagery prompt; the pictures join the
+// project's renders, so the choice below fills up as they arrive.
+function PictureIt({ concept }: { concept: Concept }) {
+  const [prompt, setPrompt] = useState(concept.imagery);
+  const [count, setCount] = useState(2);
+  const [useRenders, setUseRenders] = useState(true);
+  const generate = useGenerateImagery(concept.id);
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <Field
+        label="Picture"
+        htmlFor="imagery"
+        hint="What the picture shows: scene, light, mood. Copy is laid over it, so leave the words out."
+      >
+        <textarea
+          id="imagery"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={2}
+          className={textareaClass}
+          placeholder="Golden hour over the lagoon villas, calm water in the foreground"
+        />
+      </Field>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          disabled={generate.isPending || prompt.trim() === ""}
+          onClick={() => generate.mutate({ count, prompt, aspectRatio: "9:16", useRenders })}
+        >
+          <Sparkles />
+          {generate.isPending ? "Picturing" : "Picture it"}
+        </Button>
+        <Input
+          aria-label="How many pictures"
+          type="number"
+          min={1}
+          max={4}
+          value={count}
+          onChange={(e) => setCount(Number(e.target.value))}
+          className="w-16"
+        />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={useRenders}
+            onChange={(e) => setUseRenders(e.target.checked)}
+          />
+          Take the cue from the project's renders
+        </label>
+        {generate.data && (
+          <span className="text-sm text-muted-foreground">
+            {generate.data.renders.length} added as{" "}
+            {generate.data.renders.map((r) => r.code).join(", ")}.
+          </span>
+        )}
+      </div>
+      {generate.error && <p className="text-sm text-destructive">{generate.error.message}</p>}
+      {generate.data?.notes.map((n) => (
+        <p key={n} className="text-sm text-muted-foreground">
+          {n}
+        </p>
+      ))}
+    </div>
   );
 }
 
