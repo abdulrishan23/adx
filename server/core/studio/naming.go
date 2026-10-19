@@ -124,7 +124,7 @@ func slugFrom(name string) string {
 func slugFromName(name string) string {
 	var parts []string
 	for _, w := range strings.FieldsFunc(strings.ToUpper(name), func(r rune) bool {
-		return !(r >= 'A' && r <= 'Z' || r >= '0' && r <= '9')
+		return (r < 'A' || r > 'Z') && (r < '0' || r > '9')
 	}) {
 		if w != "" {
 			parts = append(parts, w)
