@@ -1,13 +1,18 @@
 // Package launch is where an accepted plan version's money is pointed at
-// campaigns before anything is submitted (BD-58, decided 2026-10-18). Create
-// owns the first launch: each plan line is resolved against the project's
-// running campaigns by project, platform and campaign type. One match is
-// updated; more than one and a person picks, never both unasked; none and a
-// campaign is created. The plan is the month's ceiling: a matched campaign's
-// spend this month nets off its line, and the daily budget is what remains
-// spread over the days left in the Dubai month. A pick is recorded here, as
-// the person's choice, before any intent is written. Nothing in this package
-// talks to a platform or writes a proposal; it answers what would happen.
+// campaigns before anything is submitted (BD-58, decided 2026-10-18 and
+// 2026-10-19). Create owns the first launch: each plan line is resolved
+// against the project's campaigns by project, platform and campaign type.
+// One running match is updated; more than one and a person picks, never
+// both unasked; none running but a paused one and the launch resumes it
+// rather than making a second campaign of the type; none at all and a
+// campaign is created. A campaign is the target of one line only: when two
+// lines would take the same campaign a person decides which line it is for
+// and the other creates, so no budget is counted twice. The plan is the
+// month's ceiling: a matched campaign's spend this month nets off its line,
+// and the daily budget is what remains spread over the days left in the
+// Dubai month. A pick is recorded here, as the person's choice, before any
+// intent is written. Nothing in this package talks to a platform or writes
+// a proposal; it answers what would happen.
 package launch
 
 import (
@@ -24,8 +29,12 @@ import (
 )
 
 const (
-	KindCreate      = "create"
-	KindUpdate      = "update"
+	KindCreate = "create"
+	KindUpdate = "update"
+	// KindResume is an update of a paused campaign of the line's type when no
+	// running one exists: accepting the plan authorised its spend, so it is
+	// resumed rather than duplicated.
+	KindResume      = "resume"
 	KindPick        = "pick"
 	KindUnsupported = "unsupported"
 )
@@ -69,15 +78,16 @@ type LaunchPick struct {
 type LineResolution struct {
 	Kind string     `json:"kind"`
 	Line LaunchLine `json:"line"`
-	// Campaign is the campaign an update changes.
+	// Campaign is the campaign an update or a resume changes.
 	Campaign *reporting.ProjectCampaign `json:"campaign"`
-	// Candidates are the running campaigns the line matched, when more than
-	// one did. They stay listed after a pick so the choice can be changed.
+	// Candidates are the campaigns a person chooses between: more than one
+	// match, or one match another line also claims. They stay listed after a
+	// pick so the choice can be changed.
 	Candidates []reporting.ProjectCampaign `json:"candidates"`
 	Budget     *MonthBudget                `json:"budget"`
 	Pick       *LaunchPick                 `json:"pick"`
-	// Paused lists the project's paused campaigns of the line's type. They
-	// are not matched: resuming one is a Perform proposal (BD-58 rule 5).
+	// Paused lists the project's paused campaigns of the line's type that a
+	// running match left aside. They are not touched by this launch.
 	Paused []reporting.ProjectCampaign `json:"paused"`
 	Note   string                      `json:"note"`
 }
@@ -148,7 +158,7 @@ func (s *Service) Pick(ctx context.Context, actor core.Actor, planID, version in
 		return LaunchResolution{}, core.Invalid("plan %d version %d has no line %d", planID, version, lineIndex)
 	}
 	line := res.Lines[lineIndex]
-	if len(line.Candidates) < 2 {
+	if len(line.Candidates) == 0 {
 		return LaunchResolution{}, core.Conflict("line %d (%s) matched %s; there is nothing to pick", lineIndex, line.Line.Channel, describe(line))
 	}
 	found := false
@@ -158,7 +168,7 @@ func (s *Service) Pick(ctx context.Context, actor core.Actor, planID, version in
 		}
 	}
 	if !found {
-		return LaunchResolution{}, core.Invalid("campaign %d is not one of the %d running campaigns line %d matched", campaignID, len(line.Candidates), lineIndex)
+		return LaunchResolution{}, core.Invalid("campaign %d is not one of the %d campaigns line %d matched", campaignID, len(line.Candidates), lineIndex)
 	}
 	_, err = s.db.Writer().UpsertLaunchPick(ctx, store.UpsertLaunchPickParams{WorkspaceID: actor.WorkspaceID, PlanID: planID, PlanVersion: version, LineIndex: int64(lineIndex), Channel: line.Line.Channel,
 		CampaignID: campaignID, PickedBy: optionalID(actor.UserID), PickedAt: now.UTC()})
@@ -208,9 +218,9 @@ func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, ex
 			return PlanCoverage{}, err
 		}
 		for _, line := range res.Lines {
-			if line.Kind == KindUpdate && line.Campaign != nil && line.Campaign.ID == row.ID {
+			if (line.Kind == KindUpdate || line.Kind == KindResume) && line.Campaign != nil && line.Campaign.ID == row.ID {
 				pid, pver := v.Plan.ID, pv.Version
-				return PlanCoverage{UnderPlan: true, PlanID: &pid, PlanVersion: &pver, Reason: fmt.Sprintf("plan %d version %d (%s to %s) line %d updates it", pid, pver, pv.Document.PeriodFrom, pv.Document.PeriodTo, line.Line.Index)}, nil
+				return PlanCoverage{UnderPlan: true, PlanID: &pid, PlanVersion: &pver, Reason: fmt.Sprintf("plan %d version %d (%s to %s) line %d %ss it", pid, pver, pv.Document.PeriodFrom, pv.Document.PeriodTo, line.Line.Index, line.Kind)}, nil
 			}
 		}
 	}
@@ -269,7 +279,16 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 		campaignsByProject[project] = cs
 		return cs, nil
 	}
-	updated := map[int64]bool{}
+	// First pass: what each line matches. Running campaigns of the line's
+	// type are its candidates; with none running, its paused ones are, and
+	// the line resumes rather than creates.
+	type matched struct {
+		lr    LineResolution
+		kind  string // update or resume, once a campaign is settled
+		cands []reporting.ProjectCampaign
+		ready bool // settled in the first pass (unsupported lines)
+	}
+	lines := make([]*matched, 0, len(pv.Document.Allocations))
 	for i, a := range pv.Document.Allocations {
 		line := LaunchLine{Index: i, Channel: a.Channel, BudgetMinor: a.BudgetMinor, Currency: pv.Document.Currency, Objective: a.Objective, Geography: a.Geography}
 		switch {
@@ -278,76 +297,140 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 		case plan.ProjectID.Valid:
 			line.ProjectID = plan.ProjectID.Int64
 		}
-		lr := LineResolution{Line: line, Candidates: []reporting.ProjectCampaign{}, Paused: []reporting.ProjectCampaign{}}
+		m := &matched{lr: LineResolution{Line: line, Candidates: []reporting.ProjectCampaign{}, Paused: []reporting.ProjectCampaign{}}, kind: KindUpdate}
+		lines = append(lines, m)
 		ch, ok := plans.Channel(a.Channel)
 		switch {
 		case !ok || !ch.Supported || ch.CampaignType == "":
-			lr.Kind, lr.Note = KindUnsupported, fmt.Sprintf("ADX cannot deploy %s; this line is not launched", a.Channel)
-			res.Lines = append(res.Lines, lr)
+			m.lr.Kind, m.lr.Note, m.ready = KindUnsupported, fmt.Sprintf("ADX cannot deploy %s; this line is not launched", a.Channel), true
 			continue
 		case line.ProjectID == 0:
-			lr.Kind, lr.Note = KindUnsupported, "the line names no project and the plan has none; lines match campaigns by project"
-			res.Lines = append(res.Lines, lr)
+			m.lr.Kind, m.lr.Note, m.ready = KindUnsupported, "the line names no project and the plan has none; lines match campaigns by project", true
 			continue
 		}
-		lr.Line.Platform, lr.Line.CampaignType = ch.Platform, ch.CampaignType
+		m.lr.Line.Platform, m.lr.Line.CampaignType = ch.Platform, ch.CampaignType
 		cs, err := campaigns(line.ProjectID)
 		if err != nil {
 			return LaunchResolution{}, err
 		}
+		var running, paused []reporting.ProjectCampaign
 		for _, c := range cs {
 			if c.Platform != ch.Platform || c.Type != ch.CampaignType {
 				continue
 			}
 			if c.Running {
-				lr.Candidates = append(lr.Candidates, c)
+				running = append(running, c)
 			} else {
-				lr.Paused = append(lr.Paused, c)
+				paused = append(paused, c)
 			}
 		}
-		switch len(lr.Candidates) {
-		case 0:
-			lr.Kind = KindCreate
-			b := budget(line.BudgetMinor, 0, true, daysLeft)
-			lr.Budget = &b
-			lr.Candidates = []reporting.ProjectCampaign{}
-			if len(lr.Paused) > 0 {
-				lr.Note = fmt.Sprintf("no running %s campaign; %d paused one(s) of that type exist and are not resumed here", ch.CampaignType, len(lr.Paused))
+		switch {
+		case len(running) > 0:
+			m.cands = running
+			m.lr.Paused = append(m.lr.Paused, paused...)
+		case len(paused) > 0:
+			m.cands, m.kind = paused, KindResume
+		}
+	}
+
+	// Second pass: a campaign is the target of one line only. Recorded picks
+	// claim first, lowest line first; then a sole match claims its campaign
+	// unless another open line could take it too, in which case a person
+	// decides which line the campaign is for.
+	claimed := map[int64]int{} // campaign id -> line index
+	settle := func(m *matched, c reporting.ProjectCampaign, pick *store.LaunchPick) {
+		cc := c
+		m.lr.Kind, m.lr.Campaign = m.kind, &cc
+		b := spendBudget(m.lr.Line.BudgetMinor, cc, daysLeft)
+		m.lr.Budget = &b
+		if pick != nil {
+			m.lr.Pick = &LaunchPick{CampaignID: pick.CampaignID, PickedBy: idPtr(pick.PickedBy), PickedAt: pick.PickedAt.UTC()}
+			m.lr.Candidates = append([]reporting.ProjectCampaign{}, m.cands...)
+		}
+		if m.kind == KindResume {
+			m.lr.Note = "no running campaign of this type; the paused one is resumed rather than a second one created"
+		}
+		claimed[cc.ID] = m.lr.Line.Index
+		m.ready = true
+	}
+	for _, m := range lines {
+		if m.ready {
+			continue
+		}
+		p, ok := pickByLine[int64(m.lr.Line.Index)]
+		if !ok {
+			continue
+		}
+		var chosen *reporting.ProjectCampaign
+		for _, c := range m.cands {
+			if c.ID == p.CampaignID {
+				cc := c
+				chosen = &cc
 			}
-		case 1:
-			c := lr.Candidates[0]
-			lr.Kind, lr.Campaign = KindUpdate, &c
-			lr.Candidates = []reporting.ProjectCampaign{}
-			b := spendBudget(line.BudgetMinor, c, daysLeft)
-			lr.Budget = &b
-			updated[c.ID] = true
+		}
+		switch {
+		case chosen == nil:
+			m.lr.Note = fmt.Sprintf("the earlier choice, campaign %d, no longer matches this line; pick again", p.CampaignID)
+		case hasKey(claimed, chosen.ID):
+			m.lr.Note = fmt.Sprintf("the earlier choice, campaign %d, is line %d's; this line no longer takes it", p.CampaignID, claimed[chosen.ID])
 		default:
-			lr.Kind = KindPick
-			lr.Note = fmt.Sprintf("%d running %s campaigns match; a person picks which one this line updates", len(lr.Candidates), ch.CampaignType)
-			if p, ok := pickByLine[int64(i)]; ok {
-				var chosen *reporting.ProjectCampaign
-				for _, c := range lr.Candidates {
-					if c.ID == p.CampaignID {
-						cc := c
-						chosen = &cc
+			settle(m, *chosen, &p)
+		}
+	}
+	for _, m := range lines {
+		if m.ready {
+			continue
+		}
+		var available []reporting.ProjectCampaign
+		for _, c := range m.cands {
+			if !hasKey(claimed, c.ID) {
+				available = append(available, c)
+			}
+		}
+		contested := false
+		for _, c := range available {
+			for _, other := range lines {
+				if other == m || other.ready {
+					continue
+				}
+				for _, oc := range other.cands {
+					if oc.ID == c.ID && !hasKey(claimed, oc.ID) {
+						contested = true
 					}
 				}
-				if chosen == nil {
-					lr.Note = fmt.Sprintf("the earlier choice, campaign %d, no longer matches this line; pick again", p.CampaignID)
-					break
-				}
-				lr.Kind, lr.Campaign, lr.Note = KindUpdate, chosen, ""
-				lr.Pick = &LaunchPick{CampaignID: p.CampaignID, PickedBy: idPtr(p.PickedBy), PickedAt: p.PickedAt.UTC()}
-				b := spendBudget(line.BudgetMinor, *chosen, daysLeft)
-				lr.Budget = &b
-				updated[chosen.ID] = true
 			}
 		}
-		res.Lines = append(res.Lines, lr)
+		switch {
+		case len(available) == 0:
+			m.lr.Kind = KindCreate
+			b := budget(m.lr.Line.BudgetMinor, 0, true, daysLeft)
+			m.lr.Budget = &b
+			if len(m.cands) > 0 && m.lr.Note == "" {
+				m.lr.Note = "every campaign this line matched is another line's; a new one is created"
+			}
+			m.ready = true
+		case len(available) == 1 && !contested:
+			settle(m, available[0], nil)
+		default:
+			m.lr.Kind = KindPick
+			m.lr.Candidates = append([]reporting.ProjectCampaign{}, available...)
+			what := "running"
+			if m.kind == KindResume {
+				what = "paused"
+			}
+			if contested && len(available) == 1 {
+				m.lr.Note = fmt.Sprintf("another line of this plan also matches this %s %s campaign; a person decides which line it is for, and the other creates", what, m.lr.Line.CampaignType)
+			} else if m.lr.Note == "" {
+				m.lr.Note = fmt.Sprintf("%d %s %s campaigns match; a person picks which one this line %ss", len(available), what, m.lr.Line.CampaignType, m.kind)
+			}
+		}
+	}
+	for _, m := range lines {
+		res.Lines = append(res.Lines, m.lr)
 	}
 	for _, cs := range campaignsByProject {
 		for _, c := range cs {
-			if c.Running && !updated[c.ID] {
+			if c.Running && !hasKey(claimed, c.ID) {
 				res.Unmatched = append(res.Unmatched, c)
 			}
 		}
@@ -375,13 +458,20 @@ func budget(lineMinor, spentMinor int64, known bool, daysLeft int) MonthBudget {
 func describe(l LineResolution) string {
 	switch l.Kind {
 	case KindCreate:
-		return "no running campaign"
+		return "no campaign"
 	case KindUpdate:
 		return "one running campaign"
+	case KindResume:
+		return "one paused campaign"
 	case KindUnsupported:
 		return "nothing ADX can deploy"
 	}
 	return l.Kind
+}
+
+func hasKey(m map[int64]int, id int64) bool {
+	_, ok := m[id]
+	return ok
 }
 
 func optionalID(id int64) sql.NullInt64 { return sql.NullInt64{Int64: id, Valid: id != 0} }

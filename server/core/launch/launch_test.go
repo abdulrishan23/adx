@@ -228,20 +228,102 @@ func TestMonthIsTheDubaiMonth(t *testing.T) {
 	assert.Equal(t, launch.MonthBudget{SpentMinor: 1_000_00, SpendKnown: true, RemainingMinor: 30_000_00, DailyMinor: 1_000_00, DaysLeft: 30}, *res.Lines[0].Budget)
 }
 
-// Catches: a paused campaign being updated by a launch (resuming is a
-// Perform proposal) or hidden from the person deciding.
-func TestPausedCampaignsAreNotMatchedButAreShown(t *testing.T) {
+// Catches: a second campaign of the type being created beside a paused one
+// (the owner, 2026-10-19: the launch resumes it; accepting the plan
+// authorised its spend), a paused campaign resumed while a running one of
+// the type exists, and two paused ones resumed without a person choosing.
+func TestPausedOnlyMatchIsResumedNotDuplicated(t *testing.T) {
 	e := setup(t)
-	e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads", "OUTCOME_LEADS", "CAMPAIGN_PAUSED", e.wadi, i64(5_000_00))
-	plan := e.plan(t, alloc("meta_lead_form", 40_000_00))
+	ctx := t.Context()
+	m1 := e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads", "OUTCOME_LEADS", "CAMPAIGN_PAUSED", e.wadi, i64(5_000_00))
+	e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, nil)
+	e.campaign(t, e.googleAcc, "google_ads", "g0", "Search | Wadi old", "SEARCH", "PAUSED", e.wadi, nil)
+	plan := e.plan(t, alloc("meta_lead_form", 40_000_00), alloc("google_search", 10_000_00))
 
-	res, err := e.launch.Resolve(t.Context(), coretest.Viewer, plan, 1)
+	res, err := e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
 	require.NoError(t, err)
 	l := res.Lines[0]
-	assert.Equal(t, launch.KindCreate, l.Kind)
-	require.Len(t, l.Paused, 1)
-	assert.Contains(t, l.Note, "not resumed here")
-	assert.Empty(t, res.Unmatched, "a paused campaign is not running, so it is not listed as unplanned")
+	assert.Equal(t, launch.KindResume, l.Kind)
+	require.NotNil(t, l.Campaign)
+	assert.Equal(t, m1.ID, l.Campaign.ID)
+	assert.Equal(t, launch.MonthBudget{SpentMinor: 5_000_00, SpendKnown: true, RemainingMinor: 35_000_00, DailyMinor: 1_750_00, DaysLeft: 20}, *l.Budget, "what it spent before pausing nets off")
+	assert.Contains(t, l.Note, "resumed")
+	g := res.Lines[1]
+	assert.Equal(t, launch.KindUpdate, g.Kind, "a running campaign takes the line; the paused one is left aside")
+	assert.Equal(t, "g1", g.Campaign.ExternalID)
+	require.Len(t, g.Paused, 1)
+	assert.Equal(t, "g0", g.Paused[0].ExternalID)
+	assert.Empty(t, res.Unmatched)
+	c, err := e.launch.Coverage(ctx, 1, e.metaAcc, "m1")
+	require.NoError(t, err)
+	assert.True(t, c.UnderPlan, "the plan stands behind the campaign it resumes")
+
+	// Two paused, none running: a person picks which one comes back.
+	m2 := e.campaign(t, e.metaAcc, "meta", "m2", "Wadi | Leads | EN", "OUTCOME_LEADS", "PAUSED", e.wadi, nil)
+	res, err = e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	require.NoError(t, err)
+	assert.Equal(t, launch.KindPick, res.Lines[0].Kind)
+	assert.Len(t, res.Lines[0].Candidates, 2)
+	assert.Contains(t, res.Lines[0].Note, "paused")
+	res, err = e.launch.Pick(ctx, coretest.Marketer, plan, 1, 0, m2.ID)
+	require.NoError(t, err)
+	assert.Equal(t, launch.KindResume, res.Lines[0].Kind)
+	assert.Equal(t, m2.ID, res.Lines[0].Campaign.ID)
+}
+
+// Catches: two lines of one channel both updating the one campaign that
+// matches them, which counts its budget twice (the owner, 2026-10-19: a
+// person decides which line the campaign is for, the other creates).
+func TestOneCampaignIsTheTargetOfOneLineOnly(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	g := e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, i64(2_000_00))
+	ae, ksa := alloc("google_search", 12_000_00), alloc("google_search", 6_000_00)
+	ksa.Geography = "SA"
+	plan := e.plan(t, ae, ksa)
+
+	res, err := e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	require.NoError(t, err)
+	for _, l := range res.Lines {
+		assert.Equal(t, launch.KindPick, l.Kind, "neither line takes the campaign unasked")
+		assert.Nil(t, l.Campaign)
+		require.Len(t, l.Candidates, 1)
+		assert.Contains(t, l.Note, "which line it is for")
+	}
+	require.Len(t, res.Unmatched, 1)
+	c, err := e.launch.Coverage(ctx, 1, e.googleAcc, "g1")
+	require.NoError(t, err)
+	assert.False(t, c.UnderPlan, "not under the plan until a line is chosen")
+
+	res, err = e.launch.Pick(ctx, coretest.Marketer, plan, 1, 1, g.ID)
+	require.NoError(t, err)
+	assert.Equal(t, launch.KindUpdate, res.Lines[1].Kind)
+	assert.Equal(t, g.ID, res.Lines[1].Campaign.ID)
+	assert.Equal(t, int64(4_000_00), res.Lines[1].Budget.RemainingMinor, "the KSA line nets the spend")
+	assert.Equal(t, launch.KindCreate, res.Lines[0].Kind, "the other line creates")
+	assert.Equal(t, launch.MonthBudget{SpentMinor: 0, SpendKnown: true, RemainingMinor: 12_000_00, DailyMinor: 600_00, DaysLeft: 20}, *res.Lines[0].Budget)
+	assert.Contains(t, res.Lines[0].Note, "another line's")
+	assert.Empty(t, res.Unmatched)
+	c, err = e.launch.Coverage(ctx, 1, e.googleAcc, "g1")
+	require.NoError(t, err)
+	assert.True(t, c.UnderPlan)
+
+	// A pick for the same campaign on the other line too: the lower line
+	// keeps it and the other creates, never both.
+	_, err = e.db.Writer().UpsertLaunchPick(ctx, store.UpsertLaunchPickParams{WorkspaceID: 1, PlanID: plan, PlanVersion: 1, LineIndex: 0, Channel: "google_search", CampaignID: g.ID, PickedAt: e.clock.Now()})
+	require.NoError(t, err)
+	res, err = e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	require.NoError(t, err)
+	assert.Equal(t, launch.KindUpdate, res.Lines[0].Kind)
+	assert.Equal(t, launch.KindCreate, res.Lines[1].Kind)
+	assert.Contains(t, res.Lines[1].Note, "is line 0's")
+	updates := 0
+	for _, l := range res.Lines {
+		if l.Campaign != nil {
+			updates++
+		}
+	}
+	assert.Equal(t, 1, updates)
 }
 
 // Catches: a pick that applies to a campaign outside the candidates, a pick

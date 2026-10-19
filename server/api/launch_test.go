@@ -101,7 +101,7 @@ func TestLaunchRoutes(t *testing.T) {
 	assert.Equal(t, http.StatusForbidden, code, body)
 	code, body = post(marketer, `{"planId":1,"planVersion":1,"line":0,"campaignId":999}`)
 	assert.Equal(t, http.StatusBadRequest, code, body)
-	assert.Contains(t, body, "not one of the 2 running campaigns")
+	assert.Contains(t, body, "not one of the 2 campaigns")
 	code, body = post(marketer, `{"planId":1,"planVersion":1,"line":0,"campaignId":2}`)
 	require.Equal(t, http.StatusOK, code, body)
 	assert.Contains(t, body, `"kind":"update"`)
