@@ -1974,6 +1974,9 @@ export const KindCreate = "create";
 export const KindPick = "pick";
 
 // From launch/launch.go
+export const KindResume = "resume";
+
+// From launch/launch.go
 export const KindUnsupported = "unsupported";
 
 // From launch/launch.go
