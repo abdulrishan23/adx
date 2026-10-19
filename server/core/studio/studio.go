@@ -40,6 +40,7 @@ type Studio struct {
 	db    *store.DB
 	blobs *blobs.Store
 	now   func() time.Time
+	gen   Generation
 }
 
 func New(db *store.DB, files *blobs.Store) *Studio {
@@ -127,6 +128,7 @@ type Concept struct {
 	Description string          `json:"description"`
 	CTA         string          `json:"cta"`
 	Copy        json.RawMessage `json:"copy"`
+	Imagery     string          `json:"imagery"` // what to ask an image model for
 	Ads         []Ad            `json:"ads"`
 }
 
@@ -576,7 +578,7 @@ func (c *Studio) comments(ctx context.Context, q *store.Queries, projectID int64
 func conceptFrom(k store.CreativeConcept) Concept {
 	return Concept{
 		ID: k.ID, Code: k.Code, Name: k.Name, Why: k.Why, PrimaryText: k.PrimaryText,
-		Headline: k.Headline, Description: k.Description, CTA: k.Cta, Copy: json.RawMessage(k.Copy), Ads: []Ad{},
+		Headline: k.Headline, Description: k.Description, CTA: k.Cta, Copy: json.RawMessage(k.Copy), Imagery: k.Imagery, Ads: []Ad{},
 	}
 }
 

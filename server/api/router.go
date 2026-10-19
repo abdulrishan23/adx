@@ -279,6 +279,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/api/creative/projects/{id}/brand-kit", project(h.saveBrandKit))
 			r.Post("/api/creative/projects/{id}/renders", project(h.addRenders))
 			r.Post("/api/creative/projects/{id}/concepts", project(h.createConcept))
+			r.Post("/api/creative/projects/{id}/concepts/generate", project(h.generateConcepts))
 			r.Post("/api/creative/projects/{id}/uploads", project(h.addUploads))
 			r.Get("/api/creative/projects/{id}/download", project(h.downloadCreatives))
 			r.Patch("/api/creative/renders/{id}", h.studioRoute("id", "render", h.updateRender))

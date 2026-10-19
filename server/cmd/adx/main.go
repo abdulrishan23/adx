@@ -359,6 +359,7 @@ func run() error {
 		return fmt.Errorf("files dir: %w", err)
 	}
 	studioService := studio.New(db, files)
+	studioService.Generate(studio.Generation{Model: model, Brands: brandService})
 	// Keyword Planner rides on the Google Ads connection; without one the
 	// keyword items of a brief fail as unconfigured.
 	var keywordProvider research.KeywordProvider

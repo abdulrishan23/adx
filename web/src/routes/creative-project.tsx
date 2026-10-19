@@ -1,7 +1,12 @@
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Download, ExternalLink, Link2, Pencil, Plus, Upload } from "lucide-react";
+import { Download, ExternalLink, Link2, Pencil, Plus, Sparkles, Upload } from "lucide-react";
 import { useState } from "react";
-import { useCreateConcept, useCreativeProject, useResolveComment } from "@/api/creative";
+import {
+  useCreateConcept,
+  useCreativeProject,
+  useGenerateConcepts,
+  useResolveComment,
+} from "@/api/creative";
 import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
@@ -154,7 +159,12 @@ function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: 
   const projectId = project.settings.projectId;
   return (
     <div className="space-y-8">
-      {canEdit && <NewConceptForm projectId={projectId} />}
+      {canEdit && (
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+          <NewConceptForm projectId={projectId} />
+          <AskForConcepts projectId={projectId} />
+        </div>
+      )}
       {project.concepts.length === 0 ? (
         <Panel>
           <EmptyState title="No concepts yet">
@@ -220,6 +230,64 @@ function NewConceptForm({ projectId }: { projectId: number }) {
         Add
       </Button>
       {create.error && <p className="w-full text-sm text-destructive">{create.error.message}</p>}
+    </form>
+  );
+}
+
+// Adx proposes concepts from the brand's approved facts and current
+// offers. They land as ordinary concepts, to edit or delete like any other.
+function AskForConcepts({ projectId }: { projectId: number }) {
+  const [instructions, setInstructions] = useState("");
+  const [count, setCount] = useState(3);
+  const generate = useGenerateConcepts(projectId);
+  return (
+    <form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        generate.mutate({ count, instructions });
+      }}
+    >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="concept-ask" className="text-sm font-medium">
+          Ask Adx for concepts
+        </label>
+        <Input
+          id="concept-ask"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="Angle, audience, anything to avoid"
+          className="w-72"
+        />
+      </div>
+      <Input
+        aria-label="How many"
+        type="number"
+        min={1}
+        max={6}
+        value={count}
+        onChange={(e) => setCount(Number(e.target.value))}
+        className="w-16"
+      />
+      <Button type="submit" disabled={generate.isPending}>
+        <Sparkles />
+        {generate.isPending ? "Writing" : "Write"}
+      </Button>
+      {generate.error && (
+        <p className="w-full text-sm text-destructive">{generate.error.message}</p>
+      )}
+      {generate.data && (
+        <div className="w-full text-sm text-muted-foreground">
+          <p>
+            {generate.data.concepts.length === 0
+              ? "Nothing worth saving came back."
+              : `${generate.data.concepts.length} ${generate.data.concepts.length === 1 ? "concept" : "concepts"} added from the approved facts.`}
+          </p>
+          {generate.data.notes.map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
+      )}
     </form>
   );
 }

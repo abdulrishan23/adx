@@ -166,7 +166,7 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (CreativeComment, er
 }
 
 const getConcept = `-- name: GetConcept :one
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE id = ?
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery FROM creative_concepts WHERE id = ?
 `
 
 func (q *Queries) GetConcept(ctx context.Context, id int64) (CreativeConcept, error) {
@@ -186,12 +186,13 @@ func (q *Queries) GetConcept(ctx context.Context, id int64) (CreativeConcept, er
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
 	)
 	return i, err
 }
 
 const getConceptByCode = `-- name: GetConceptByCode :one
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE project_id = ? AND code = ?
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery FROM creative_concepts WHERE project_id = ? AND code = ?
 `
 
 type GetConceptByCodeParams struct {
@@ -216,6 +217,7 @@ func (q *Queries) GetConceptByCode(ctx context.Context, arg GetConceptByCodePara
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
 	)
 	return i, err
 }
@@ -486,7 +488,7 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) (C
 const insertConcept = `-- name: InsertConcept :one
 INSERT INTO creative_concepts (project_id, code, pos, name, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at
+RETURNING id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery
 `
 
 type InsertConceptParams struct {
@@ -522,6 +524,7 @@ func (q *Queries) InsertConcept(ctx context.Context, arg InsertConceptParams) (C
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
 	)
 	return i, err
 }
@@ -885,7 +888,7 @@ func (q *Queries) ListConceptAds(ctx context.Context, conceptID int64) ([]Creati
 }
 
 const listConcepts = `-- name: ListConcepts :many
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE project_id = ? ORDER BY pos, code
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery FROM creative_concepts WHERE project_id = ? ORDER BY pos, code
 `
 
 func (q *Queries) ListConcepts(ctx context.Context, projectID int64) ([]CreativeConcept, error) {
@@ -911,6 +914,7 @@ func (q *Queries) ListConcepts(ctx context.Context, projectID int64) ([]Creative
 			&i.Copy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Imagery,
 		); err != nil {
 			return nil, err
 		}
@@ -1278,6 +1282,21 @@ type SetCommentResolvedParams struct {
 
 func (q *Queries) SetCommentResolved(ctx context.Context, arg SetCommentResolvedParams) error {
 	_, err := q.db.ExecContext(ctx, setCommentResolved, arg.ResolvedAt, arg.ResolvedBy, arg.ID)
+	return err
+}
+
+const setConceptImagery = `-- name: SetConceptImagery :exec
+UPDATE creative_concepts SET imagery = ?, updated_at = ? WHERE id = ?
+`
+
+type SetConceptImageryParams struct {
+	Imagery   string
+	UpdatedAt time.Time
+	ID        int64
+}
+
+func (q *Queries) SetConceptImagery(ctx context.Context, arg SetConceptImageryParams) error {
+	_, err := q.db.ExecContext(ctx, setConceptImagery, arg.Imagery, arg.UpdatedAt, arg.ID)
 	return err
 }
 

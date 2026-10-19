@@ -422,6 +422,7 @@ type CreativeConcept struct {
 	Copy        string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Imagery     string
 }
 
 type CreativeDecision struct {

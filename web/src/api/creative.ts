@@ -15,7 +15,9 @@ import type {
   ConceptInput,
   CreativeProject,
   FileRef,
+  GenerateConceptsInput,
   GeneratedAd,
+  GeneratedConcepts,
   GenerateResult,
   NewConcept,
   NewRender,
@@ -101,6 +103,13 @@ export const useUpdateRender = () =>
 export const useCreateConcept = (projectId: number) =>
   useCreativeMutation((input: NewConcept) =>
     postJSON<Concept>(`/api/creative/projects/${projectId}/concepts`, input),
+  );
+
+// Adx writes concepts from the brand's approved facts and offers; figures
+// the facts don't support are dropped and said in the notes.
+export const useGenerateConcepts = (projectId: number) =>
+  useCreativeMutation((input: GenerateConceptsInput) =>
+    postJSON<GeneratedConcepts>(`/api/creative/projects/${projectId}/concepts/generate`, input),
   );
 
 export const useSaveConcept = (conceptId: number) =>

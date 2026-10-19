@@ -89,6 +89,9 @@ UPDATE creative_concepts
 SET name = ?, why = ?, primary_text = ?, headline = ?, description = ?, cta = ?, copy = ?, updated_at = ?
 WHERE id = ?;
 
+-- name: SetConceptImagery :exec
+UPDATE creative_concepts SET imagery = ?, updated_at = ? WHERE id = ?;
+
 -- name: ListAds :many
 SELECT * FROM creative_ads WHERE project_id = ? ORDER BY pos, code;
 

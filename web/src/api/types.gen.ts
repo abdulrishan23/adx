@@ -901,6 +901,7 @@ export interface Concept {
     description: string;
     cta: string;
     copy: unknown;
+    imagery: string;
     ads: Ad[];
 }
 
@@ -1617,6 +1618,12 @@ export interface FunnelState {
     unmapped: string[];
 }
 
+// From studio/generate.go
+export interface GenerateConceptsInput {
+    count: number;
+    instructions: string;
+}
+
 // From plans/generate.go
 export interface GenerateInput {
     briefIds: number[];
@@ -1649,6 +1656,14 @@ export interface GeneratedAd {
     slug: string;
     renderCode: string;
     design: unknown;
+}
+
+// From studio/generate.go
+export interface GeneratedConcepts {
+    concepts: Concept[];
+    notes: string[];
+    model: string;
+    usage: Usage;
 }
 
 // From plans/generate.go
