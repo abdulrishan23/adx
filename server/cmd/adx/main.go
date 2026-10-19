@@ -187,6 +187,8 @@ func main() {
 	switch {
 	case len(os.Args) > 1 && os.Args[1] == "backup":
 		err = runBackup(os.Args[2:])
+	case len(os.Args) > 1 && os.Args[1] == "seed-demo":
+		err = runSeedDemo(os.Args[2:])
 	case len(os.Args) > 1 && os.Args[1] == "import-studio":
 		err = runImportStudio(os.Args[2:])
 	case len(os.Args) > 1 && os.Args[1] == "loadtest":
