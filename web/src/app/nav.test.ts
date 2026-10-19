@@ -24,8 +24,8 @@ describe("nav", () => {
   // Catches a screen under a door that leaves the sidebar closed, or Settings
   // opening a door by accident.
   it("knows which door a path belongs to", () => {
-    expect(doorOf("/creative")?.label).toBe("Create");
-    expect(doorOf("/brands/3")?.label).toBe("Create");
+    expect(doorOf("/creative")?.label).toBe("Studio");
+    expect(doorOf("/brands/3")?.label).toBe("Studio");
     expect(doorOf("/leads/1001")?.label).toBe("Convert");
     expect(doorOf("/perform/projects")?.label).toBe("Perform");
     expect(doorOf("/settings/people")).toBeUndefined();

@@ -9,7 +9,7 @@ import { CountUp } from "./count-up";
 import { HBars, Pie } from "./pictures";
 
 export const DOOR_LABEL = {
-  create: "Create",
+  studio: "Studio",
   perform: "Perform",
   convert: "Convert",
   any: "Adx",

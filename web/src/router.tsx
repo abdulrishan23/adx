@@ -23,11 +23,6 @@ import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
-import { LaunchPage } from "@/routes/create/launch";
-import { PagePage, PagesPage } from "@/routes/create/pages";
-import { PlanPage, PlansPage } from "@/routes/create/plans";
-import { ResearchPage } from "@/routes/create/research";
-import { StartBrandPage } from "@/routes/create/start";
 import { CreativePage } from "@/routes/creative";
 import { CreativeConceptPage } from "@/routes/creative-concept";
 import { CreativeEditorPage } from "@/routes/creative-editor";
@@ -57,6 +52,11 @@ import { ReviewPage } from "@/routes/review";
 import { ScoringPage } from "@/routes/scoring";
 import { SignInPage } from "@/routes/sign-in";
 import { SourcePage } from "@/routes/source";
+import { LaunchPage } from "@/routes/studio/launch";
+import { PagePage, PagesPage } from "@/routes/studio/pages";
+import { PlanPage, PlansPage } from "@/routes/studio/plans";
+import { ResearchPage } from "@/routes/studio/research";
+import { StartBrandPage } from "@/routes/studio/start";
 import { WebsitePage } from "@/routes/website";
 
 // Routes are declared in code instead of generated from files, so the whole
@@ -163,7 +163,7 @@ const oldFunnelRoute = createRoute({
   },
 });
 
-// Projects became Brands under Create. The old paths still open the brand.
+// Projects became Brands under Studio. The old paths still open the brand.
 const oldProjectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/projects",
@@ -185,6 +185,14 @@ const oldBrandKnowledgeRoute = createRoute({
   path: "/create/brand",
   beforeLoad: () => {
     throw redirect({ to: "/brands" });
+  },
+});
+// Create became Studio. Old links land on the same screen.
+const oldCreateRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/create/$",
+  beforeLoad: ({ params }) => {
+    throw redirect({ href: `/studio/${params._splat ?? ""}` });
   },
 });
 const oldProjectsListRoute = createRoute({
@@ -346,6 +354,7 @@ const routeTree = rootRoute.addChildren([
   oldProjectsRoute,
   oldProjectsListRoute,
   oldBrandKnowledgeRoute,
+  oldCreateRoute,
   oldAlertsRoute,
   oldProjectRoute,
   presentRoute,
@@ -355,12 +364,12 @@ const routeTree = rootRoute.addChildren([
   publicRoute.addChildren([privacyRoute, approveRoute]),
   appRoute.addChildren([
     indexRoute,
-    page("/create/research", ResearchPage),
-    page("/create/plans", PlansPage),
-    page("/create/plans/$planId", PlanPage),
-    page("/create/pages", PagesPage),
-    page("/create/pages/$pageId", PagePage),
-    page("/create/launch", LaunchPage),
+    page("/studio/research", ResearchPage),
+    page("/studio/plans", PlansPage),
+    page("/studio/plans/$planId", PlanPage),
+    page("/studio/pages", PagesPage),
+    page("/studio/pages/$pageId", PagePage),
+    page("/studio/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
     page("/convert/inbox", ComingSoonPage),
     page("/convert/crm", ComingSoonPage),

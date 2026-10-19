@@ -10,7 +10,7 @@ import type { Status } from "@/components/ui/status-chip";
 import { mockResponse } from "./mock";
 import * as mock from "./mock/fronts";
 
-export type Door = "create" | "perform" | "convert";
+export type Door = "studio" | "perform" | "convert";
 
 // Where a block's action goes. Only plain paths, so a front never has to know
 // a screen's search params.

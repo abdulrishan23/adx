@@ -88,7 +88,7 @@ export const INBOX: NavItem = {
 
 export const NAV: readonly NavGroup[] = [
   {
-    label: "Create",
+    label: "Studio",
     door: { to: "/brands", phase: 1, icon: PenTool },
     items: [
       {
@@ -102,7 +102,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Research",
-        to: "/create/research",
+        to: "/studio/research",
         icon: Telescope,
         phase: 2,
         status: "live",
@@ -110,7 +110,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Media plans",
-        to: "/create/plans",
+        to: "/studio/plans",
         icon: CalendarRange,
         phase: 2,
         status: "live",
@@ -128,7 +128,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Landing pages",
-        to: "/create/pages",
+        to: "/studio/pages",
         icon: Globe,
         phase: 3,
         status: "live",
@@ -136,7 +136,7 @@ export const NAV: readonly NavGroup[] = [
       },
       {
         label: "Launch",
-        to: "/create/launch",
+        to: "/studio/launch",
         icon: Rocket,
         phase: 3,
         status: "live",

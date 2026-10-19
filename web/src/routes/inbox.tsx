@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { StatusMark } from "@/components/ui/status-chip";
 import { formatRelative } from "@/lib/format";
 import { AlertActions } from "./brief";
-import { SampleChip } from "./create/shared";
+import { SampleChip } from "./studio/shared";
 
 type View = "cards" | "list";
 type Show = "all" | "needs" | "updates";
@@ -109,7 +109,7 @@ export function InboxPage() {
                 onChange={setDoor}
                 options={[
                   { value: "any", label: "Every door" },
-                  { value: "create", label: "Create" },
+                  { value: "studio", label: "Studio" },
                   { value: "perform", label: "Perform" },
                   { value: "convert", label: "Convert" },
                 ]}

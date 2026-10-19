@@ -27,7 +27,7 @@ import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDateTime, formatRelative } from "@/lib/format";
 
-const route = getRouteApi("/app/create/pages/$pageId");
+const route = getRouteApi("/app/studio/pages/$pageId");
 
 // A page is live when a deployment is published; a draft until then. The
 // list can't tell a broken form from here, so the page view says that.
@@ -87,7 +87,7 @@ export function PagesPage() {
                   <TR key={p.id}>
                     <TD>
                       <Link
-                        to="/create/pages/$pageId"
+                        to="/studio/pages/$pageId"
                         params={{ pageId: String(p.id) }}
                         className="font-medium hover:underline"
                         dir={p.language === "ar" ? "rtl" : undefined}
@@ -140,7 +140,7 @@ export function PagePage() {
   return (
     <>
       <Link
-        to="/create/pages"
+        to="/studio/pages"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Landing pages

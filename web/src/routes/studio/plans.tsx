@@ -26,7 +26,7 @@ import { formatDate, formatMoneyShort, formatRelative } from "@/lib/format";
 const money = (minor: number, currency: string) =>
   `${currency} ${Math.round(minor / 100).toLocaleString("en")}`;
 
-const route = getRouteApi("/app/create/plans/$planId");
+const route = getRouteApi("/app/studio/plans/$planId");
 
 // "Ready" is ready for acceptance; accepted is content only and authorizes
 // no spend. That stays separate on purpose (handover B2.4).
@@ -92,7 +92,7 @@ export function PlansPage() {
                 <TR key={p.id}>
                   <TD>
                     <Link
-                      to="/create/plans/$planId"
+                      to="/studio/plans/$planId"
                       params={{ planId: String(p.id) }}
                       className="font-medium hover:underline"
                     >
@@ -139,7 +139,7 @@ export function PlanPage() {
   return (
     <>
       <Link
-        to="/create/plans"
+        to="/studio/plans"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="size-4" /> Media plans
@@ -235,7 +235,7 @@ function VersionView({
               </Button>
             )}
             {v.state === "accepted" && (
-              <Link to="/create/launch" className={buttonVariants()}>
+              <Link to="/studio/launch" className={buttonVariants()}>
                 Go to launch
               </Link>
             )}

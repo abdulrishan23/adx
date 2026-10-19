@@ -106,7 +106,7 @@ export function LaunchPage() {
         <Panel>
           <EmptyState title="Nothing to launch yet">
             A launch starts from an accepted{" "}
-            <Link to="/create/plans" className="underline underline-offset-4">
+            <Link to="/studio/plans" className="underline underline-offset-4">
               media plan
             </Link>
             .
@@ -212,21 +212,21 @@ function FixLink({ item }: { item: LaunchItem }) {
   }
   if (item.refKind === "page") {
     return (
-      <Link to="/create/pages/$pageId" params={{ pageId: String(item.refId) }} className={cls}>
+      <Link to="/studio/pages/$pageId" params={{ pageId: String(item.refId) }} className={cls}>
         Open page
       </Link>
     );
   }
   if (item.area === "pages") {
     return (
-      <Link to="/create/pages" className={cls}>
+      <Link to="/studio/pages" className={cls}>
         Open pages
       </Link>
     );
   }
   if (item.refKind === "plan") {
     return (
-      <Link to="/create/plans/$planId" params={{ planId: String(item.refId) }} className={cls}>
+      <Link to="/studio/plans/$planId" params={{ planId: String(item.refId) }} className={cls}>
         Open plan
       </Link>
     );
