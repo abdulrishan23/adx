@@ -27,21 +27,37 @@ import (
 	"unicode/utf8"
 
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/store"
 )
 
 // Section is one block of the page. Kind decides which fields matter:
-// heading and text use Text; bullets uses Items; image uses ImageKey and
-// Alt; offer pulls the bound offer's approved terms at render time; form
-// places the form.
+// heading and text use Text; bullets uses Items; image uses ImageKey (an
+// engine asset) and Alt; hero and gallery use Pictures (studio files by
+// SHA-256, the renders and the pictures Adx made) with Text as the caption
+// or the line over the hero; stats uses Stats; plan uses Table, one row per
+// instalment; location uses Text for the address and Link for the map;
+// offer pulls the bound offer's approved terms at render time; form places
+// the form.
 type Section struct {
-	Kind     string   `json:"kind"`
-	Text     string   `json:"text"`
-	Items    []string `json:"items"`
-	ImageKey string   `json:"imageKey"`
-	Alt      string   `json:"alt"`
+	Kind     string     `json:"kind"`
+	Text     string     `json:"text"`
+	Items    []string   `json:"items"`
+	ImageKey string     `json:"imageKey"`
+	Alt      string     `json:"alt"`
+	Pictures []string   `json:"pictures"`
+	Stats    []Stat     `json:"stats"`
+	Table    [][]string `json:"table"`
+	Link     string     `json:"link"`
+}
+
+// Stat is one figure on the page, such as "From AED 1.2M" under "Starting
+// price". Its value is checked against the brand's approved facts.
+type Stat struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
 }
 
 type FormField struct {
@@ -68,6 +84,8 @@ type PageDocument struct {
 	OfferVersion *int64      `json:"offerVersion"`
 	Form         *FormConfig `json:"form"`
 	Footer       string      `json:"footer"`
+	// TwinSlug is the same page in the other language, linked from the top.
+	TwinSlug string `json:"twinSlug"`
 }
 
 type Page struct {
@@ -206,6 +224,7 @@ type Pages struct {
 	rate      *limiter
 	daily     int
 	salt      string
+	model     assistant.Model
 }
 
 func New(db *store.DB, br *brands.Brands, ev *evidence.Store, cfg Config) *Pages {
@@ -374,6 +393,52 @@ func (p *Pages) validateDocument(ctx context.Context, actor core.Actor, brandID 
 			if _, err := p.db.Reader().GetAssetByKey(ctx, store.GetAssetByKeyParams{WorkspaceID: actor.WorkspaceID, Key: s.ImageKey}); err != nil {
 				return d, core.Invalid("section %d points at a file this workspace doesn't have", i+1)
 			}
+		case "hero", "gallery":
+			if len(s.Pictures) == 0 || (s.Kind == "hero" && len(s.Pictures) > 1) || len(s.Pictures) > 12 {
+				return d, core.Invalid("section %d: a hero has one picture, a gallery one to twelve", i+1)
+			}
+			for _, sum := range s.Pictures {
+				f, err := p.db.Reader().GetFileBySHA(ctx, sum)
+				if err != nil || !strings.HasPrefix(f.ContentType, "image/") {
+					return d, core.Invalid("section %d points at a picture the studio doesn't have", i+1)
+				}
+			}
+		case "stats":
+			stats := []Stat{}
+			for _, st := range s.Stats {
+				st.Label, st.Value = strings.TrimSpace(st.Label), strings.TrimSpace(st.Value)
+				if st.Value != "" {
+					stats = append(stats, st)
+				}
+			}
+			if len(stats) == 0 || len(stats) > 6 {
+				return d, core.Invalid("section %d has between one and six figures", i+1)
+			}
+			s.Stats = stats
+		case "plan":
+			rows := [][]string{}
+			for _, row := range s.Table {
+				cells := []string{}
+				for _, c := range row {
+					if c = strings.TrimSpace(c); c != "" {
+						cells = append(cells, c)
+					}
+				}
+				if len(cells) > 0 {
+					rows = append(rows, cells)
+				}
+			}
+			if len(rows) == 0 || len(rows) > 12 {
+				return d, core.Invalid("section %d: a payment plan has one to twelve rows", i+1)
+			}
+			s.Table = rows
+		case "location":
+			if strings.TrimSpace(s.Text) == "" {
+				return d, core.Invalid("section %d has no address", i+1)
+			}
+			if s.Link != "" && !strings.HasPrefix(s.Link, "https://") {
+				return d, core.Invalid("section %d: the map link must start with https://", i+1)
+			}
 		case "offer":
 			if d.OfferID == nil || *d.OfferID == 0 {
 				return d, core.Invalid("section %d shows an offer but the page is bound to none", i+1)
@@ -388,6 +453,15 @@ func (p *Pages) validateDocument(ctx context.Context, actor core.Actor, brandID 
 		}
 		if s.Items == nil {
 			s.Items = []string{}
+		}
+		if s.Pictures == nil {
+			s.Pictures = []string{}
+		}
+		if s.Stats == nil {
+			s.Stats = []Stat{}
+		}
+		if s.Table == nil {
+			s.Table = [][]string{}
 		}
 	}
 	if formSections > 1 {
@@ -617,6 +691,16 @@ main{max-width:720px;margin:0 auto;padding:32px 20px}
 h1{font-size:2rem;margin:0 0 .5rem}h2{font-size:1.25rem;margin:1.5rem 0 .5rem}
 p{margin:.5rem 0}ul{padding-inline-start:1.25rem}
 img{max-width:100%;display:block;border-radius:8px}
+.hero{position:relative;margin:-32px -20px 1.5rem;min-height:60vh;display:flex;align-items:flex-end}
+.hero img{width:100%;height:60vh;object-fit:cover;border-radius:0}
+.hero p{position:absolute;inset-inline:20px;bottom:24px;margin:0;font-size:1.25rem;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.6)}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px;margin:1rem 0}
+.gallery img{aspect-ratio:4/3;object-fit:cover}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:1rem 0}
+.stats div{border:1px solid #444;border-radius:8px;padding:12px}.stats strong{display:block;font-size:1.5rem}.stats span{color:#bbb;font-size:.85rem}
+table{width:100%;border-collapse:collapse;margin:1rem 0}td{padding:8px 4px;border-bottom:1px solid #333}
+.twin{position:absolute;top:12px;inset-inline-end:16px;color:#fff;font-size:.85rem;z-index:1}
+.location a{color:#fff}
 form{display:grid;gap:12px;margin-top:1rem}label{display:grid;gap:4px;font-size:.9rem}
 input,select{padding:10px;border-radius:6px;border:1px solid #444;background:#111;color:#fff;font:inherit}
 button{padding:12px;border:0;border-radius:6px;background:#fff;color:#000;font:inherit;font-weight:600}
@@ -626,6 +710,8 @@ button{padding:12px;border:0;border-radius:6px;background:#fff;color:#000;font:i
 </head>
 <body>
 <main>
+{{if .Doc.TwinSlug}}<a class="twin" href="/p/{{.Doc.TwinSlug}}">{{if eq .Lang "ar"}}English{{else}}العربية{{end}}</a>{{end}}
+{{range .Doc.Sections}}{{if eq .Kind "hero"}}<div class="hero"><img src="/api/files/{{index .Pictures 0}}" alt="{{.Alt}}">{{if .Text}}<p>{{.Text}}</p>{{end}}</div>{{end}}{{end}}
 <h1>{{.Doc.Headline}}</h1>
 {{if .Doc.Subheadline}}<p>{{.Doc.Subheadline}}</p>{{end}}
 {{range .Doc.Sections}}
@@ -633,6 +719,11 @@ button{padding:12px;border:0;border-radius:6px;background:#fff;color:#000;font:i
 {{else if eq .Kind "text"}}<p>{{.Text}}</p>
 {{else if eq .Kind "bullets"}}<ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>
 {{else if eq .Kind "image"}}<img src="/api/assets/public/{{.ImageKey}}" alt="{{.Alt}}">
+{{else if eq .Kind "hero"}}
+{{else if eq .Kind "gallery"}}<div class="gallery">{{range .Pictures}}<img src="/api/files/{{.}}" alt="" loading="lazy">{{end}}</div>{{if .Text}}<p>{{.Text}}</p>{{end}}
+{{else if eq .Kind "stats"}}<div class="stats">{{range .Stats}}<div><strong>{{.Value}}</strong><span>{{.Label}}</span></div>{{end}}</div>
+{{else if eq .Kind "plan"}}{{if .Text}}<h2>{{.Text}}</h2>{{end}}<table>{{range .Table}}<tr>{{range .}}<td>{{.}}</td>{{end}}</tr>{{end}}</table>
+{{else if eq .Kind "location"}}<div class="location"><p>{{.Text}}</p>{{if .Link}}<p><a href="{{.Link}}" rel="noopener" target="_blank">{{if eq $.Lang "ar"}}افتح الخريطة{{else}}Open in Maps{{end}}</a></p>{{end}}</div>
 {{else if eq .Kind "offer"}}<div class="offer">{{if $.Offer.Pending}}<p>Offer details pending approval.</p>{{else}}<p><strong>{{$.Offer.Headline}}</strong></p>{{if $.Offer.Terms}}<p>{{$.Offer.Terms}}</p>{{end}}{{if $.Offer.Conditions}}<ul>{{range $.Offer.Conditions}}<li>{{.}}</li>{{end}}</ul>{{end}}{{end}}</div>
 {{else if eq .Kind "form"}}{{if $.Doc.Form}}
 <form method="post" action="/p/{{$.Slug}}/form">
@@ -1097,6 +1188,12 @@ func (p *Pages) Readiness(ctx context.Context, actor core.Actor, pageID int64) (
 	text := strings.Join([]string{doc.Title, doc.Headline, doc.Subheadline, doc.Footer}, " ")
 	for _, s := range doc.Sections {
 		text += " " + s.Text + " " + strings.Join(s.Items, " ")
+		for _, st := range s.Stats {
+			text += " " + st.Label + " " + st.Value
+		}
+		for _, row := range s.Table {
+			text += " " + strings.Join(row, " ")
+		}
 	}
 	var offerID, offerVersion int64
 	if doc.OfferID != nil {

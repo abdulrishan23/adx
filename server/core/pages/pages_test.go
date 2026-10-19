@@ -10,6 +10,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/assistant"
+	"github.com/WokeWorks/adx/server/core/assistant/assistanttest"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/coretest"
 	"github.com/WokeWorks/adx/server/core/evidence"
@@ -389,3 +391,123 @@ func count(xs []string, x string) int {
 }
 
 func f64(f float64) *float64 { return &f }
+
+// Catches: a hero pointing at a picture the studio doesn't have, a figure
+// in a stats block escaping the claims check, and the richer sections not
+// reaching the rendered page.
+func TestRicherSectionsRenderAndAreChecked(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	sum := strings.Repeat("ab", 32)
+	_, err := e.db.Writer().InsertFile(ctx, store.InsertFileParams{Sha256: sum, ContentType: "image/jpeg", Bytes: 10, CreatedAt: e.clock.Now()})
+	require.NoError(t, err)
+	doc := goodDoc()
+	doc.TwinSlug = "wadi-ar"
+	doc.Sections = append([]pages.Section{
+		{Kind: "hero", Pictures: []string{sum}, Text: "The Wadi, Dubailand", Alt: "Villas at dusk"},
+		{Kind: "stats", Stats: []pages.Stat{{Label: "Starting price", Value: "AED 1.2M"}, {Label: "Handover", Value: "2027"}}},
+		{Kind: "gallery", Pictures: []string{sum, sum}},
+		{Kind: "plan", Text: "Payment plan", Table: [][]string{{"10%", "On booking"}, {"40%", "During construction"}, {"50%", "On handover"}}},
+		{Kind: "location", Text: "Dubailand, off Al Ain Road", Link: "https://maps.google.com/?q=The+Wadi"},
+	}, doc.Sections...)
+	d, err := e.pages.Create(ctx, coretest.Marketer, pages.PageInput{BrandID: e.reportage, ProjectID: e.wadi, Slug: "wadi", Name: "Wadi", Language: "en", Document: doc})
+	require.NoError(t, err)
+	_, err = e.pages.Publish(ctx, coretest.Marketer, d.Page.ID, 1)
+	require.NoError(t, err)
+	html, err := e.pages.ServePublished(ctx, "wadi")
+	require.NoError(t, err)
+	for _, want := range []string{`class="hero"`, "/api/files/" + sum, "The Wadi, Dubailand", `class="stats"`, "AED 1.2M", `class="gallery"`, "<table>", "On handover", "Open in Maps", `href="/p/wadi-ar"`, "العربية"} {
+		assert.Contains(t, string(html), want)
+	}
+
+	r, err := e.pages.Readiness(ctx, coretest.Viewer, d.Page.ID)
+	require.NoError(t, err)
+	var texts []string
+	for _, c := range r.Claims {
+		texts = append(texts, c.Text)
+	}
+	assert.Contains(t, texts, "AED 1.2M", "a stat value is a claim")
+
+	bad := goodDoc()
+	bad.Sections = append(bad.Sections, pages.Section{Kind: "hero", Pictures: []string{strings.Repeat("cd", 32)}})
+	_, err = e.pages.Create(ctx, coretest.Marketer, pages.PageInput{BrandID: e.reportage, ProjectID: e.wadi, Slug: "wadi-2", Name: "Wadi 2", Language: "en", Document: bad})
+	assert.Error(t, err, "a picture the studio doesn't have")
+}
+
+// Catches: a figure the facts don't support reaching a stat or the payment
+// plan, a picture id the model invented, the Arabic twin not linking back,
+// and the model's prose being saved as a page.
+func TestDraftKeepsToFactsAndMakesTwins(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	fact, err := e.brands.AddFact(ctx, coretest.Marketer, e.reportage, brands.FactInput{ProjectID: e.wadi, Key: "price.from", Kind: brands.KindMoney, Value: "120000000", Currency: "AED", EffectiveFrom: "2026-01-01", SourceKind: brands.SourceDocument, SourceRef: "price list"})
+	require.NoError(t, err)
+	_, err = e.brands.ApproveFact(ctx, coretest.Admin, fact.Fact.ID)
+	require.NoError(t, err)
+	sum := strings.Repeat("ab", 32)
+	_, err = e.db.Writer().InsertFile(ctx, store.InsertFileParams{Sha256: sum, ContentType: "image/jpeg", Bytes: 10, CreatedAt: e.clock.Now()})
+	require.NoError(t, err)
+	f, err := e.db.Reader().GetFileBySHA(ctx, sum)
+	require.NoError(t, err)
+	require.NoError(t, e.db.Writer().InsertCreativeProject(ctx, store.InsertCreativeProjectParams{ProjectID: e.wadi, Prefix: "THEWADI", PageName: "Reportage", ReviewKey: "the-wadi-k", CreatedAt: e.clock.Now(), UpdatedAt: e.clock.Now()}))
+	_, err = e.db.Writer().InsertRender(ctx, store.InsertRenderParams{ProjectID: e.wadi, Code: "R01", Pos: 1, Label: "Pool", FileID: f.ID, PreviewFileID: f.ID, CreatedAt: e.clock.Now()})
+	require.NoError(t, err)
+
+	page := func(lang string) map[string]any {
+		return map[string]any{
+			"title": "The Wadi " + lang, "headline": "Villas from AED 1.2M", "subheadline": "Register for the launch",
+			"sections": []map[string]any{
+				{"kind": "hero", "pictures": []string{sum}, "text": "Dubailand living", "alt": "Villas"},
+				{"kind": "stats", "stats": []map[string]string{{"label": "From", "value": "AED 1.2M"}, {"label": "Sold", "value": "40%"}}},
+				{"kind": "gallery", "pictures": []string{sum, strings.Repeat("ef", 32)}},
+				{"kind": "plan", "table": [][]string{{"10%", "On booking"}, {"90%", "On handover"}}},
+				{"kind": "text", "text": "Three and four bedroom villas."},
+				{"kind": "location", "text": "Dubailand", "link": ""},
+				{"kind": "offer"},
+				{"kind": "form"},
+			},
+			"form": map[string]any{"fields": []map[string]any{{"name": "name", "label": "Name", "kind": "text", "required": true}, {"name": "phone", "label": "Phone", "kind": "phone", "required": true}}, "submitLabel": "Register", "successMessage": "Thanks"},
+		}
+	}
+	model := &assistanttest.Model{Responses: []assistant.Response{assistanttest.ToolCall("1", pages.DraftTool, page("en")), assistanttest.ToolCall("2", pages.DraftTool, page("ar"))}}
+	e.pages.UseModel(model)
+	out, err := e.pages.Draft(ctx, coretest.Marketer, pages.PageDraftInput{ProjectID: e.wadi, Name: "Wadi launch"})
+	require.NoError(t, err)
+	require.Len(t, out.Pages, 2)
+	en, ar := out.Pages[0], out.Pages[1]
+	assert.Equal(t, "the-wadi", en.Page.Slug)
+	assert.Equal(t, "the-wadi-ar", ar.Page.Slug)
+	assert.Equal(t, "ar", ar.Page.Language)
+	assert.Equal(t, "the-wadi-ar", en.Version.Document.TwinSlug)
+	assert.Equal(t, "the-wadi", ar.Version.Document.TwinSlug)
+	kinds := []string{}
+	for _, s := range en.Version.Document.Sections {
+		kinds = append(kinds, s.Kind)
+	}
+	assert.Equal(t, []string{"hero", "stats", "gallery", "text", "location", "form"}, kinds, "the plan with an unsupported row and the offer with no offer are gone")
+	assert.Len(t, en.Version.Document.Sections[1].Stats, 1, "40% has no fact")
+	assert.Equal(t, []string{sum}, en.Version.Document.Sections[2].Pictures, "the invented picture id is dropped")
+	joined := strings.Join(en.Notes, "\n")
+	assert.Contains(t, joined, "40%")
+	assert.Contains(t, joined, "10%")
+	assert.Contains(t, model.Requests[0].Messages[0].Content[0].Text, "price.from = 120000000 AED")
+	assert.Contains(t, model.Requests[1].Messages[0].Content[0].Text, "Language: Arabic")
+	html, err := e.pages.Render(ctx, coretest.Viewer, en.Page.ID, 1)
+	require.NoError(t, err)
+	assert.Contains(t, string(html), `href="/p/the-wadi-ar"`)
+
+	// A new version of an existing page keeps its slug and language.
+	model.Responses = []assistant.Response{assistanttest.ToolCall("3", pages.DraftTool, page("ar"))}
+	again, err := e.pages.Draft(ctx, coretest.Marketer, pages.PageDraftInput{PageID: ar.Page.ID})
+	require.NoError(t, err)
+	require.Len(t, again.Pages, 1)
+	assert.Equal(t, int64(2), again.Pages[0].Version.Version)
+	assert.Equal(t, "the-wadi-ar", again.Pages[0].Page.Slug)
+
+	model.Responses = []assistant.Response{assistanttest.Text("Sure, here is a page")}
+	_, err = e.pages.Draft(ctx, coretest.Marketer, pages.PageDraftInput{ProjectID: e.wadi, Language: "en", Slug: "wadi-b"})
+	assert.Error(t, err)
+	list, err := e.pages.List(ctx, coretest.Viewer)
+	require.NoError(t, err)
+	assert.Len(t, list, 2, "prose saved nothing")
+}

@@ -396,6 +396,9 @@ func run() error {
 	formSalt := make([]byte, 16)
 	_, _ = rand.Read(formSalt)
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
+	if model != nil {
+		pageService.UseModel(model)
+	}
 	policyService := policies.New(db)
 	proposalService := proposals.New(db, policyService, planService, proposals.Config{})
 	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write

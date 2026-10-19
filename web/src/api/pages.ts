@@ -3,6 +3,7 @@
 // the engine's client so both screens share one cache while both exist.
 export {
   useCreatePage,
+  useDraftPage,
   usePage,
   usePagePreview,
   usePageReadiness,

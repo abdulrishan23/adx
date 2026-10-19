@@ -1,7 +1,9 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { useBrand, useBrands } from "@/api/brands";
 import {
+  useDraftPage,
   usePage,
   usePagePreview,
   usePageReadiness,
@@ -22,6 +24,7 @@ import type {
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
@@ -57,6 +60,7 @@ export function PagesPage() {
       />
       {pages.isPending && <LoadingRows rows={5} />}
       {pages.error && <ErrorNote error={pages.error} />}
+      {pages.data && <AskForPage />}
       {pages.data && list.length === 0 && (
         <Panel>
           <EmptyState title="No pages yet">
@@ -122,6 +126,128 @@ export function PagesPage() {
         </p>
       )}
     </>
+  );
+}
+
+// Adx writes the page from the brand's approved facts, the offer and the
+// studio's pictures for the project, in English and Arabic as twins that
+// link to each other. Each lands as a draft version to edit and publish.
+function AskForPage() {
+  const session = useSession();
+  const brands = useBrands();
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const brand = useBrand(brandId);
+  const [projectId, setProjectId] = useState<number | null>(null);
+  const [offerId, setOfferId] = useState<number>(0);
+  const [language, setLanguage] = useState<"" | "en" | "ar">("");
+  const [instructions, setInstructions] = useState("");
+  const draft = useDraftPage();
+  if (session.role === "viewer") return null;
+  const own = brands.data?.brands.filter((b) => b.kind === "own") ?? [];
+  const projects = brand.data?.projects ?? [];
+  const offers = (brand.data?.offers ?? []).filter(
+    (o) => o.projectId === null || o.projectId === projectId,
+  );
+  return (
+    <Panel
+      title="Ask Adx for a page"
+      description="Written from the brand's approved facts, the offer and the project's pictures. Figures the facts don't state are left out and said below."
+      className="mb-5"
+    >
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (projectId === null) return;
+          draft.mutate({
+            projectId,
+            language,
+            slug: "",
+            name: "",
+            offerId,
+            instructions,
+            pageId: 0,
+          });
+        }}
+      >
+        <Select
+          aria-label="Brand"
+          placeholder="Brand"
+          value={brandId === null ? null : String(brandId)}
+          onValueChange={(v) => {
+            setBrandId(Number(v));
+            setProjectId(null);
+            setOfferId(0);
+          }}
+          options={own.map((b) => ({ value: String(b.id), label: b.name }))}
+        />
+        <Select
+          aria-label="Project"
+          placeholder="Project"
+          value={projectId === null ? null : String(projectId)}
+          onValueChange={(v) => setProjectId(Number(v))}
+          options={projects.map((p) => ({ value: String(p.id), label: p.name }))}
+          disabled={brandId === null}
+        />
+        <Select
+          aria-label="Offer"
+          value={String(offerId)}
+          onValueChange={(v) => setOfferId(Number(v))}
+          options={[
+            { value: "0", label: "No offer" },
+            ...offers.map((o) => ({ value: String(o.id), label: o.name })),
+          ]}
+          disabled={projectId === null}
+        />
+        <Select
+          aria-label="Language"
+          value={language}
+          onValueChange={(v) => setLanguage(v as "" | "en" | "ar")}
+          options={[
+            { value: "", label: "English and Arabic" },
+            { value: "en", label: "English only" },
+            { value: "ar", label: "Arabic only" },
+          ]}
+        />
+        <Input
+          aria-label="Instructions"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="Angle, audience, anything to avoid"
+          className="w-72"
+        />
+        <Button type="submit" disabled={draft.isPending || projectId === null}>
+          <Sparkles />
+          {draft.isPending ? "Writing" : "Write"}
+        </Button>
+        {draft.error && <p className="w-full text-sm text-destructive">{draft.error.message}</p>}
+        {draft.data && (
+          <div className="w-full text-sm text-muted-foreground">
+            <p>
+              Drafted{" "}
+              {draft.data.pages.map((d, i) => (
+                <span key={d.page.id}>
+                  {i > 0 && " and "}
+                  <Link
+                    to="/studio/pages/$pageId"
+                    params={{ pageId: String(d.page.id) }}
+                    className="underline underline-offset-4"
+                  >
+                    {d.page.name}
+                  </Link>
+                </span>
+              ))}
+              . Review, then publish.
+            </p>
+            {draft.data.pages
+              .flatMap((d) => d.notes)
+              .map((n) => (
+                <p key={n}>{n}</p>
+              ))}
+          </div>
+        )}
+      </form>
+    </Panel>
   );
 }
 

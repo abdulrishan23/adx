@@ -1205,6 +1205,9 @@ export interface DraftInput {
     body: string;
 }
 
+// From pages/draft.go
+export const DraftTool = "propose_page";
+
 // From api/outreach.go
 export interface DraftsResponse {
     drafts: MessageDraft[];
@@ -2739,6 +2742,32 @@ export interface PageDocument {
     offerVersion: number | null;
     form: FormConfig | null;
     footer: string;
+    twinSlug: string;
+}
+
+// From pages/draft.go
+export interface PageDraft {
+    page: Page;
+    version: PageVersion;
+    notes: string[];
+}
+
+// From pages/draft.go
+export interface PageDraftInput {
+    projectId: number;
+    language: string;
+    slug: string;
+    name: string;
+    offerId: number;
+    instructions: string;
+    pageId: number;
+}
+
+// From pages/draft.go
+export interface PageDrafts {
+    pages: PageDraft[];
+    model: string;
+    usage: Usage;
 }
 
 // From pages/pages.go
@@ -4021,6 +4050,10 @@ export interface Section {
     items: string[];
     imageKey: string;
     alt: string;
+    pictures: string[];
+    stats: Stat[];
+    table: string[][];
+    link: string;
 }
 
 // From voice/voice.go
@@ -4238,6 +4271,12 @@ export interface StartedVideo {
     ad: Ad;
     run: Run;
     started: boolean;
+}
+
+// From pages/pages.go
+export interface Stat {
+    label: string;
+    value: string;
 }
 
 // From runs/runs.go

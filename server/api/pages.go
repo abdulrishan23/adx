@@ -51,6 +51,19 @@ func (h *handlers) createPage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, d)
 }
 
+func (h *handlers) draftPage(w http.ResponseWriter, r *http.Request) {
+	var in pages.PageDraftInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	out, err := h.pages.Draft(r.Context(), actorFrom(r), in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, out)
+}
+
 func (h *handlers) getPage(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(w, r, "id", "page")
 	if !ok {

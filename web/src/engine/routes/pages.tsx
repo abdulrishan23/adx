@@ -24,8 +24,28 @@ const emptyDoc: PageDocument = {
   headline: "",
   subheadline: "",
   sections: [
-    { kind: "text", text: "", items: [], imageKey: "", alt: "" },
-    { kind: "form", text: "", items: [], imageKey: "", alt: "" },
+    {
+      kind: "text",
+      text: "",
+      items: [],
+      imageKey: "",
+      alt: "",
+      pictures: [],
+      stats: [],
+      table: [],
+      link: "",
+    },
+    {
+      kind: "form",
+      text: "",
+      items: [],
+      imageKey: "",
+      alt: "",
+      pictures: [],
+      stats: [],
+      table: [],
+      link: "",
+    },
   ],
   offerId: null,
   offerVersion: null,
@@ -40,6 +60,7 @@ const emptyDoc: PageDocument = {
     successMessage: "Thank you. We will be in touch.",
   },
   footer: "",
+  twinSlug: "",
 };
 
 // Landing pages: structured, versioned, server-rendered with no script.
@@ -506,7 +527,17 @@ function Editor({
                 ...doc,
                 sections: [
                   ...sections,
-                  { kind: "text", text: "", items: [], imageKey: "", alt: "" },
+                  {
+                    kind: "text",
+                    text: "",
+                    items: [],
+                    imageKey: "",
+                    alt: "",
+                    pictures: [],
+                    stats: [],
+                    table: [],
+                    link: "",
+                  },
                 ],
               });
             }}

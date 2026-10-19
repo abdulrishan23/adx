@@ -365,6 +365,7 @@ func NewRouter(d Deps) http.Handler {
 		if h.pages != nil {
 			r.Get("/api/pages", h.listPages)
 			r.Post("/api/pages", h.createPage)
+			r.Post("/api/pages/draft", h.draftPage)
 			r.Get("/api/pages/{id}", h.getPage)
 			r.Post("/api/pages/{id}/versions", h.savePageVersion)
 			r.Get("/api/pages/{id}/versions/{version}/preview", h.previewPage)
