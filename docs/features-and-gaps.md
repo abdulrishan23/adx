@@ -8,7 +8,7 @@ One sentence on state: every capability below runs locally against real core, te
 
 A marketing tool for Reportage, built as three sub-products behind one Home. **Create** takes a project from brand facts to a live campaign. **Perform** keeps money well spent. **Convert** takes leads through the funnel and talks to them. Underneath sit a supervisor, a workflow engine and a policy layer, so that any change ADX wants to make outside itself goes through a proposal a person approves, under caps and a kill switch.
 
-The thing nobody else in the market does, and the reason ADX exists: spend on Google and Meta, by campaign, tied to leads in GoHighLevel, to qualified leads, to Done-Deals in AED, with the match level and coverage shown next to every figure.
+Nobody else in the market ties spend on Google and Meta, by campaign, to leads in GoHighLevel, to qualified leads and to Done-Deals in AED, with the match level and coverage shown next to every figure. That is why ADX exists.
 
 ## 2. Built
 
@@ -98,7 +98,7 @@ The designed screens are being rewired from sample fixtures to the engine's endp
 
 ### Going live
 
-Not a feature, but the largest item. Each row needs a person outside the codebase.
+The largest item, and none of it is code. Each row needs a person outside the codebase.
 
 | Input | Who | Unblocks |
 |---|---|---|
@@ -195,7 +195,7 @@ Three lists: what we have that nobody else does, what others have that we do not
 ### Where ADX is ahead
 
 1. Spend to lead to qualified lead to Done-Deal at campaign level, with match levels, coverage, and null instead of zero. Hyros and SourceLoop come nearest and are generic or US-residential.
-2. Governance as the product, not a setting: every outside write is a proposal with old value, new value and reason; approval is bound to the version it was given on; policy is non-retroactive; a kill switch every entry point obeys; a supervisor inbox over all of it. Albert and Ryze act and let you audit later. Optmyzr queues recommendations but has no policy model.
+2. Governance built in. Every outside write is a proposal with old value, new value and reason. Approval is bound to the version it was given on. Policy is non-retroactive. A kill switch every entry point obeys. A supervisor inbox over all of it. Albert and Ryze act first and let you audit later. Optmyzr queues recommendations but has no policy model.
 3. Numbers that come from calculations, never from the model, and a predictive-claims gate that stays shut until the evidence exists. No competitor states this rule.
 4. Arabic and English creative under house rules with claims checked against approved facts and a review that dies with the version.
 5. A native pipeline with explainable fit and intent scoring, corrections with history, and a brief per enquiry. GoHighLevel's scoring is a black box; Lofty's is agent-side.
@@ -237,14 +237,14 @@ Ordered by how much it would matter to Reportage in the first quarter of use.
 White space that ADX could own, ranked by how little extra building each needs.
 
 1. Spend to Done-Deal for off-plan developers, whose cycle runs 30 to 180 days, through GoHighLevel and the portals, in AED and Dubai time. Every attribution tool is built for US residential agents or ecommerce.
-2. Governed autonomy: recommend by default, approval per capability with caps, a kill switch, non-retroactive policy, and a learning ledger that only promotes on observed outcomes. The market sells either dashboards or autopilots. Nothing in between with an audit trail.
-3. Bilingual creative compliance tied to approved facts, for a market where a wrong price or an unconditional discount in Arabic is a regulatory problem, not a typo.
+2. Governed autonomy: recommend by default, approval per capability with caps, a kill switch, non-retroactive policy, and a learning ledger that only promotes on observed outcomes. The market sells dashboards or autopilots, and nothing between them with an audit trail.
+3. Bilingual creative compliance tied to approved facts, for a market where a wrong price or an unconditional discount in Arabic is a regulatory problem.
 4. A qualification agent whose reading is evidence first and fact second: uncertain figures held, corrections re-applied with history, quality measured against agreed labels before any claim. Every voice vendor claims qualification; none shows its agreement rate.
 5. One supervisor inbox over ads, pages, CRM fields, calls, workflows and conflicts. GoHighLevel has a conversations inbox; nobody has an operations inbox for a marketing team.
 
 ## 6. What this suggests
 
-Not decisions. Questions for Abdul and the CMO, in the order the gaps suggest.
+Questions for Abdul and the CMO, in the order the gaps suggest. None is decided.
 
 1. Push the live inputs in section 3 before any new feature. A connected pilot on one test location and one ad account each on Google and Meta turns the whole of section 2 from "local" to "verified".
 2. Decide WhatsApp inbound before voice. Reportage runs WhatsApp by hand and has said no to automated calls. A text-first qualification agent reuses the brief, the approved facts, the scoring and the supervisor, and needs only the messaging policy and a template catalogue. It closes gaps 2 and 3 and is where every UAE vendor is winning.
