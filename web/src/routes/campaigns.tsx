@@ -1,14 +1,15 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { useAds, useCampaigns, useDailyBudget, useProposeChange } from "@/api/adx";
 import { projectOf } from "@/api/mock/data";
 import type { AdRow, Campaign, Proposal } from "@/api/models";
 import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
+import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformMark, platformLabel } from "@/components/platform";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
@@ -46,6 +47,7 @@ const route = getRouteApi("/app/campaigns");
 export function CampaignsPage() {
   const campaigns = useCampaigns();
   const scope = useScope();
+  const session = useSession();
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "spend",
     dir: "desc",
@@ -109,7 +111,16 @@ export function CampaignsPage() {
       <PageHeader
         title="Campaigns"
         subtitle={`${rows.length} campaigns · ${PERIOD_LABEL[scope.days]}`}
-        actions={<ScopeBar />}
+        actions={
+          <>
+            <ScopeBar />
+            {session.role !== "viewer" && (
+              <Link to="/campaigns/new" className={buttonVariants()}>
+                <Plus /> New campaign
+              </Link>
+            )}
+          </>
+        }
       />
       {campaigns.isPending && <LoadingRows rows={10} />}
       {campaigns.error && <ErrorNote error={campaigns.error} />}

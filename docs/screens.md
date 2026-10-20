@@ -26,6 +26,7 @@ In the screens a project is called a brand: a development such as The Wadi, mark
 | Projects | Projects | `/projects` | 1 |
 | | New project | `/projects/new` | 1 |
 | | Project | `/projects/$projectId` | 1 |
+| | New campaign | `/campaigns/new` | 2 |
 | | Campaign | `/projects/$projectId/campaigns/$campaignId` | 2 |
 | | Brand | `/brands/$brandId` | 1 |
 | | Plan | `/studio/plans/$planId` | 2 |

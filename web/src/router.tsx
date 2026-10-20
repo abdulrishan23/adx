@@ -56,6 +56,7 @@ import { LaunchPage } from "@/routes/studio/launch";
 import { PagePage } from "@/routes/studio/pages";
 import { PlanPage } from "@/routes/studio/plans";
 import { StartBrandPage } from "@/routes/studio/start";
+import { NewCampaignPage } from "@/routes/studio-campaigns";
 import { WebsitePage } from "@/routes/website";
 
 // Routes are declared in code instead of generated from files, so the whole
@@ -327,6 +328,18 @@ const proposalsRoute = createRoute({
   component: ProposalsPage,
 });
 
+const newCampaignRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/campaigns/new",
+  // ?project= fixes the project when the link came from one.
+  validateSearch: (search: Record<string, unknown>): { project?: number } =>
+    typeof search.project === "number" && search.project > 0 ? { project: search.project } : {},
+  component: function NewCampaign() {
+    const { project } = newCampaignRoute.useSearch();
+    return <NewCampaignPage projectId={project} />;
+  },
+});
+
 const campaignsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/campaigns",
@@ -471,6 +484,7 @@ const routeTree = rootRoute.addChildren([
     analyticsRoute,
     askRoute,
     proposalsRoute,
+    newCampaignRoute,
     campaignsRoute,
     page("/revenue", RevenuePage),
     projectsOverviewRoute,

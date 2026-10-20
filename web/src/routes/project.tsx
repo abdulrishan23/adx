@@ -180,7 +180,7 @@ export function ProjectPage({
         className="mb-8"
       />
       {tab === "overview" && <Overview projectId={projectId} brandId={brandId} />}
-      {tab === "campaigns" && <CampaignsTab projectId={projectId} brandId={brandId} />}
+      {tab === "campaigns" && <CampaignsTab projectId={projectId} />}
       {tab === "research" && <ResearchTab projectId={projectId} />}
       {tab === "pages" && <PagesTab projectId={projectId} brandId={brandId} />}
       {(tab === "concepts" || tab === "renders" || tab === "brand" || tab === "settings") &&
@@ -453,9 +453,8 @@ function CampaignsSide({ projectId }: { projectId: number }) {
       title="Campaigns"
       action={
         <Link
-          to="/projects/$projectId"
-          params={{ projectId: String(projectId) }}
-          search={{ tab: "campaigns" }}
+          to="/campaigns/new"
+          search={{ project: projectId }}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           <Plus /> New campaign
@@ -468,9 +467,8 @@ function CampaignsSide({ projectId }: { projectId: number }) {
         <p className="px-6 py-5 text-sm text-muted-foreground">
           No campaigns yet. Ads and pages are made inside a campaign;{" "}
           <Link
-            to="/projects/$projectId"
-            params={{ projectId: String(projectId) }}
-            search={{ tab: "campaigns" }}
+            to="/campaigns/new"
+            search={{ project: projectId }}
             className="underline underline-offset-4"
           >
             start one
