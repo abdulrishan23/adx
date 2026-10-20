@@ -221,7 +221,7 @@ function sources(meta: DayCounts, metaPrior: DayCounts, google: DayCounts, googl
   ];
 }
 
-function markets(leads: number, qualified: number): MarketRow[] {
+export function markets(leads: number, qualified: number): MarketRow[] {
   const split: [string, string, number, number][] = [
     ["UAE", "+971", 0.52, 1.0],
     ["Saudi Arabia", "+966", 0.11, 1.25],

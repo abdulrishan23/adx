@@ -41,6 +41,7 @@ import type {
   LeadsSummary,
   Lists,
   MarketerRow,
+  MarketRow,
   Organic,
   Outcomes,
   PermissionMode,
@@ -120,6 +121,15 @@ export function useCampaigns() {
   return useQuery({
     queryKey: ["campaigns", scope],
     queryFn: () => get<Campaign[]>(`/api/campaigns?${qs(scope)}`, () => mock.campaigns(scope)),
+  });
+}
+
+// Where leads live for the screen's scope, from the phone country code.
+export function useMarkets() {
+  const scope = useScope();
+  return useQuery({
+    queryKey: ["markets", scope],
+    queryFn: () => get<MarketRow[]>(`/api/markets?${qs(scope)}`, () => mock.markets(scope)),
   });
 }
 
