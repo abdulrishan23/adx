@@ -23,6 +23,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/brands"
+	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/studio"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/blobs"
@@ -158,6 +159,7 @@ func runSeedDemo(args []string) error {
 	marketer := core.Actor{UserID: 0, Role: core.RoleMarketer, Via: core.ViaStartup, WorkspaceID: core.DefaultWorkspace}
 	br := brands.New(db, brands.Config{})
 	st := studio.New(db, files)
+	cs := campaigns.New(db, campaigns.Deps{Brands: br, Studio: st})
 
 	var brandID int64
 	existing, err := br.List(ctx, admin)
@@ -192,6 +194,17 @@ func runSeedDemo(args []string) error {
 		added++
 		slog.Info("seed-demo: added", "project", d.name)
 	}
+	camps := 0
+	for _, d := range demoProjects {
+		ok, err := seedCampaign(ctx, db, br, cs, admin, marketer, d)
+		if err != nil {
+			return fmt.Errorf("%s campaign: %w", d.name, err)
+		}
+		if ok {
+			camps++
+			slog.Info("seed-demo: campaign added", "project", d.name)
+		}
+	}
 	logos := 0
 	for _, d := range demoProjects {
 		ok, err := seedLogo(ctx, db, st, marketer, d)
@@ -205,12 +218,62 @@ func runSeedDemo(args []string) error {
 			slog.Info("seed-demo: logo added", "project", d.name)
 		}
 	}
-	if added == 0 && logos == 0 {
-		slog.Info("seed-demo: every demo project and logo is already there, nothing done")
+	if added == 0 && logos == 0 && camps == 0 {
+		slog.Info("seed-demo: every demo project, campaign and logo is already there, nothing done")
 		return nil
 	}
-	slog.Info("seed-demo done", "projects", added, "logos", logos)
+	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos)
 	return nil
+}
+
+// seedCampaign gives a demo project its launch campaign when it has none,
+// with the project's offer as the brief's, and files the project's loose
+// concepts under it.
+func seedCampaign(ctx context.Context, db *store.DB, br *brands.Brands, cs *campaigns.Campaigns, admin, marketer core.Actor, d demoProject) (bool, error) {
+	p, err := db.Reader().GetProjectByName(ctx, store.GetProjectByNameParams{WorkspaceID: core.DefaultWorkspace, Name: d.name})
+	if err != nil {
+		return false, err
+	}
+	have, err := cs.ListForProject(ctx, marketer, p.ID)
+	if err != nil {
+		return false, err
+	}
+	if len(have) > 0 {
+		return false, nil
+	}
+	var offerID int64
+	if _, offers, err := br.OffersForProject(ctx, admin, p.ID); err == nil {
+		for _, o := range offers {
+			if o.ProjectID != nil && *o.ProjectID == p.ID {
+				offerID = o.ID
+			}
+		}
+	}
+	budget := int64(200_000 * 100)
+	camp, err := cs.Create(ctx, marketer, campaigns.CampaignInput{
+		ProjectID: p.ID, Name: d.concept, OfferID: offerID,
+		Goal:     "150 qualified leads at AED 1,300 or less each",
+		Audience: "Families in Dubai and Abu Dhabi moving up from an apartment. Investors in India buying off-plan.",
+		Avoid:    "Guaranteed returns. Any figure the approved facts don't state.",
+		StartsOn: "2026-10-24", EndsOn: "2026-10-26", BudgetMinor: &budget, Currency: "AED",
+		Channels: []string{"meta", "google"}, Markets: []string{"UAE", "India"},
+	})
+	if err != nil {
+		return false, err
+	}
+	loose, err := db.Reader().ListConcepts(ctx, p.ID)
+	if err != nil {
+		return false, err
+	}
+	for _, k := range loose {
+		if k.CampaignID.Valid {
+			continue
+		}
+		if err := db.Writer().SetConceptCampaign(ctx, store.SetConceptCampaignParams{CampaignID: sql.NullInt64{Int64: camp.ID, Valid: true}, ID: k.ID}); err != nil {
+			return false, err
+		}
+	}
+	return true, nil
 }
 
 // seedLogo fetches the project's logo from reportagegroup.com into its brand

@@ -1,6 +1,6 @@
 -- name: CreatePlan :one
-INSERT INTO plans (workspace_id, brand_id, project_id, title, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO plans (workspace_id, brand_id, project_id, title, created_by, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetPlan :one

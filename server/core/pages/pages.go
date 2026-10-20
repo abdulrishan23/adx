@@ -89,17 +89,19 @@ type PageDocument struct {
 }
 
 type Page struct {
-	ID          int64     `json:"id"`
-	BrandID     int64     `json:"brandId"`
-	ProjectID   *int64    `json:"projectId"`
-	PlanID      *int64    `json:"planId"`
-	PlanVersion *int64    `json:"planVersion"`
-	Slug        string    `json:"slug"`
-	Name        string    `json:"name"`
-	Language    string    `json:"language"`
-	CreatedBy   *int64    `json:"createdBy"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          int64  `json:"id"`
+	BrandID     int64  `json:"brandId"`
+	ProjectID   *int64 `json:"projectId"`
+	PlanID      *int64 `json:"planId"`
+	PlanVersion *int64 `json:"planVersion"`
+	// CampaignID is the campaign the page was made for, or nil.
+	CampaignID *int64    `json:"campaignId"`
+	Slug       string    `json:"slug"`
+	Name       string    `json:"name"`
+	Language   string    `json:"language"`
+	CreatedBy  *int64    `json:"createdBy"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type PageVersion struct {
@@ -147,6 +149,7 @@ type PageInput struct {
 	ProjectID   int64        `json:"projectId"`
 	PlanID      int64        `json:"planId"`
 	PlanVersion int64        `json:"planVersion"`
+	CampaignID  int64        `json:"campaignId"`
 	Slug        string       `json:"slug"`
 	Name        string       `json:"name"`
 	Language    string       `json:"language"`
@@ -308,7 +311,7 @@ func (p *Pages) Create(ctx context.Context, actor core.Actor, in PageInput) (Pag
 	var prow store.Page
 	err = p.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		var err error
-		prow, err = q.CreatePage(ctx, store.CreatePageParams{WorkspaceID: actor.WorkspaceID, BrandID: in.BrandID, ProjectID: optionalID(in.ProjectID), PlanID: optionalID(in.PlanID), PlanVersion: optionalID(in.PlanVersion),
+		prow, err = q.CreatePage(ctx, store.CreatePageParams{WorkspaceID: actor.WorkspaceID, BrandID: in.BrandID, ProjectID: optionalID(in.ProjectID), PlanID: optionalID(in.PlanID), PlanVersion: optionalID(in.PlanVersion), CampaignID: optionalID(in.CampaignID),
 			Slug: in.Slug, Name: in.Name, Language: in.Language, TestToken: hex.EncodeToString(token), CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
 		if err != nil {
 			return err
@@ -1294,7 +1297,7 @@ func (p *Pages) page(ctx context.Context, workspaceID, id int64) (store.Page, er
 }
 
 func pageFromRow(r store.Page) Page {
-	return Page{ID: r.ID, BrandID: r.BrandID, ProjectID: idPtr(r.ProjectID), PlanID: idPtr(r.PlanID), PlanVersion: idPtr(r.PlanVersion), Slug: r.Slug, Name: r.Name, Language: r.Language, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
+	return Page{ID: r.ID, BrandID: r.BrandID, ProjectID: idPtr(r.ProjectID), PlanID: idPtr(r.PlanID), PlanVersion: idPtr(r.PlanVersion), CampaignID: idPtr(r.CampaignID), Slug: r.Slug, Name: r.Name, Language: r.Language, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
 }
 
 func versionFromRow(r store.PageVersion) (PageVersion, error) {

@@ -80,8 +80,8 @@ SELECT * FROM creative_concepts WHERE project_id = ? AND code = ?;
 SELECT CAST(COALESCE(MAX(pos), 0) AS INTEGER) FROM creative_concepts WHERE project_id = ?;
 
 -- name: InsertConcept :one
-INSERT INTO creative_concepts (project_id, code, pos, name, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO creative_concepts (project_id, code, pos, name, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: UpdateConcept :exec

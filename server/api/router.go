@@ -15,6 +15,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
@@ -70,6 +71,7 @@ type Deps struct {
 	Assistant     *assistant.Assistant
 	Creative      *creative.Service
 	Studio        *studio.Studio
+	Campaigns     *campaigns.Campaigns
 	Brands        *brands.Brands
 	Research      *research.Research
 	Plans         *plans.Plans
@@ -113,6 +115,7 @@ type handlers struct {
 	assistant     *assistant.Assistant
 	creative      *creative.Service
 	studio        *studio.Studio
+	campaigns     *campaigns.Campaigns
 	brands        *brands.Brands
 	research      *research.Research
 	plans         *plans.Plans
@@ -139,7 +142,7 @@ type handlers struct {
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, studio: d.Studio, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -325,6 +328,11 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/brands/{id}/facts", h.addFact)
 			r.Get("/api/brands/{id}/claims", h.claims)
 			r.Get("/api/projects/{projectID}/offers", h.projectOffers)
+			r.Get("/api/projects/{projectID}/campaigns", h.projectCampaigns)
+			r.Get("/api/campaigns", h.listCampaigns)
+			r.Post("/api/campaigns", h.createCampaign)
+			r.Get("/api/campaigns/{campaignID}", h.getCampaign)
+			r.Put("/api/campaigns/{campaignID}", h.updateCampaign)
 			r.Get("/api/offers/{id}", h.getOffer)
 			r.Post("/api/offers/{id}/versions", h.reviseOffer)
 			r.Post("/api/offers/{id}/state", h.setOfferState)

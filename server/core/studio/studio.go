@@ -131,7 +131,9 @@ type Concept struct {
 	CTA         string          `json:"cta"`
 	Copy        json.RawMessage `json:"copy"`
 	Imagery     string          `json:"imagery"` // what to ask an image model for
-	Ads         []Ad            `json:"ads"`
+	// CampaignID is the campaign the concept was made for, or nil.
+	CampaignID *int64 `json:"campaignId"`
+	Ads        []Ad   `json:"ads"`
 }
 
 type Pick struct {
@@ -600,10 +602,34 @@ func (c *Studio) comments(ctx context.Context, q *store.Queries, projectID int64
 }
 
 func conceptFrom(k store.CreativeConcept) Concept {
-	return Concept{
+	out := Concept{
 		ID: k.ID, Code: k.Code, Name: k.Name, Why: k.Why, PrimaryText: k.PrimaryText,
 		Headline: k.Headline, Description: k.Description, CTA: k.Cta, Copy: json.RawMessage(k.Copy), Imagery: k.Imagery, Ads: []Ad{},
 	}
+	if k.CampaignID.Valid {
+		id := k.CampaignID.Int64
+		out.CampaignID = &id
+	}
+	return out
+}
+
+// campaignFor checks that a campaign is one of the project's and returns it
+// as the column value; zero means none.
+func (c *Studio) campaignFor(ctx context.Context, actor core.Actor, projectID, campaignID int64) (sql.NullInt64, error) {
+	if campaignID == 0 {
+		return sql.NullInt64{}, nil
+	}
+	row, err := c.db.Reader().GetCampaign(ctx, store.GetCampaignParams{ID: campaignID, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return sql.NullInt64{}, core.NotFound("campaign not found")
+	}
+	if err != nil {
+		return sql.NullInt64{}, err
+	}
+	if row.ProjectID != projectID {
+		return sql.NullInt64{}, core.Invalid("that campaign belongs to another project")
+	}
+	return sql.NullInt64{Int64: row.ID, Valid: true}, nil
 }
 
 // fileCache resolves file ids to refs, reading each file row once.

@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
@@ -417,6 +418,7 @@ func run() error {
 		slog.Info("live ad-account writes are off (ADX_LIVE_WRITES unset); execution intents are held")
 	}
 	executionService := execution.New(db, policyService, proposalService, adTokens, writers, execution.Config{LiveWritesEnabled: cfg.LiveWrites})
+	campaignService := campaigns.New(db, campaigns.Deps{Brands: brandService, Studio: studioService, Pages: pageService, Plans: planService, Launch: executionService})
 	// No enrichment provider is wired; people are resolved from CRM leads and
 	// form submissions only.
 	crmService := crm.New(db, evidenceStore, crm.Config{})
@@ -638,6 +640,7 @@ func run() error {
 			Assistant:     assistantService,
 			Creative:      creativeService,
 			Studio:        studioService,
+			Campaigns:     campaignService,
 			Brands:        brandService,
 			Research:      researchService,
 			Plans:         planService,

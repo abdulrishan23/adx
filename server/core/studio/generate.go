@@ -47,6 +47,9 @@ Rules:
 type GenerateConceptsInput struct {
 	Count        int    `json:"count"`
 	Instructions string `json:"instructions"`
+	// CampaignID puts the concepts under a campaign and gives the model
+	// its brief: the goal, who it's for and what to stay away from.
+	CampaignID int64 `json:"campaignId"`
 }
 
 type GeneratedConcepts struct {
@@ -117,6 +120,17 @@ func (c *Studio) GenerateConcepts(ctx context.Context, actor core.Actor, project
 	gc, err := c.conceptContext(ctx, actor, projectID, settings, existing, count)
 	if err != nil {
 		return GeneratedConcepts{}, err
+	}
+	campaign, err := c.campaignFor(ctx, actor, projectID, in.CampaignID)
+	if err != nil {
+		return GeneratedConcepts{}, err
+	}
+	if campaign.Valid {
+		row, err := c.db.Reader().GetCampaign(ctx, store.GetCampaignParams{ID: campaign.Int64, WorkspaceID: actor.WorkspaceID})
+		if err != nil {
+			return GeneratedConcepts{}, err
+		}
+		gc.campaign = &row
 	}
 	req := c.conceptRequest(gc, in.Instructions, count)
 	resp, err := c.gen.Model.Complete(ctx, req)
@@ -189,7 +203,7 @@ func (c *Studio) GenerateConcepts(ctx context.Context, actor core.Actor, project
 			if err != nil {
 				return err
 			}
-			k, err = q.InsertConcept(ctx, store.InsertConceptParams{ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now})
+			k, err = q.InsertConcept(ctx, store.InsertConceptParams{ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now, CampaignID: campaign})
 			if err != nil {
 				return err
 			}
@@ -228,6 +242,7 @@ type conceptContext struct {
 	existing       []store.CreativeConcept
 	freeCodes      []string
 	values         map[string]bool // every figure the copy may state
+	campaign       *store.Campaign // the brief, when the ask is for a campaign
 }
 
 var digits = regexp.MustCompile(`[0-9][0-9,.]*`)
@@ -331,6 +346,18 @@ func (c *Studio) conceptRequest(gc conceptContext, instructions string, count in
 		b.WriteString("\nConcepts the project already has, not to be repeated:\n")
 		for _, k := range gc.existing {
 			fmt.Fprintf(&b, "- %s %s\n", k.Code, k.Name)
+		}
+	}
+	if k := gc.campaign; k != nil {
+		fmt.Fprintf(&b, "\nThese concepts are for the campaign %q.\n", k.Name)
+		if k.Goal != "" {
+			fmt.Fprintf(&b, "Goal: %s\n", k.Goal)
+		}
+		if k.Audience != "" {
+			fmt.Fprintf(&b, "Who it's for: %s\n", k.Audience)
+		}
+		if k.Avoid != "" {
+			fmt.Fprintf(&b, "Stay away from: %s\n", k.Avoid)
 		}
 	}
 	if strings.TrimSpace(instructions) != "" {

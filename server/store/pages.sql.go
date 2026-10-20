@@ -86,9 +86,9 @@ func (q *Queries) CreateFormSubmission(ctx context.Context, arg CreateFormSubmis
 }
 
 const createPage = `-- name: CreatePage :one
-INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at
+INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id
 `
 
 type CreatePageParams struct {
@@ -104,6 +104,7 @@ type CreatePageParams struct {
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	CampaignID  sql.NullInt64
 }
 
 func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, error) {
@@ -120,6 +121,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.CampaignID,
 	)
 	var i Page
 	err := row.Scan(
@@ -136,6 +138,7 @@ func (q *Queries) CreatePage(ctx context.Context, arg CreatePageParams) (Page, e
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -269,7 +272,7 @@ func (q *Queries) GetLatestPageVersion(ctx context.Context, pageID int64) (PageV
 }
 
 const getPage = `-- name: GetPage :one
-SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at FROM pages WHERE id = ? AND workspace_id = ?
+SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id FROM pages WHERE id = ? AND workspace_id = ?
 `
 
 type GetPageParams struct {
@@ -294,12 +297,13 @@ func (q *Queries) GetPage(ctx context.Context, arg GetPageParams) (Page, error) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CampaignID,
 	)
 	return i, err
 }
 
 const getPageBySlug = `-- name: GetPageBySlug :one
-SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at FROM pages WHERE slug = ?
+SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id FROM pages WHERE slug = ?
 `
 
 func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (Page, error) {
@@ -319,6 +323,7 @@ func (q *Queries) GetPageBySlug(ctx context.Context, slug string) (Page, error) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -479,7 +484,7 @@ func (q *Queries) ListPageDeployments(ctx context.Context, pageID int64) ([]Page
 }
 
 const listPageSummaries = `-- name: ListPageSummaries :many
-SELECT p.id, p.workspace_id, p.brand_id, p.project_id, p.plan_id, p.plan_version, p.slug, p.name, p.language, p.test_token, p.created_by, p.created_at, p.updated_at, b.name AS brand_name, pr.name AS project_name,
+SELECT p.id, p.workspace_id, p.brand_id, p.project_id, p.plan_id, p.plan_version, p.slug, p.name, p.language, p.test_token, p.created_by, p.created_at, p.updated_at, p.campaign_id, b.name AS brand_name, pr.name AS project_name,
        CAST(COALESCE((SELECT MAX(v.version) FROM page_versions v WHERE v.page_id = p.id), 0) AS INTEGER) AS latest_version,
        CAST(COALESCE((SELECT v.version FROM page_deployments d JOIN page_versions v ON v.id = d.version_id
          WHERE d.page_id = p.id AND d.state = 'published' ORDER BY d.deployed_at DESC, d.id DESC LIMIT 1), 0) AS INTEGER) AS published_version
@@ -504,6 +509,7 @@ type ListPageSummariesRow struct {
 	CreatedBy        sql.NullInt64
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
+	CampaignID       sql.NullInt64
 	BrandName        string
 	ProjectName      sql.NullString
 	LatestVersion    int64
@@ -533,6 +539,7 @@ func (q *Queries) ListPageSummaries(ctx context.Context, workspaceID int64) ([]L
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CampaignID,
 			&i.BrandName,
 			&i.ProjectName,
 			&i.LatestVersion,
@@ -587,7 +594,7 @@ func (q *Queries) ListPageVersions(ctx context.Context, pageID int64) ([]PageVer
 }
 
 const listPages = `-- name: ListPages :many
-SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at FROM pages WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC
+SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id FROM pages WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC
 `
 
 func (q *Queries) ListPages(ctx context.Context, workspaceID int64) ([]Page, error) {
@@ -613,6 +620,7 @@ func (q *Queries) ListPages(ctx context.Context, workspaceID int64) ([]Page, err
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CampaignID,
 		); err != nil {
 			return nil, err
 		}

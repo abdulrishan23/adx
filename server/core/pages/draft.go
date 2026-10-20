@@ -40,6 +40,8 @@ type PageDraftInput struct {
 	Name         string `json:"name"`
 	OfferID      int64  `json:"offerId"`
 	Instructions string `json:"instructions"`
+	// CampaignID puts the page under a campaign.
+	CampaignID int64 `json:"campaignId"`
 	// PageID, when set, drafts a new version of that page instead of
 	// creating one (its language and slug are kept).
 	PageID int64 `json:"pageId"`
@@ -177,7 +179,7 @@ func (p *Pages) Draft(ctx context.Context, actor core.Actor, in PageDraftInput) 
 		if lang == "ar" {
 			pageName += " (Arabic)"
 		}
-		d, err := p.Create(ctx, actor, PageInput{BrandID: gc.brandID, ProjectID: in.ProjectID, Slug: slugFor(lang), Name: pageName, Language: lang, Document: doc})
+		d, err := p.Create(ctx, actor, PageInput{BrandID: gc.brandID, ProjectID: in.ProjectID, CampaignID: in.CampaignID, Slug: slugFor(lang), Name: pageName, Language: lang, Document: doc})
 		if err != nil {
 			return out, err
 		}

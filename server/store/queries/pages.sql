@@ -1,6 +1,6 @@
 -- name: CreatePage :one
-INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetPage :one

@@ -101,6 +101,14 @@ export interface AdHocReportInput {
     params: ReportParams;
 }
 
+// From campaigns/campaigns.go
+export interface AdTally {
+    total: number;
+    approved: number;
+    revise: number;
+    waiting: number;
+}
+
 // From studio/studio.go
 export interface AdVersion {
     id: number;
@@ -692,6 +700,63 @@ export interface CallsResponse {
     calls: Call[];
 }
 
+// From campaigns/campaigns.go
+export interface Campaign {
+    id: number;
+    projectId: number;
+    name: string;
+    goal: string;
+    audience: string;
+    avoid: string;
+    offerId: number | null;
+    startsOn: string;
+    endsOn: string;
+    budgetMinor: number | null;
+    currency: string;
+    channels: string[];
+    markets: string[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From campaigns/campaigns.go
+export interface CampaignDetail extends CampaignSummary {
+    offer: Offer | null;
+    concepts: Concept[];
+    pages: PageSummary[];
+    plan: PlanSummary | null;
+    launch: LaunchStatus | null;
+    ads: AdTally;
+}
+
+// From campaigns/campaigns.go
+export interface CampaignInput {
+    projectId: number;
+    name: string;
+    goal: string;
+    audience: string;
+    avoid: string;
+    offerId: number;
+    startsOn: string;
+    endsOn: string;
+    budgetMinor: number | null;
+    currency: string;
+    channels: string[];
+    markets: string[];
+}
+
+// From campaigns/campaigns.go
+export interface CampaignSummary extends Campaign {
+    projectName: string;
+    stages: Stage[];
+    state: string;
+}
+
+// From api/campaigns.go
+export interface CampaignsResponse {
+    campaigns: CampaignSummary[];
+}
+
 // From api/proposals.go
 export interface CancelInput {
     reason: string;
@@ -904,6 +969,7 @@ export interface Concept {
     cta: string;
     copy: unknown;
     imagery: string;
+    campaignId: number | null;
     ads: Ad[];
 }
 
@@ -1627,6 +1693,7 @@ export interface FunnelState {
 export interface GenerateConceptsInput {
     count: number;
     instructions: string;
+    campaignId: number;
 }
 
 // From studio/imagery.go
@@ -2484,6 +2551,7 @@ export const MulawCodec = "mulaw_8000";
 export interface NewConcept {
     code: string;
     name: string;
+    campaignId: number;
 }
 
 // From studio/ads.go
@@ -2700,6 +2768,7 @@ export interface Page {
     projectId: number | null;
     planId: number | null;
     planVersion: number | null;
+    campaignId: number | null;
     slug: string;
     name: string;
     language: string;
@@ -2760,6 +2829,7 @@ export interface PageDraftInput {
     name: string;
     offerId: number;
     instructions: string;
+    campaignId: number;
     pageId: number;
 }
 
@@ -2776,6 +2846,7 @@ export interface PageInput {
     projectId: number;
     planId: number;
     planVersion: number;
+    campaignId: number;
     slug: string;
     name: string;
     language: string;
@@ -2931,6 +3002,7 @@ export interface Plan {
     id: number;
     brandId: number;
     projectId: number | null;
+    campaignId: number | null;
     title: string;
     createdBy: number | null;
     createdAt: string;
@@ -2990,6 +3062,7 @@ export interface PlanEvidenceRef {
 export interface PlanInput {
     brandId: number;
     projectId: number;
+    campaignId: number;
     title: string;
     document: PlanDocument;
     note: string;
@@ -4235,7 +4308,7 @@ export interface SkillDocument {
 // From voice/voice.go
 export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
 
-// From leads/funnel.go
+// From campaigns, leads
 export type Stage = "attempted" | "dead" | "disqualified" | "engaged" | "excluded" | "meeting" | "offer" | "open" | "won";
 
 // From signals/signals.go

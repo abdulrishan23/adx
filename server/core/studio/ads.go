@@ -16,6 +16,8 @@ import (
 type NewConcept struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
+	// CampaignID puts the concept under one of the project's campaigns.
+	CampaignID int64 `json:"campaignId"`
 }
 
 // CreateConcept adds a concept, such as C1 Cash offer, to a project.
@@ -37,15 +39,19 @@ func (c *Studio) CreateConcept(ctx context.Context, actor core.Actor, projectID 
 	if _, err := c.settings(ctx, c.db.Reader(), projectID); err != nil {
 		return Concept{}, err
 	}
+	campaign, err := c.campaignFor(ctx, actor, projectID, in.CampaignID)
+	if err != nil {
+		return Concept{}, err
+	}
 	var out store.CreativeConcept
-	err := c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+	err = c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		pos, err := q.MaxConceptPos(ctx, projectID)
 		if err != nil {
 			return err
 		}
 		now := c.now()
 		out, err = q.InsertConcept(ctx, store.InsertConceptParams{
-			ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now,
+			ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now, CampaignID: campaign,
 		})
 		return err
 	})
