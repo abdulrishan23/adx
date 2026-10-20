@@ -248,21 +248,18 @@ export function CampaignsPage() {
                       onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
                     >
                       <TD className="pl-[3.25rem] first:pl-[3.25rem]">
-                        <div className="flex items-center gap-3">
-                          <PlatformMark platform={c.platform} className="size-9" />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium">{c.name}</p>
-                            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                              {platformLabel(c.platform)} · {c.type}
-                              {c.status !== "active" && (
-                                <>
-                                  <span aria-hidden="true">·</span>
-                                  <StatusMark status={STATUS_MARK[c.status]} />
-                                  <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
-                                </>
-                              )}
-                            </p>
-                          </div>
+                        <div
+                          className="flex items-center gap-3"
+                          title={`${platformLabel(c.platform)} · ${c.type}`}
+                        >
+                          <PlatformMark platform={c.platform} className="size-6" />
+                          <span className="truncate font-medium">{c.name}</span>
+                          {c.status !== "active" && (
+                            <span className="flex shrink-0 items-center gap-1.5 text-xs">
+                              <StatusMark status={STATUS_MARK[c.status]} />
+                              {STATUS_LABEL[c.status]}
+                            </span>
+                          )}
                         </div>
                       </TD>
                       <Figures c={c} muted />
