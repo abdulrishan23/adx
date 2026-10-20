@@ -222,7 +222,7 @@ export function CampaignsPage() {
                       <Link
                         to="/projects/$projectId"
                         params={{ projectId: String(g.projectId) }}
-                        className="font-heading font-semibold hover:underline"
+                        className="font-heading text-base font-semibold hover:underline"
                       >
                         {projectOf(g.projectId)}
                       </Link>
@@ -247,7 +247,7 @@ export function CampaignsPage() {
                       tabIndex={0}
                       onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
                     >
-                      <TD className="pl-8">
+                      <TD className="pl-[3.25rem] first:pl-[3.25rem]">
                         <div className="flex items-center gap-3">
                           <PlatformMark platform={c.platform} className="size-9" />
                           <div className="min-w-0">
