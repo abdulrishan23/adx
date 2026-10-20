@@ -202,7 +202,7 @@ export function CampaignsPage() {
             </THead>
             {groups.map((g) => (
               <TBody key={g.projectId}>
-                <TR className="bg-muted/60">
+                <TR className="border-t bg-muted/60">
                   <TD className="py-4 align-top">
                     <div className="flex items-center gap-2">
                       <button

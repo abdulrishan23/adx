@@ -12,6 +12,7 @@ import type {
   SourceRow,
 } from "@/api/models";
 import { Meter } from "@/components/charts";
+import { PACE, paceOf } from "@/components/pacing";
 import { ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { SourceName } from "@/components/platform";
 import { Button } from "@/components/ui/button";
@@ -56,8 +57,8 @@ export function BriefPage() {
 //
 // Thresholds live here until they move to Guardrails (#34).
 const THRESHOLD = {
-  budgetWatch: 0.05, // heading this far over or under the monthly budget
-  budgetAct: 0.1,
+  budgetWatch: PACE.watch, // heading this far over or under the monthly budget
+  budgetAct: PACE.act,
   costWatch: 0.08, // cost per qualified lead up this much on the week before
   costAct: 0.15,
   leadsDrop: 0.25, // leads yesterday this far below a usual day
@@ -388,19 +389,16 @@ function PacingLine({ pacing }: { pacing: Pacing | null }) {
       <span className="text-xs text-muted-foreground sm:col-span-2">No monthly budget set</span>
     );
   const expected = (pacing.budgetMinor * pacing.dayOfMonth) / pacing.daysInMonth;
-  const off = pacing.projectedMinor / pacing.budgetMinor - 1;
+  const { off, status } = paceOf(pacing);
   return (
     <>
-      <Meter value={pacing.spentMinor} max={pacing.budgetMinor} marker={expected} />
+      <Meter value={pacing.spentMinor} max={pacing.budgetMinor} marker={expected} status={status} />
       <span className="col-span-2 text-xs sm:col-span-1 sm:text-right">
-        {Math.abs(off) < THRESHOLD.budgetWatch ? (
+        {status === "ready" ? (
           <span className="text-muted-foreground">On track · </span>
         ) : (
           <>
-            <StatusMark
-              status={Math.abs(off) >= THRESHOLD.budgetAct ? "error" : "caution"}
-              className="mr-1.5"
-            />
+            <StatusMark status={status} className="mr-1.5" />
             {formatPercent(Math.abs(off))} {off > 0 ? "over" : "under"} ·{" "}
           </>
         )}
