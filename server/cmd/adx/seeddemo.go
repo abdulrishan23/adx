@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
+	"io"
 	"log/slog"
 	"math"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -45,8 +48,8 @@ type demoProject struct {
 	imagery    string
 	tints      [2]color.RGBA
 	renderName [2]string
-	// logo is the project's logo on reportagegroup.com, the picture in its
-	// page's .r-logo. The Wadi's page has none.
+	// logo is the project's logo: the picture in its reportagegroup.com
+	// page's .r-logo, or a file in demo/ when the page has none.
 	logo string
 }
 
@@ -60,6 +63,7 @@ var demoProjects = []demoProject{
 		imagery:    "Golden hour over a gated villa community in Dubailand, warm sandstone facades, a calm pool in the foreground, long shadows, no people in close-up, clear sky above for a headline",
 		tints:      [2]color.RGBA{{196, 152, 84, 255}, {72, 110, 140, 255}},
 		renderName: [2]string{"Villas at dusk", "Pool at noon"},
+		logo:       "demo/wadi-logo.jpg",
 	},
 	{
 		name: "Verdana", location: "Dubai Investments Park", units: "Studios, 1 and 2 bedroom apartments and townhouses",
@@ -236,21 +240,12 @@ func seedLogo(ctx context.Context, db *store.DB, st *studio.Studio, marketer cor
 	if logos["onLight"] != nil {
 		return false, nil
 	}
-	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.logo, nil)
+	body, err := openLogo(ctx, d.logo)
 	if err != nil {
 		return false, err
 	}
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return false, fmt.Errorf("%s: %s", d.logo, res.Status)
-	}
-	ref, err := st.Upload(ctx, marketer, res.Body)
+	defer body.Close()
+	ref, err := st.Upload(ctx, marketer, body)
 	if err != nil {
 		return false, err
 	}
@@ -391,4 +386,42 @@ func picture(w, h int, tint color.RGBA) []byte {
 	var buf bytes.Buffer
 	_ = jpeg.Encode(&buf, img, &jpeg.Options{Quality: 88})
 	return buf.Bytes()
+}
+
+//go:embed demo
+var demoFiles embed.FS
+
+// openLogo reads a logo from demo/ or fetches it from the web.
+func openLogo(ctx context.Context, src string) (io.ReadCloser, error) {
+	if !strings.HasPrefix(src, "https://") {
+		return demoFiles.Open(src)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, src, nil)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	if res.StatusCode != http.StatusOK {
+		res.Body.Close()
+		cancel()
+		return nil, fmt.Errorf("%s: %s", src, res.Status)
+	}
+	return cancelOnClose{res.Body, cancel}, nil
+}
+
+type cancelOnClose struct {
+	io.ReadCloser
+	cancel context.CancelFunc
+}
+
+func (c cancelOnClose) Close() error {
+	err := c.ReadCloser.Close()
+	c.cancel()
+	return err
 }
