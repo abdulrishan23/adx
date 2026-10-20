@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Plus } from "lucide-react";
 import { useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useProjectCampaigns } from "@/api/campaigns";
@@ -10,7 +10,7 @@ import type { Ad } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { BrandKitForm } from "@/creative/brand-kit-form";
@@ -456,9 +456,9 @@ function CampaignsSide({ projectId }: { projectId: number }) {
           to="/projects/$projectId"
           params={{ projectId: String(projectId) }}
           search={{ tab: "campaigns" }}
-          className="text-xs text-muted-foreground hover:text-foreground"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
         >
-          Open
+          <Plus /> New campaign
         </Link>
       }
       bodyClassName="p-0"

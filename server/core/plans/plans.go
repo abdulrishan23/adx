@@ -59,6 +59,13 @@ var Channels = []ChannelInfo{
 	{"print_outdoor", "other", "Print and outdoor", false},
 }
 
+// ChannelByKey looks a channel up by its key, for the domains that plan
+// around channels without owning the list.
+func ChannelByKey(key string) (ChannelInfo, bool) {
+	c, ok := channelByKey[key]
+	return c, ok
+}
+
 var channelByKey = func() map[string]ChannelInfo {
 	m := map[string]ChannelInfo{}
 	for _, c := range Channels {

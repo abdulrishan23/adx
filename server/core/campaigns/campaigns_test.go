@@ -80,7 +80,7 @@ func (e *env) newProject(name string) int64 {
 
 func (e *env) campaign(name string) CampaignDetail {
 	e.t.Helper()
-	d, err := e.c.Create(e.t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: name, Goal: "150 leads", StartsOn: "2026-10-24", EndsOn: "2026-10-26", Channels: []string{"meta", "google"}, Markets: []string{"UAE"}})
+	d, err := e.c.Create(e.t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: name, Goal: "150 leads", StartsOn: "2026-10-24", EndsOn: "2026-10-26", Channels: []string{"meta_lead_form", "google_search"}, Markets: []string{"UAE"}})
 	if err != nil {
 		e.t.Fatal(err)
 	}
@@ -112,8 +112,8 @@ func TestCreateChecksTheBrief(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "before the start") {
 		t.Fatalf("want the date order refused, got %v", err)
 	}
-	_, err = e.c.Create(t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: "Bad", Channels: []string{"tiktok"}})
-	if err == nil || !strings.Contains(err.Error(), "meta and google") {
+	_, err = e.c.Create(t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: "Bad", Channels: []string{"pigeon"}})
+	if err == nil || !strings.Contains(err.Error(), "not a channel") {
 		t.Fatalf("want the channel refused, got %v", err)
 	}
 	if _, err := e.c.Create(t.Context(), viewer, CampaignInput{ProjectID: e.project, Name: "Nope"}); err != core.ErrForbidden {
@@ -222,5 +222,47 @@ func TestListsAreScoped(t *testing.T) {
 	}
 	if len(all) != 2 {
 		t.Fatalf("workspace list should have both, got %d", len(all))
+	}
+}
+
+// Catches the Page stage nagging a lead-form-only campaign for a page it
+// doesn't need, and the Ads stage not knowing a feed picture is missing.
+func TestChannelsDecideWhatIsNeeded(t *testing.T) {
+	e := setup(t)
+	a, err := e.c.Create(t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: "Forms only", Goal: "Leads", Channels: []string{"meta_lead_form"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a.Stages[2].Note != "Not needed" {
+		t.Fatalf("a lead-form campaign needs no page, got %+v", a.Stages[2])
+	}
+	if len(a.Needs) != 1 || a.Needs[0].Page || len(a.Needs[0].Assets) != 3 {
+		t.Fatalf("needs: %+v", a.Needs)
+	}
+	if _, err := e.studio.CreateConcept(t.Context(), marketer, e.project, studio.NewConcept{Code: "C1", CampaignID: a.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.studio.AddUploads(t.Context(), marketer, e.project, []studio.UploadedAd{{
+		Concept: "C1", Slug: "FORMS", Lang: studio.LangEN, Fmt: studio.FmtStory, File: e.jpg(1080, 1920, 20), Preview: e.jpg(64, 114, 20),
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.c.Get(t.Context(), viewer, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	story := got.Needs[0].Assets[0]
+	if story.Have["en"] != 1 || story.Have["ar"] != 0 {
+		t.Fatalf("story have: %+v", story.Have)
+	}
+	if got.Needs[0].Assets[1].Have["en"] != 0 {
+		t.Fatalf("feed should be missing: %+v", got.Needs[0].Assets[1])
+	}
+	legacy, err := e.c.Create(t.Context(), marketer, CampaignInput{ProjectID: e.project, Name: "Old words", Channels: []string{"meta", "google"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacy.Channels[0] != "meta_lead_form" || legacy.Channels[1] != "google_search" {
+		t.Fatalf("legacy channels should map to the catalogue, got %v", legacy.Channels)
 	}
 }

@@ -260,7 +260,7 @@ func seedCampaign(ctx context.Context, db *store.DB, br *brands.Brands, cs *camp
 		Audience: "Families in Dubai and Abu Dhabi moving up from an apartment. Investors in India buying off-plan.",
 		Avoid:    "Guaranteed returns. Any figure the approved facts don't state.",
 		StartsOn: "2026-10-24", EndsOn: "2026-10-26", BudgetMinor: &budget, Currency: "AED",
-		Channels: []string{"meta", "google"}, Markets: []string{"UAE", "India"},
+		Channels: []string{"meta_lead_form", "meta_traffic", "google_search", "google_pmax"}, Markets: []string{"UAE", "India"},
 	})
 	if err != nil {
 		return false, err

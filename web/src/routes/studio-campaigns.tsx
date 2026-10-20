@@ -3,6 +3,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useCreateCampaign, useProjectCampaigns } from "@/api/campaigns";
+import { usePlans } from "@/api/plans";
 import type { CampaignInput, CampaignSummary } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, Panel } from "@/components/page";
@@ -90,6 +91,7 @@ export function CampaignsTab({
   const session = useSession();
   const navigate = useNavigate();
   const create = useCreateCampaign();
+  const plansList = usePlans();
   const [starting, setStarting] = useState(false);
   const list = campaigns.data?.campaigns ?? [];
   const blank: CampaignInput = {
@@ -103,7 +105,7 @@ export function CampaignsTab({
     endsOn: "",
     budgetMinor: null,
     currency: "AED",
-    channels: ["meta", "google"],
+    channels: ["meta_lead_form", "google_search"],
     markets: ["UAE"],
   };
   return (
@@ -122,6 +124,7 @@ export function CampaignsTab({
           offers={(brand.data?.offers ?? []).filter(
             (o) => o.projectId === null || o.projectId === projectId,
           )}
+          channels={plansList.data?.channels ?? []}
           pending={create.isPending}
           error={create.error}
           onCancel={() => setStarting(false)}
@@ -141,8 +144,15 @@ export function CampaignsTab({
       {campaigns.data && list.length === 0 && !starting && (
         <Panel>
           <EmptyState title="No campaigns yet">
-            A campaign is one push: an offer, a window, a budget and channels. Its ads, its landing
-            page and its plan are made inside it, so start one to make them.
+            <span className="flex flex-col items-center gap-4">
+              A campaign is one push: an offer, a window, a budget and channels. Its ads, its
+              landing page and its plan are made inside it.
+              {session.role !== "viewer" && (
+                <Button onClick={() => setStarting(true)}>
+                  <Plus /> New campaign
+                </Button>
+              )}
+            </span>
           </EmptyState>
         </Panel>
       )}

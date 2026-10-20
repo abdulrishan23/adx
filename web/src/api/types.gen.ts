@@ -288,6 +288,15 @@ export interface Asset {
     createdAt: string;
 }
 
+// From campaigns/needs.go
+export interface AssetNeed {
+    kind: string;
+    fmt: string;
+    label: string;
+    have: Record<string, number> | null;
+    want: number;
+}
+
 // From plans/plans.go
 export interface AssetRequirement {
     format: Format;
@@ -727,6 +736,7 @@ export interface CampaignDetail extends CampaignSummary {
     plan: PlanSummary | null;
     launch: LaunchStatus | null;
     ads: AdTally;
+    needs: ChannelNeed[];
 }
 
 // From campaigns/campaigns.go
@@ -834,6 +844,17 @@ export interface ChannelInfo {
 
 // From outreach/outreach.go
 export type ChannelMode = "approved" | "automatic" | "off";
+
+// From campaigns/needs.go
+export interface ChannelNeed {
+    channel: string;
+    label: string;
+    platform: string;
+    supported: boolean;
+    assets: AssetNeed[];
+    page: boolean;
+    note: string;
+}
 
 // From alerts/alerts.go
 export const CheckCostSpike = "cost_spike";

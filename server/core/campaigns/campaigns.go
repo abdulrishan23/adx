@@ -85,6 +85,8 @@ type CampaignDetail struct {
 	Plan     *plans.PlanSummary      `json:"plan"`
 	Launch   *execution.LaunchStatus `json:"launch"`
 	Ads      AdTally                 `json:"ads"`
+	// Needs is what the campaign's channels ask for and what it has.
+	Needs []ChannelNeed `json:"needs"`
 }
 
 type AdTally struct {
@@ -189,7 +191,9 @@ type checked struct {
 	channels, markets           string
 }
 
-var channels = map[string]bool{"meta": true, "google": true}
+// legacyChannels are the two words the first campaigns were made with,
+// before channels were the plan's catalogue.
+var legacyChannels = map[string]string{"meta": "meta_lead_form", "google": "google_search"}
 
 func (c *Campaigns) params(ctx context.Context, actor core.Actor, in CampaignInput) (checked, error) {
 	var p checked
@@ -254,8 +258,11 @@ func (c *Campaigns) params(ctx context.Context, actor core.Actor, in CampaignInp
 	chans := []string{}
 	for _, ch := range in.Channels {
 		ch = strings.ToLower(strings.TrimSpace(ch))
-		if !channels[ch] {
-			return p, core.Invalid("channels are meta and google")
+		if l, ok := legacyChannels[ch]; ok {
+			ch = l
+		}
+		if _, ok := plans.ChannelByKey(ch); !ok {
+			return p, core.Invalid("%q is not a channel Adx knows", ch)
 		}
 		chans = append(chans, ch)
 	}
@@ -395,6 +402,7 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 			}
 		}
 	}
+	d.Needs = needs(d.Channels, d.Concepts)
 	ads := CampaignStage{ID: "ads", Status: "pending", Note: "No ads yet"}
 	switch {
 	case d.Ads.Revise > 0:
@@ -422,6 +430,9 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 		}
 	}
 	page := CampaignStage{ID: "page", Status: "pending", Note: "No page yet"}
+	if !needsPage(d.Needs) && len(d.Pages) == 0 {
+		page = CampaignStage{ID: "page", Status: "ready", Note: "Not needed"}
+	}
 	if n := len(d.Pages); n > 0 {
 		live := 0
 		for _, p := range d.Pages {
@@ -554,6 +565,11 @@ func fromRow(r store.Campaign) Campaign {
 		out.BudgetMinor = &b
 	}
 	_ = json.Unmarshal([]byte(r.Channels), &out.Channels)
+	for i, ch := range out.Channels {
+		if l, ok := legacyChannels[ch]; ok {
+			out.Channels[i] = l
+		}
+	}
 	_ = json.Unmarshal([]byte(r.Markets), &out.Markets)
 	return out
 }

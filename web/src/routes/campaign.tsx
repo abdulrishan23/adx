@@ -4,8 +4,14 @@ import { type ReactNode, useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useCampaign, useUpdateCampaign } from "@/api/campaigns";
 import { useCreativeProject } from "@/api/creative";
-import { useCreatePlan } from "@/api/plans";
-import type { CampaignDetail, CampaignInput, CampaignStage } from "@/api/types.gen";
+import { useCreatePlan, usePlans } from "@/api/plans";
+import type {
+  CampaignDetail,
+  CampaignInput,
+  CampaignStage,
+  ChannelInfo,
+  ChannelNeed,
+} from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -47,7 +53,21 @@ export const STATE: Record<string, { label: string; status: Status }> = {
   live: { label: "Live", status: "ready" },
 };
 
-const CHANNEL: Record<string, string> = { meta: "Meta", google: "Google" };
+// PLATFORM names the ad platform a channel runs on; channel labels come
+// from the plan's catalogue, which the plans response carries.
+const PLATFORM: Record<string, string> = {
+  meta: "Meta",
+  google_ads: "Google",
+  tiktok: "TikTok",
+  snapchat: "Snapchat",
+  linkedin: "LinkedIn",
+  other: "Other",
+};
+
+// platformOf reads the platform off a channel key, the way the catalogue
+// names them: meta_lead_form, google_search.
+const platformOf = (key: string) =>
+  key.startsWith("meta") ? "meta" : key.startsWith("google") ? "google_ads" : key;
 
 const asStatus = (s: string): Status =>
   s === "ready" || s === "caution" || s === "error" ? s : "pending";
@@ -72,6 +92,9 @@ export function CampaignPage({
   const project = projects.data?.projects.find((p) => p.id === projectId);
   const brand = useBrand(project?.brandId ?? null);
   const studio = useCreativeProject(projectId);
+  const plansList = usePlans();
+  const _channelLabel = (key: string) =>
+    plansList.data?.channels.find((ch) => ch.key === key)?.label ?? key;
   const [editing, setEditing] = useState(false);
 
   if (campaign.isPending) return <LoadingRows rows={8} />;
@@ -90,7 +113,9 @@ export function CampaignPage({
     c.projectName,
     window,
     c.budgetMinor !== null ? formatMoneyWhole(c.budgetMinor, c.currency) : null,
-    c.channels.length > 0 ? c.channels.map((ch) => CHANNEL[ch] ?? ch).join(" and ") : null,
+    c.channels.length > 0
+      ? [...new Set(c.channels.map((ch) => PLATFORM[platformOf(ch)] ?? ch))].join(" and ")
+      : null,
     c.markets.length > 0 ? c.markets.join(" and ") : null,
   ].filter(Boolean) as string[];
 
@@ -133,6 +158,7 @@ export function CampaignPage({
           offers={(brand.data?.offers ?? []).filter(
             (o) => o.projectId === null || o.projectId === projectId,
           )}
+          channels={plansList.data?.channels ?? []}
           onDone={() => setEditing(false)}
         />
       )}
@@ -238,6 +264,7 @@ export function CampaignPage({
               )
             }
           >
+            {c.needs.length > 0 && <Needs needs={c.needs} page={asStatus(stage("page").status)} />}
             {canEdit && (
               <div className="mb-6 flex flex-wrap items-start gap-x-8 gap-y-4">
                 <AskForConcepts projectId={projectId} campaignId={c.id} />
@@ -267,7 +294,9 @@ export function CampaignPage({
             stage={stage("page")}
             summary={
               c.pages.length === 0
-                ? "The page the ads send people to."
+                ? c.needs.length > 0 && c.needs.every((n) => !n.page)
+                  ? "None of this campaign's channels sends people to a page. Add one anyway if you want a place for the offer."
+                  : "The page the ads send people to."
                 : `${c.pages.length} ${c.pages.length === 1 ? "page" : "pages"} · ${c.pages.filter((p) => p.publishedVersion !== null).length} live`
             }
           >
@@ -443,7 +472,7 @@ export function CampaignPage({
                   status={
                     p.state === "confirmed" ? "ready" : p.state === "failed" ? "error" : "caution"
                   }
-                  label={`${CHANNEL[p.platform] ?? p.platform}`}
+                  label={PLATFORM[p.platform] ?? p.platform}
                   note={p.state}
                 />
               ))}
@@ -503,6 +532,53 @@ function Stepper({
         );
       })}
     </ol>
+  );
+}
+
+// Needs is what each channel asks of the campaign, against what it has.
+function Needs({ needs, page }: { needs: ChannelNeed[]; page: Status }) {
+  return (
+    <div className="mb-6">
+      <Eyebrow>What the channels need</Eyebrow>
+      <ul className="mt-2 divide-y border-y">
+        {needs.map((n) => (
+          <li key={n.channel} className="flex flex-wrap items-start gap-x-6 gap-y-2 py-3 text-sm">
+            <span className="w-44 shrink-0">
+              <span className="font-medium">{n.label}</span>
+              {!n.supported && <span className="block text-xs text-muted-foreground">By hand</span>}
+            </span>
+            <span className="flex min-w-0 flex-1 flex-wrap gap-x-5 gap-y-1">
+              {n.assets.map((a) => {
+                const en = a.have?.en ?? 0;
+                const ar = a.have?.ar ?? 0;
+                const have = en + ar;
+                const ok = a.kind !== "text" && en >= a.want && ar >= a.want;
+                return (
+                  <span key={a.label} className="flex items-center gap-2">
+                    <StatusMark status={ok ? "ready" : have > 0 ? "caution" : "pending"} />
+                    {a.label}
+                    {a.kind !== "text" && (
+                      <span className="text-muted-foreground">
+                        {en} EN · {ar} AR
+                      </span>
+                    )}
+                  </span>
+                );
+              })}
+              {n.page ? (
+                <span className="flex items-center gap-2">
+                  <StatusMark status={page} />
+                  Landing page
+                </span>
+              ) : (
+                <span className="text-muted-foreground">No page</span>
+              )}
+            </span>
+            {n.note && <span className="w-full text-xs text-muted-foreground">{n.note}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -580,10 +656,12 @@ function Check({ status, label, note }: { status: Status; label: string; note: s
 function EditBrief({
   campaign: c,
   offers,
+  channels,
   onDone,
 }: {
   campaign: CampaignDetail;
   offers: { id: number; name: string }[];
+  channels: ChannelInfo[];
   onDone: () => void;
 }) {
   const update = useUpdateCampaign(c.id);
@@ -605,6 +683,7 @@ function EditBrief({
         markets: c.markets,
       }}
       offers={offers}
+      channels={channels}
       pending={update.isPending}
       error={update.error}
       onCancel={onDone}
@@ -620,6 +699,7 @@ export function BriefForm({
   title,
   initial,
   offers,
+  channels,
   pending,
   error,
   onCancel,
@@ -628,6 +708,7 @@ export function BriefForm({
   title: string;
   initial: CampaignInput;
   offers: { id: number; name: string }[];
+  channels: ChannelInfo[];
   pending: boolean;
   error: Error | null;
   onCancel: () => void;
@@ -743,20 +824,34 @@ export function BriefForm({
             }
           />
         </Labelled>
-        <fieldset className="flex flex-col gap-1.5">
+        <fieldset className="flex flex-col gap-1.5 sm:col-span-2">
           <legend className="text-sm font-medium">Channels</legend>
-          <div className="flex h-8 items-center gap-4 text-sm">
-            {Object.entries(CHANNEL).map(([k, label]) => (
-              <label key={k} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={form.channels.includes(k)}
-                  onChange={() => toggle(k)}
-                />
-                {label}
-              </label>
-            ))}
+          <div className="grid gap-x-8 gap-y-2 text-sm sm:grid-cols-3">
+            {Object.entries(PLATFORM).map(([platform, label]) => {
+              const own = channels.filter((ch) => ch.platform === platform);
+              if (own.length === 0) return null;
+              return (
+                <div key={platform} className="space-y-1">
+                  <p className="text-xs text-muted-foreground">{label}</p>
+                  {own.map((ch) => (
+                    <label key={ch.key} className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.channels.includes(ch.key)}
+                        onChange={() => toggle(ch.key)}
+                      />
+                      <span className={ch.supported ? "" : "text-muted-foreground"}>
+                        {ch.label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })}
           </div>
+          <p className="text-xs text-muted-foreground">
+            Greyed channels can be planned but Adx can't launch or measure them; they run by hand.
+          </p>
         </fieldset>
         <div className="flex items-end justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
