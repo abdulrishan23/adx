@@ -84,14 +84,23 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
 
   return (
     <section>
-      <Link
-        to="/projects/$projectId"
-        params={{ projectId: String(projectId) }}
-        search={{ tab: "concepts" }}
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← {project.settings.projectName}
-      </Link>
+      {concept.campaignId !== null ? (
+        <Link
+          to="/projects/$projectId/campaigns/$campaignId"
+          params={{ projectId: String(projectId), campaignId: String(concept.campaignId) }}
+          search={{ stage: "ads" }}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Campaign
+        </Link>
+      ) : (
+        <Link
+          to="/creative/concepts"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Concepts
+        </Link>
+      )}
       <PageHeader
         className="mt-2"
         title={

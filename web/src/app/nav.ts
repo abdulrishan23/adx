@@ -4,6 +4,7 @@ import {
   Bot,
   Building2,
   ChartNoAxesCombined,
+  Clapperboard,
   ClipboardCheck,
   Cog,
   Coins,
@@ -11,12 +12,15 @@ import {
   Filter,
   FolderKanban,
   Gauge,
+  Images,
   Inbox,
   Inbox as InboxIcon,
+  Lightbulb,
   ListChecks,
   type LucideIcon,
   Megaphone,
   MessageSquareText,
+  Palette,
   PanelsTopLeft,
   PhoneCall,
   Plug,
@@ -83,7 +87,7 @@ export const NAV: readonly NavGroup[] = [
   {
     label: "Projects",
     door: { to: "/projects", phase: 1, icon: FolderKanban },
-    under: ["/studio/", "/brands/", "/creative/", "/competitors"],
+    under: ["/studio/", "/brands/", "/competitors"],
     items: [
       {
         label: "Projects",
@@ -93,6 +97,40 @@ export const NAV: readonly NavGroup[] = [
         status: "live",
         summary:
           "Each development Adx markets, such as The Wadi, and its campaigns: the brief, the ads Adx writes, the page, the plan and the launch for each push.",
+      },
+    ],
+  },
+  {
+    label: "Creative",
+    door: { to: "/creative/concepts", phase: 1, icon: Palette },
+    // A concept's page, the ad editor and uploads live under a project's path.
+    under: ["/creative/"],
+    items: [
+      {
+        label: "Concepts",
+        to: "/creative/concepts",
+        icon: Lightbulb,
+        phase: 1,
+        status: "live",
+        summary: "Every idea across projects and campaigns, and the ads built from it.",
+      },
+      {
+        label: "Library",
+        to: "/creative/library",
+        icon: Images,
+        phase: 1,
+        status: "live",
+        summary:
+          "Each project's pictures, logos, fonts and colours, for every campaign to draw on.",
+      },
+      {
+        label: "Producer",
+        to: "/creative/producer",
+        icon: Clapperboard,
+        phase: 1,
+        status: "live",
+        summary:
+          "Every ad across campaigns: what needs changes, what's awaiting review, what's approved.",
       },
     ],
   },

@@ -28,6 +28,8 @@ describe("nav", () => {
     expect(doorOf("/projects/1/campaigns/2")?.label).toBe("Projects");
     expect(doorOf("/studio/launch")?.label).toBe("Projects");
     expect(doorOf("/brands/3")?.label).toBe("Projects");
+    expect(doorOf("/creative/producer")?.label).toBe("Creative");
+    expect(doorOf("/creative/1/concepts/2")?.label).toBe("Creative");
     expect(doorOf("/leads/1001")?.label).toBe("Convert");
     expect(doorOf("/perform/projects")?.label).toBe("Perform");
     expect(doorOf("/settings/people")).toBeUndefined();

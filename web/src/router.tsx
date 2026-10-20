@@ -23,6 +23,9 @@ import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
+import { CreativeConceptsPage } from "@/routes/creative/concepts";
+import { CreativeLibraryPage, type LibrarySection } from "@/routes/creative/library";
+import { CreativeProducerPage } from "@/routes/creative/producer";
 import { CreativeConceptPage } from "@/routes/creative-concept";
 import { CreativeEditorPage } from "@/routes/creative-editor";
 import { CreativeUploadPage } from "@/routes/creative-upload";
@@ -221,8 +224,39 @@ const oldCreativeListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/creative",
   beforeLoad: () => {
-    throw redirect({ to: "/projects" });
+    throw redirect({ to: "/creative/concepts" });
   },
+});
+
+// Creative is its own door, after Smartly's Creative suite: Concepts, Library
+// and Producer. Campaigns stay under Projects and draw on it (BD-66).
+const creativeConceptsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/concepts",
+  component: CreativeConceptsPage,
+});
+
+const creativeLibraryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/library",
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { project?: number; section?: LibrarySection } => ({
+    ...(typeof search.project === "number" && search.project > 0
+      ? { project: search.project }
+      : {}),
+    ...(search.section === "brand" ? { section: "brand" as const } : {}),
+  }),
+  component: function Library() {
+    const { project, section } = creativeLibraryRoute.useSearch();
+    return <CreativeLibraryPage projectId={project} section={section} />;
+  },
+});
+
+const creativeProducerRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/producer",
+  component: CreativeProducerPage,
 });
 const oldCreativeProjectRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -293,6 +327,18 @@ const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects/$projectId",
   validateSearch: projectTabSearch,
+  // Pictures and Brand moved to Creative's Library.
+  beforeLoad: ({ params, search }) => {
+    if (search.tab === "renders" || search.tab === "brand") {
+      throw redirect({
+        to: "/creative/library",
+        search: {
+          project: Number(params.projectId),
+          ...(search.tab === "brand" ? { section: "brand" as const } : {}),
+        },
+      });
+    }
+  },
   component: function Project() {
     const { projectId } = projectRoute.useParams();
     const { tab } = projectRoute.useSearch();
@@ -498,6 +544,9 @@ const routeTree = rootRoute.addChildren([
     projectsOverviewRoute,
     page("/leads", LeadsPage),
     page("/leads/$leadId", LeadDetailPage),
+    creativeConceptsRoute,
+    creativeLibraryRoute,
+    creativeProducerRoute,
     creativeUploadRoute,
     creativeConceptRoute,
     creativeEditorRoute,

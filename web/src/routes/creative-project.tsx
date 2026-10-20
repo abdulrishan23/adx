@@ -250,7 +250,15 @@ export function ConceptSection({
   );
 }
 
-function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit: boolean }) {
+export function AdTile({
+  ad,
+  projectId,
+  canEdit,
+}: {
+  ad: Ad;
+  projectId: number;
+  canEdit: boolean;
+}) {
   const f = FORMATS[ad.fmt];
   const video = ad.kind === "video";
   return (
@@ -318,7 +326,13 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
 
 // Every comment from the review board, newest first, so the team can work
 // through them and mark each one done.
-function CommentsPanel({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
+export function CommentsPanel({
+  project,
+  canEdit,
+}: {
+  project: CreativeProject;
+  canEdit: boolean;
+}) {
   const [show, setShow] = useState<"open" | "all">("open");
   const resolve = useResolveComment();
   const comments = [...project.comments].reverse();
