@@ -60,11 +60,8 @@ export function ProjectsPage() {
                     className="flex animate-rise flex-col border bg-card p-6 transition-colors hover:border-foreground/40"
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
-                    <p className="flex items-center gap-1.5 font-mono text-[0.6rem] tracking-widest text-muted-foreground uppercase">
+                    <h2 className="flex items-center gap-2.5 font-heading text-xl font-semibold tracking-tight">
                       <StatusMark status={status} />
-                      {s ? `${s.prefix}` : "Not set up"}
-                    </p>
-                    <h2 className="mt-2 font-heading text-xl font-semibold tracking-tight">
                       {p.name}
                     </h2>
                     <p className="mt-3 text-sm text-muted-foreground">
