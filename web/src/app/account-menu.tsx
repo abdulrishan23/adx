@@ -49,8 +49,9 @@ export function AccountMenu({ placement }: { placement: Placement }) {
         title={compact ? session.name : undefined}
         onClick={() => setOpen((o) => !o)}
         className={cn(
-          "flex items-center gap-2 rounded-md text-left transition-colors",
-          "p-1",
+          "flex items-center gap-2 text-left transition-colors",
+          // In the sidebar the button is the whole footer, edge to edge.
+          wide ? "px-3 py-2.5" : "rounded-md p-1",
           placement === "topbar" ? "hover:bg-accent" : "hover:bg-sidebar-accent",
           open && (placement === "topbar" ? "bg-accent" : "bg-sidebar-accent"),
           wide && "w-full",

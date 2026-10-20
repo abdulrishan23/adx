@@ -271,7 +271,7 @@ function NavLink({
 
 function SidebarFooter({ collapsed, inDrawer }: { collapsed: boolean; inDrawer?: boolean }) {
   return (
-    <div className={cn("border-t border-sidebar-border p-1.5", collapsed && "flex justify-center")}>
+    <div className={cn("border-t border-sidebar-border", collapsed && "flex justify-center p-1.5")}>
       <AccountMenu placement={inDrawer ? "drawer" : collapsed ? "rail" : "sidebar"} />
     </div>
   );

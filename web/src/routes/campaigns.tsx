@@ -10,7 +10,7 @@ import {
 } from "@/api/adx";
 import { projectOf } from "@/api/mock/data";
 import type { AdRow, Campaign, Proposal } from "@/api/models";
-import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
+import { ScopeBar } from "@/app/scope";
 import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
 import { Form } from "@/components/form";
@@ -57,7 +57,6 @@ const route = getRouteApi("/app/campaigns");
 
 export function CampaignsPage() {
   const campaigns = useCampaigns();
-  const scope = useScope();
   const session = useSession();
   // The month's budget pacing per project, which By project used to show.
   const overview = useProjectsOverview(analyticsSearch({}));
@@ -148,7 +147,7 @@ export function CampaignsPage() {
     <>
       <PageHeader
         title="Campaigns"
-        subtitle={`${rows.length} campaigns · ${PERIOD_LABEL[scope.days]}`}
+        className="items-center"
         actions={
           <>
             <ScopeBar />
@@ -269,7 +268,9 @@ export function CampaignsPage() {
             ))}
             <TBody>
               <TR className="border-t-2 border-t-foreground/20 font-medium">
-                <TD>All campaigns</TD>
+                <TD>
+                  {rows.length} {rows.length === 1 ? "campaign" : "campaigns"}
+                </TD>
                 <Figures c={totals} />
               </TR>
             </TBody>
