@@ -1,5 +1,5 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Plus } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Plus } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import {
   useAds,
@@ -28,6 +28,8 @@ import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
 
 type SortKey = "spend" | "leads" | "cpl" | "qualified" | "cpq" | "deals";
+
+const FOLD_KEY = "adx-campaigns-folded";
 
 const per = (minor: number, n: number) => (n > 0 ? Math.round(minor / n) : null);
 const roas = (c: Campaign) =>
@@ -59,6 +61,29 @@ export function CampaignsPage() {
   const session = useSession();
   // The month's budget pacing per project, which By project used to show.
   const overview = useProjectsOverview(analyticsSearch({}));
+  // Which projects are folded away. Remembered per browser, as a view
+  // preference; storage can be blocked, so it falls back to all open.
+  const [closed, setClosed] = useState<Set<number>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) ?? "[]") as number[]);
+    } catch {
+      return new Set();
+    }
+  });
+  const remember = (next: Set<number>) => {
+    setClosed(next);
+    try {
+      localStorage.setItem(FOLD_KEY, JSON.stringify([...next]));
+    } catch {
+      // Not remembered; the fold still works for this visit.
+    }
+  };
+  const toggle = (id: number) => {
+    const next = new Set(closed);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    remember(next);
+  };
   const pacingOf = (projectId: number) =>
     overview.data?.find((p) => p.projectId === projectId)?.pacing ?? null;
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
@@ -149,7 +174,24 @@ export function CampaignsPage() {
           <Table>
             <THead>
               <TR>
-                <TH>Campaign</TH>
+                <TH>
+                  <span className="flex items-center gap-3">
+                    Campaign
+                    <button
+                      type="button"
+                      onClick={() =>
+                        remember(
+                          closed.size === groups.length
+                            ? new Set()
+                            : new Set(groups.map((g) => g.projectId)),
+                        )
+                      }
+                      className="font-sans text-xs tracking-normal text-muted-foreground normal-case hover:text-foreground"
+                    >
+                      {closed.size === groups.length ? "Expand all" : "Collapse all"}
+                    </button>
+                  </span>
+                </TH>
                 <SortHead k="spend">Spend</SortHead>
                 <SortHead k="leads">Leads</SortHead>
                 <SortHead k="qualified">Qualified</SortHead>
@@ -162,46 +204,68 @@ export function CampaignsPage() {
               <TBody key={g.projectId}>
                 <TR className="bg-muted/60">
                   <TD className="py-4 align-top">
-                    <Link
-                      to="/projects/$projectId"
-                      params={{ projectId: String(g.projectId) }}
-                      className="font-heading font-semibold hover:underline"
-                    >
-                      {projectOf(g.projectId)}
-                    </Link>
-                    <div className="mt-3 max-w-72">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggle(g.projectId)}
+                        aria-expanded={!closed.has(g.projectId)}
+                        aria-label={`${closed.has(g.projectId) ? "Show" : "Hide"} ${projectOf(g.projectId)}'s campaigns`}
+                        className="-ml-1 grid size-6 place-items-center text-muted-foreground hover:text-foreground"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition-transform",
+                            !closed.has(g.projectId) && "rotate-90",
+                          )}
+                        />
+                      </button>
+                      <Link
+                        to="/projects/$projectId"
+                        params={{ projectId: String(g.projectId) }}
+                        className="font-heading font-semibold hover:underline"
+                      >
+                        {projectOf(g.projectId)}
+                      </Link>
+                      {closed.has(g.projectId) && (
+                        <span className="text-xs text-muted-foreground">
+                          {g.campaigns.length} {g.campaigns.length === 1 ? "campaign" : "campaigns"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 w-80 max-w-full pl-7">
                       <PacingCell pacing={pacingOf(g.projectId)} />
                     </div>
                   </TD>
                   <Figures c={g.total} />
                 </TR>
-                {g.campaigns.map((c) => (
-                  <TR
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/40"
-                    onClick={() => setOpenId(c.id)}
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
-                  >
-                    <TD className="pl-8">
-                      <div className="flex items-center gap-2">
-                        <PlatformMark platform={c.platform} />
-                        <span className="truncate font-medium">{c.name}</span>
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1.5 pl-[1.125rem] text-xs text-muted-foreground">
-                        {platformLabel(c.platform)} · {c.type}
-                        {c.status !== "active" && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <StatusMark status={STATUS_MARK[c.status]} />
-                            <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
-                          </>
-                        )}
-                      </p>
-                    </TD>
-                    <Figures c={c} muted />
-                  </TR>
-                ))}
+                {!closed.has(g.projectId) &&
+                  g.campaigns.map((c) => (
+                    <TR
+                      key={c.id}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => setOpenId(c.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
+                    >
+                      <TD className="pl-8">
+                        <div className="flex items-center gap-2">
+                          <PlatformMark platform={c.platform} />
+                          <span className="truncate font-medium">{c.name}</span>
+                        </div>
+                        <p className="mt-0.5 flex items-center gap-1.5 pl-[1.125rem] text-xs text-muted-foreground">
+                          {platformLabel(c.platform)} · {c.type}
+                          {c.status !== "active" && (
+                            <>
+                              <span aria-hidden="true">·</span>
+                              <StatusMark status={STATUS_MARK[c.status]} />
+                              <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
+                            </>
+                          )}
+                        </p>
+                      </TD>
+                      <Figures c={c} muted />
+                    </TR>
+                  ))}
               </TBody>
             ))}
             <TBody>
