@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, ExternalLink, Plus } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useCampaign, useUpdateCampaign } from "@/api/campaigns";
@@ -224,15 +224,13 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
               studio.data && (
                 <>
                   <ReviewLinkButtons settings={studio.data.settings} />
-                  {canEdit && (
-                    <Link
-                      to="/projects/$projectId"
-                      params={{ projectId: String(projectId) }}
-                      search={{ tab: "renders" }}
+                  {c.ads.approved > 0 && (
+                    <a
+                      href={`/api/creative/projects/${projectId}/download?set=approved`}
                       className={buttonVariants({ variant: "outline" })}
                     >
-                      Pictures
-                    </Link>
+                      <Download /> Approved
+                    </a>
                   )}
                 </>
               )

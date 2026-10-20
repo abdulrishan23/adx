@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Download, Upload } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useProjectCampaigns } from "@/api/campaigns";
@@ -10,7 +10,7 @@ import type { Ad } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { BrandKitForm } from "@/creative/brand-kit-form";
@@ -21,7 +21,7 @@ import { useProjects } from "@/engine/api/projects";
 import { formatDate, formatRelative } from "@/lib/format";
 import { CLASS, factValue, keyLabel } from "./brand";
 import { STATE } from "./campaign";
-import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
+import { ConceptsTab } from "./creative-project";
 import { CompetitorsPanel } from "./projects";
 import { AskForPage } from "./studio/pages";
 import { BriefView } from "./studio/research";
@@ -142,30 +142,6 @@ export function ProjectPage({
               />
             )}
           </span>
-        }
-        actions={
-          p && (
-            <>
-              <ReviewLinkButtons settings={p.settings} />
-              <a
-                href={`/api/creative/projects/${projectId}/download?set=approved`}
-                className={buttonVariants({ variant: "outline" })}
-              >
-                <Download />
-                Approved
-              </a>
-              {canEdit && (
-                <Link
-                  to="/creative/$projectId/upload"
-                  params={{ projectId: String(projectId) }}
-                  className={buttonVariants()}
-                >
-                  <Upload />
-                  Upload ads
-                </Link>
-              )}
-            </>
-          )
         }
       />
       <Segmented
@@ -489,7 +465,18 @@ function CampaignsSide({ projectId }: { projectId: number }) {
     >
       {campaigns.isPending && <LoadingRows rows={2} />}
       {campaigns.data && list.length === 0 && (
-        <p className="px-6 py-5 text-sm text-muted-foreground">No campaigns yet.</p>
+        <p className="px-6 py-5 text-sm text-muted-foreground">
+          No campaigns yet. Ads and pages are made inside a campaign;{" "}
+          <Link
+            to="/projects/$projectId"
+            params={{ projectId: String(projectId) }}
+            search={{ tab: "campaigns" }}
+            className="underline underline-offset-4"
+          >
+            start one
+          </Link>
+          .
+        </p>
       )}
       {list.length > 0 && (
         <ul className="divide-y">

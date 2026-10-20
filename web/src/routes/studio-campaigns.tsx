@@ -141,8 +141,8 @@ export function CampaignsTab({
       {campaigns.data && list.length === 0 && !starting && (
         <Panel>
           <EmptyState title="No campaigns yet">
-            A campaign is one push: an offer, a window, a budget and channels. Its ads, page and
-            plan live inside it.
+            A campaign is one push: an offer, a window, a budget and channels. Its ads, its landing
+            page and its plan are made inside it, so start one to make them.
           </EmptyState>
         </Panel>
       )}
