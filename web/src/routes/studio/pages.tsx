@@ -179,14 +179,23 @@ export function PagePage() {
   const shown = versions.find((x) => x.version === picked) ?? latest;
   return (
     <>
-      {d.page.projectId !== null ? (
+      {d.page.projectId !== null && d.page.campaignId !== null ? (
+        <Link
+          to="/projects/$projectId/campaigns/$campaignId"
+          params={{ projectId: String(d.page.projectId), campaignId: String(d.page.campaignId) }}
+          search={{ stage: "page" }}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Campaign
+        </Link>
+      ) : d.page.projectId !== null ? (
         <Link
           to="/projects/$projectId"
           params={{ projectId: String(d.page.projectId) }}
           search={{ tab: "pages" }}
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> Landing pages
+          <ArrowLeft className="size-4" /> Unfiled pages
         </Link>
       ) : (
         <Link

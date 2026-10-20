@@ -205,6 +205,10 @@ func runSeedDemo(args []string) error {
 			slog.Info("seed-demo: campaign added", "project", d.name)
 		}
 	}
+	filled, err := seedFilled(ctx, db, br, st, cs, admin, marketer)
+	if err != nil {
+		return fmt.Errorf("filling %s: %w", demoProjects[0].name, err)
+	}
 	logos := 0
 	for _, d := range demoProjects {
 		ok, err := seedLogo(ctx, db, st, marketer, d)
@@ -218,11 +222,11 @@ func runSeedDemo(args []string) error {
 			slog.Info("seed-demo: logo added", "project", d.name)
 		}
 	}
-	if added == 0 && logos == 0 && camps == 0 {
+	if added == 0 && logos == 0 && camps == 0 && !filled {
 		slog.Info("seed-demo: every demo project, campaign and logo is already there, nothing done")
 		return nil
 	}
-	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos)
+	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos, "filled", filled)
 	return nil
 }
 

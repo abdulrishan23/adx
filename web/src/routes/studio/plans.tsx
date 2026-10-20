@@ -58,6 +58,7 @@ export function PlanPage() {
         <Link
           to="/projects/$projectId/campaigns/$campaignId"
           params={{ projectId: String(d.plan.projectId), campaignId: String(d.plan.campaignId) }}
+          search={{ stage: "plan" }}
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="size-4" /> Campaign

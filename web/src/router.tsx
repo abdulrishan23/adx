@@ -18,7 +18,7 @@ import { ApprovePage } from "@/routes/approve";
 import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
-import { CampaignPage } from "@/routes/campaign";
+import { CampaignPage, type CampaignStageId, STAGE_IDS } from "@/routes/campaign";
 import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
@@ -294,9 +294,19 @@ const projectRoute = createRoute({
 const campaignRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects/$projectId/campaigns/$campaignId",
+  // ?stage= picks the stage that fills the view; the brief is the default.
+  validateSearch: (search: Record<string, unknown>): { stage?: CampaignStageId } =>
+    typeof search.stage === "string" &&
+    (STAGE_IDS as string[]).includes(search.stage) &&
+    search.stage !== "brief"
+      ? { stage: search.stage as CampaignStageId }
+      : {},
   component: function Campaign() {
     const { projectId, campaignId } = campaignRoute.useParams();
-    return <CampaignPage projectId={Number(projectId)} campaignId={Number(campaignId)} />;
+    const { stage } = campaignRoute.useSearch();
+    return (
+      <CampaignPage projectId={Number(projectId)} campaignId={Number(campaignId)} stage={stage} />
+    );
   },
 });
 

@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Download, ExternalLink, Plus } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { useBrand } from "@/api/brands";
@@ -14,6 +14,7 @@ import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip
 import { Textarea } from "@/components/ui/textarea";
 import { useProjects } from "@/engine/api/projects";
 import { formatDate, formatMoneyWhole } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { CLASS, factValue, keyLabel } from "./brand";
 import {
   AskForConcepts,
@@ -51,7 +52,19 @@ const CHANNEL: Record<string, string> = { meta: "Meta", google: "Google" };
 const asStatus = (s: string): Status =>
   s === "ready" || s === "caution" || s === "error" ? s : "pending";
 
-export function CampaignPage({ projectId, campaignId }: { projectId: number; campaignId: number }) {
+export type CampaignStageId = "brief" | "ads" | "page" | "plan" | "approvals" | "live";
+export const STAGE_IDS: CampaignStageId[] = ["brief", "ads", "page", "plan", "approvals", "live"];
+
+export function CampaignPage({
+  projectId,
+  campaignId,
+  stage: active = "brief",
+}: {
+  projectId: number;
+  campaignId: number;
+  stage?: CampaignStageId;
+}) {
+  const navigate = useNavigate();
   const campaign = useCampaign(campaignId);
   const projects = useProjects();
   const session = useSession();
@@ -124,33 +137,20 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
         />
       )}
 
-      <div className="flex flex-col gap-8 xl:flex-row">
-        <nav className="shrink-0 xl:sticky xl:top-6 xl:w-64 xl:self-start">
-          <ol className="flex gap-1 overflow-x-auto xl:flex-col">
-            {c.stages.map((s, i) => (
-              <li key={s.id}>
-                <a
-                  href={`#${s.id}`}
-                  className="flex items-center gap-3 px-3 py-2 text-sm whitespace-nowrap hover:bg-muted"
-                >
-                  <span className="w-4 font-mono text-[0.7rem] text-muted-foreground tabular-nums">
-                    {i + 1}
-                  </span>
-                  <StatusMark status={asStatus(s.status)} />
-                  <span className="font-medium">{STAGE_LABEL[s.id] ?? s.id}</span>
-                  <span className="hidden truncate text-muted-foreground xl:ml-auto xl:inline">
-                    {s.note}
-                  </span>
-                </a>
-              </li>
-            ))}
-          </ol>
-          <p className="mt-4 hidden px-3 text-xs text-muted-foreground xl:block">
-            Adx moves a stage on when it can. A person decides at Approvals and Live.
-          </p>
-        </nav>
+      <Stepper
+        stages={c.stages}
+        active={active}
+        onPick={(id) =>
+          navigate({
+            to: "/projects/$projectId/campaigns/$campaignId",
+            params: { projectId: String(projectId), campaignId: String(c.id) },
+            search: id === "brief" ? {} : { stage: id },
+          })
+        }
+      />
 
-        <div className="min-w-0 flex-1 space-y-6">
+      <div className="space-y-6">
+        {active === "brief" && (
           <StageSection
             id="brief"
             n={1}
@@ -213,7 +213,9 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
               )}
             </div>
           </StageSection>
+        )}
 
+        {active === "ads" && (
           <StageSection
             id="ads"
             n={2}
@@ -255,7 +257,9 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
               </div>
             )}
           </StageSection>
+        )}
 
+        {active === "page" && (
           <StageSection
             id="page"
             n={3}
@@ -311,7 +315,9 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
               Every figure on the page is checked against the claims above before it can go live.
             </p>
           </StageSection>
+        )}
 
+        {active === "plan" && (
           <StageSection
             id="plan"
             n={4}
@@ -346,7 +352,9 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
                 : "Start a plan with the campaign's budget and dates, then ask Adx to draft it from the research."}
             </p>
           </StageSection>
+        )}
 
+        {active === "approvals" && (
           <StageSection
             id="approvals"
             n={5}
@@ -384,7 +392,9 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
               </li>
             </ul>
           </StageSection>
+        )}
 
+        {active === "live" && (
           <StageSection
             id="live"
             n={6}
@@ -440,9 +450,59 @@ export function CampaignPage({ projectId, campaignId }: { projectId: number; cam
             </ul>
             <p className="mt-3 text-sm text-muted-foreground">Results then show under Perform.</p>
           </StageSection>
-        </div>
+        )}
       </div>
     </>
+  );
+}
+
+// Stepper is the six stages across the top. One stage fills the view at a
+// time, so each can grow into an editor.
+function Stepper({
+  stages,
+  active,
+  onPick,
+}: {
+  stages: CampaignStage[];
+  active: CampaignStageId;
+  onPick: (id: CampaignStageId) => void;
+}) {
+  return (
+    <ol className="mb-8 grid grid-cols-3 gap-px border bg-border sm:grid-cols-6">
+      {stages.map((s, i) => {
+        const id = s.id as CampaignStageId;
+        const on = id === active;
+        return (
+          <li key={s.id} className="min-w-0">
+            <button
+              type="button"
+              onClick={() => onPick(id)}
+              aria-current={on ? "step" : undefined}
+              className={cn(
+                "flex h-full w-full flex-col gap-1 px-4 py-3 text-left transition-colors",
+                on ? "bg-primary text-primary-foreground" : "bg-card hover:bg-muted",
+              )}
+            >
+              <span
+                className={cn(
+                  "font-mono text-[0.65rem] tracking-widest uppercase",
+                  on ? "opacity-70" : "text-muted-foreground",
+                )}
+              >
+                {i + 1}
+              </span>
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <StatusMark status={asStatus(s.status)} />
+                <span className="truncate">{STAGE_LABEL[s.id] ?? s.id}</span>
+              </span>
+              <span className={cn("truncate text-xs", on ? "opacity-70" : "text-muted-foreground")}>
+                {s.note}
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

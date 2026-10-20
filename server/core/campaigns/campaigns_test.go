@@ -171,6 +171,36 @@ func TestAdsBelongToTheirCampaign(t *testing.T) {
 	}
 }
 
+// Catches a page made for a campaign not showing in its Page stage, which
+// happened once when the summaries left the campaign out.
+func TestPagesAndPlansReachTheirStages(t *testing.T) {
+	e := setup(t)
+	a := e.campaign("Launch weekend")
+	if _, err := e.pages.Create(t.Context(), marketer, pages.PageInput{
+		BrandID: e.brand, ProjectID: e.project, CampaignID: a.ID, Slug: "wadi-launch", Name: "Launch", Language: "en",
+		Document: pages.PageDocument{Title: "Launch", Sections: []pages.Section{{Kind: "text", Text: "Villas."}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.plans.Create(t.Context(), marketer, plans.PlanInput{
+		BrandID: e.brand, ProjectID: e.project, CampaignID: a.ID, Title: "Launch",
+		Document: plans.PlanDocument{Objective: "Leads", BudgetMinor: 100, Currency: "AED", PeriodFrom: "2026-10-24", PeriodTo: "2026-10-26",
+			Allocations: []plans.Allocation{{Channel: "meta_lead_form", BudgetMinor: 100}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := e.c.Get(t.Context(), viewer, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Pages) != 1 || got.Stages[2].Note != "Drafted, not published" {
+		t.Fatalf("page stage: %d pages, %+v", len(got.Pages), got.Stages[2])
+	}
+	if got.Plan == nil || got.Stages[3].Note != "Ready to accept" {
+		t.Fatalf("plan stage: %+v %+v", got.Plan, got.Stages[3])
+	}
+}
+
 // Catches a project's campaigns list leaking another project's, and the
 // workspace list missing one.
 func TestListsAreScoped(t *testing.T) {
