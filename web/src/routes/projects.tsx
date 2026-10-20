@@ -6,7 +6,6 @@ import { usePages } from "@/api/pages";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
-import { type Status, StatusMark } from "@/components/ui/status-chip";
 import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
 
@@ -51,7 +50,6 @@ export function ProjectsPage() {
                 const s = creative.data?.projects.find((x) => x.projectId === p.id);
                 const pp = (pages.data?.pages ?? []).filter((x) => x.projectId === p.id);
                 const live = pp.filter((x) => x.publishedVersion !== null).length;
-                const status: Status = s?.revise ? "caution" : s && s.ads > 0 ? "ready" : "pending";
                 return (
                   <Link
                     key={p.id}
@@ -60,8 +58,20 @@ export function ProjectsPage() {
                     className="flex animate-rise flex-col border bg-card p-6 transition-colors hover:border-foreground/40"
                     style={{ animationDelay: `${i * 40}ms` }}
                   >
-                    <h2 className="flex items-center gap-2.5 font-heading text-xl font-semibold tracking-tight">
-                      <StatusMark status={status} />
+                    <div className="flex h-16 items-center">
+                      {s?.logo ? (
+                        <img
+                          src={`/api/files/${s.logo}`}
+                          alt=""
+                          className="h-full w-auto max-w-[70%] object-contain object-left"
+                        />
+                      ) : (
+                        <span className="flex size-16 items-center justify-center border font-heading text-2xl font-semibold text-muted-foreground">
+                          {p.name.replace(/^the\s+/i, "").charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                    <h2 className="mt-4 font-heading text-xl font-semibold tracking-tight">
                       {p.name}
                     </h2>
                     <p className="mt-3 text-sm text-muted-foreground">

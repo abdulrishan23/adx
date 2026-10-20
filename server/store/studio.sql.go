@@ -945,7 +945,7 @@ SELECT p.id AS project_id, p.name, c.prefix, c.review_active,
        (SELECT COUNT(*) FROM creative_concepts k WHERE k.project_id = c.project_id) AS concepts,
        (SELECT COUNT(*) FROM creative_ads a WHERE a.project_id = c.project_id) AS ads,
        (SELECT COUNT(*) FROM creative_renders r WHERE r.project_id = c.project_id AND r.hidden = 0) AS renders,
-       c.updated_at
+       c.brand_kit, c.updated_at
 FROM creative_projects c
 JOIN projects p ON p.id = c.project_id
 WHERE p.workspace_id = ?
@@ -960,6 +960,7 @@ type ListCreativeProjectsRow struct {
 	Concepts     int64
 	Ads          int64
 	Renders      int64
+	BrandKit     string
 	UpdatedAt    time.Time
 }
 
@@ -980,6 +981,7 @@ func (q *Queries) ListCreativeProjects(ctx context.Context, workspaceID int64) (
 			&i.Concepts,
 			&i.Ads,
 			&i.Renders,
+			&i.BrandKit,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err

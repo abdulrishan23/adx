@@ -163,18 +163,21 @@ type CreativeProject struct {
 }
 
 type ProjectSummary struct {
-	ProjectID    int64     `json:"projectId"`
-	Name         string    `json:"name"`
-	Prefix       string    `json:"prefix"`
-	ReviewActive bool      `json:"reviewActive"`
-	Concepts     int64     `json:"concepts"`
-	Ads          int64     `json:"ads"`
-	Renders      int64     `json:"renders"`
-	Approved     int       `json:"approved"`
-	Revise       int       `json:"revise"`
-	Waiting      int       `json:"waiting"`
-	Unpublished  int       `json:"unpublished"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ProjectID    int64  `json:"projectId"`
+	Name         string `json:"name"`
+	Prefix       string `json:"prefix"`
+	ReviewActive bool   `json:"reviewActive"`
+	Concepts     int64  `json:"concepts"`
+	Ads          int64  `json:"ads"`
+	Renders      int64  `json:"renders"`
+	Approved     int    `json:"approved"`
+	Revise       int    `json:"revise"`
+	Waiting      int    `json:"waiting"`
+	Unpublished  int    `json:"unpublished"`
+	// Logo is the SHA-256 of the brand kit's logo on light, or on dark when
+	// that's all it has. Nil when the kit has no logo.
+	Logo      *string   `json:"logo"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type NotSetUp struct {
@@ -208,6 +211,7 @@ func (c *Studio) Overview(ctx context.Context, actor core.Actor) (Overview, erro
 		s := ProjectSummary{
 			ProjectID: r.ProjectID, Name: r.Name, Prefix: r.Prefix, ReviewActive: r.ReviewActive == 1,
 			Concepts: r.Concepts, Ads: r.Ads, Renders: r.Renders, UpdatedAt: r.UpdatedAt,
+			Logo: kitLogo(r.BrandKit),
 		}
 		ads, err := c.ads(ctx, q, r.ProjectID)
 		if err != nil {
@@ -233,6 +237,24 @@ func (c *Studio) Overview(ctx context.Context, actor core.Actor) (Overview, erro
 		}
 	}
 	return out, nil
+}
+
+// kitLogo picks the logo a light screen shows from a stored brand kit.
+func kitLogo(kit string) *string {
+	var k struct {
+		Logos map[string]struct {
+			SHA256 string `json:"sha256"`
+		} `json:"logos"`
+	}
+	if json.Unmarshal([]byte(kit), &k) != nil {
+		return nil
+	}
+	for _, role := range []string{"onLight", "onDark"} {
+		if l, ok := k.Logos[role]; ok && l.SHA256 != "" {
+			return &l.SHA256
+		}
+	}
+	return nil
 }
 
 type SetupInput struct {

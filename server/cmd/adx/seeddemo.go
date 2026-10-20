@@ -12,6 +12,8 @@ import (
 	"image/jpeg"
 	"log/slog"
 	"math"
+	"net/http"
+	"path"
 	"time"
 
 	"github.com/caarlos0/env/v11"
@@ -43,6 +45,9 @@ type demoProject struct {
 	imagery    string
 	tints      [2]color.RGBA
 	renderName [2]string
+	// logo is the project's logo on reportagegroup.com, the picture in its
+	// page's .r-logo. The Wadi's page has none.
+	logo string
 }
 
 var demoProjects = []demoProject{
@@ -65,6 +70,7 @@ var demoProjects = []demoProject{
 		imagery:    "Morning light over a green residential community with low-rise apartments and townhouses, landscaped walkways and palm trees, families far in the distance, open sky for a headline",
 		tints:      [2]color.RGBA{{104, 150, 98, 255}, {182, 176, 150, 255}},
 		renderName: [2]string{"Community park", "Townhouse row"},
+		logo:       "https://reportagegroup.com/wp-content/uploads/VERDANA-LOGO.jpg",
 	},
 	{
 		name: "Sila", location: "Masdar City, Abu Dhabi", units: "1, 2 and 3 bedroom apartments",
@@ -75,6 +81,7 @@ var demoProjects = []demoProject{
 		imagery:    "Contemporary low-carbon apartment buildings in Masdar City at blue hour, shaded courtyards, warm interior lights, clean lines, sky above left calm",
 		tints:      [2]color.RGBA{{150, 120, 90, 255}, {60, 80, 110, 255}},
 		renderName: [2]string{"Courtyard", "Blue hour"},
+		logo:       "https://reportagegroup.com/wp-content/uploads/SILA_LOGOS_FINAL-2.svg",
 	},
 	{
 		name: "Oceana", location: "Al Reem Island, Abu Dhabi", units: "Waterfront 1 to 4 bedroom apartments",
@@ -85,6 +92,7 @@ var demoProjects = []demoProject{
 		imagery:    "A slender waterfront tower on Al Reem Island at sunset, calm sea in the foreground, a marina boardwalk, warm reflections on glass, open sky for a headline",
 		tints:      [2]color.RGBA{{40, 110, 150, 255}, {210, 170, 120, 255}},
 		renderName: [2]string{"Tower at sunset", "Marina walk"},
+		logo:       "https://reportagegroup.com/wp-content/uploads/OCEANA-LOGO.jpg",
 	},
 	{
 		name: "Selina Bay", location: "Yas Island, Abu Dhabi", units: "Studios, 1 and 2 bedroom apartments",
@@ -95,6 +103,7 @@ var demoProjects = []demoProject{
 		imagery:    "Resort-style apartment buildings by the water on Yas Island, a lagoon pool and beach in the foreground, late afternoon sun, sky clear for a headline",
 		tints:      [2]color.RGBA{{70, 150, 160, 255}, {225, 200, 160, 255}},
 		renderName: [2]string{"Lagoon pool", "Beachfront"},
+		logo:       "https://reportagegroup.com/wp-content/uploads/Selina-bay-logo-final-01.jpg",
 	},
 	{
 		name: "Sensi", location: "Arjan, Dubai", units: "Studios and 1 bedroom apartments",
@@ -105,6 +114,7 @@ var demoProjects = []demoProject{
 		imagery:    "A boutique mid-rise apartment building in Arjan with a rooftop pool and garden terraces at golden hour, young professionals far in the distance, sky above for a headline",
 		tints:      [2]color.RGBA{{180, 110, 90, 255}, {120, 120, 140, 255}},
 		renderName: [2]string{"Rooftop pool", "Garden terrace"},
+		logo:       "https://reportagegroup.com/wp-content/uploads/sensi.png",
 	},
 }
 
@@ -178,12 +188,86 @@ func runSeedDemo(args []string) error {
 		added++
 		slog.Info("seed-demo: added", "project", d.name)
 	}
-	if added == 0 {
-		slog.Info("seed-demo: every demo project is already there, nothing done")
+	logos := 0
+	for _, d := range demoProjects {
+		ok, err := seedLogo(ctx, db, st, marketer, d)
+		if err != nil {
+			// The site may be down or moved; the projects are still usable.
+			slog.Warn("seed-demo: no logo", "project", d.name, "err", err)
+			continue
+		}
+		if ok {
+			logos++
+			slog.Info("seed-demo: logo added", "project", d.name)
+		}
+	}
+	if added == 0 && logos == 0 {
+		slog.Info("seed-demo: every demo project and logo is already there, nothing done")
 		return nil
 	}
-	slog.Info("seed-demo done", "projects", added)
+	slog.Info("seed-demo done", "projects", added, "logos", logos)
 	return nil
+}
+
+// seedLogo fetches the project's logo from reportagegroup.com into its brand
+// kit as the logo on light, unless the kit already has one.
+func seedLogo(ctx context.Context, db *store.DB, st *studio.Studio, marketer core.Actor, d demoProject) (bool, error) {
+	if d.logo == "" {
+		return false, nil
+	}
+	p, err := db.Reader().GetProjectByName(ctx, store.GetProjectByNameParams{WorkspaceID: core.DefaultWorkspace, Name: d.name})
+	if err != nil {
+		return false, err
+	}
+	cp, err := st.Project(ctx, marketer, p.ID)
+	if err != nil {
+		return false, err
+	}
+	kit := map[string]any{}
+	if len(cp.Settings.BrandKit) > 0 {
+		if err := json.Unmarshal(cp.Settings.BrandKit, &kit); err != nil {
+			return false, err
+		}
+	}
+	logos, _ := kit["logos"].(map[string]any)
+	if logos == nil {
+		logos = map[string]any{}
+	}
+	if logos["onLight"] != nil {
+		return false, nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.logo, nil)
+	if err != nil {
+		return false, err
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("%s: %s", d.logo, res.Status)
+	}
+	ref, err := st.Upload(ctx, marketer, res.Body)
+	if err != nil {
+		return false, err
+	}
+	asset := map[string]any{"sha256": ref.SHA256, "name": path.Base(d.logo)}
+	if ref.Width != nil && ref.Height != nil {
+		asset["width"], asset["height"] = *ref.Width, *ref.Height
+	}
+	logos["onLight"] = asset
+	kit["logos"] = logos
+	b, err := json.Marshal(kit)
+	if err != nil {
+		return false, err
+	}
+	if _, err := st.SaveBrandKit(ctx, marketer, p.ID, b); err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func seedProject(ctx context.Context, db *store.DB, br *brands.Brands, st *studio.Studio, admin, marketer core.Actor, brandID int64, d demoProject) error {

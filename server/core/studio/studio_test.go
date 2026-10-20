@@ -390,3 +390,34 @@ func (f *fixture) mustConcept() int64 {
 }
 
 func (f *fixture) onlyAdID() int64 { return f.onlyAd().ID }
+
+// Catches the Projects cards losing their logo, or showing the on-dark one
+// when the kit has a logo for light screens.
+func TestOverviewCarriesTheLogoOnLight(t *testing.T) {
+	f := setup(t)
+	logo := func() *string {
+		o, err := f.c.Overview(t.Context(), viewer)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return o.Projects[0].Logo
+	}
+	if got := logo(); got != nil {
+		t.Fatalf("no kit should mean no logo, got %q", *got)
+	}
+	dark, light := f.jpg(300, 100, 10), f.jpg(300, 100, 240)
+	kit := `{"logos":{"onDark":{"sha256":"` + dark + `"}}}`
+	if _, err := f.c.SaveBrandKit(t.Context(), marketer, f.project, json.RawMessage(kit)); err != nil {
+		t.Fatal(err)
+	}
+	if got := logo(); got == nil || *got != dark {
+		t.Fatalf("only an on-dark logo should be used, got %v", got)
+	}
+	kit = `{"logos":{"onDark":{"sha256":"` + dark + `"},"onLight":{"sha256":"` + light + `"}}}`
+	if _, err := f.c.SaveBrandKit(t.Context(), marketer, f.project, json.RawMessage(kit)); err != nil {
+		t.Fatal(err)
+	}
+	if got := logo(); got == nil || *got != light {
+		t.Fatalf("the on-light logo should win, got %v", got)
+	}
+}

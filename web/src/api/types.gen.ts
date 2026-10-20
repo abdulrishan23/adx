@@ -3182,6 +3182,7 @@ export interface ProjectSummary {
     revise: number;
     waiting: number;
     unpublished: number;
+    logo: string | null;
     updatedAt: string;
 }
 
