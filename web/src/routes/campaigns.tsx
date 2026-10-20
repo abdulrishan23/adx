@@ -248,20 +248,22 @@ export function CampaignsPage() {
                       onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
                     >
                       <TD className="pl-8">
-                        <div className="flex items-center gap-2">
-                          <PlatformMark platform={c.platform} />
-                          <span className="truncate font-medium">{c.name}</span>
+                        <div className="flex items-center gap-3">
+                          <PlatformMark platform={c.platform} className="size-9" />
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{c.name}</p>
+                            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                              {platformLabel(c.platform)} · {c.type}
+                              {c.status !== "active" && (
+                                <>
+                                  <span aria-hidden="true">·</span>
+                                  <StatusMark status={STATUS_MARK[c.status]} />
+                                  <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
+                                </>
+                              )}
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-0.5 flex items-center gap-1.5 pl-[1.125rem] text-xs text-muted-foreground">
-                          {platformLabel(c.platform)} · {c.type}
-                          {c.status !== "active" && (
-                            <>
-                              <span aria-hidden="true">·</span>
-                              <StatusMark status={STATUS_MARK[c.status]} />
-                              <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
-                            </>
-                          )}
-                        </p>
                       </TD>
                       <Figures c={c} muted />
                     </TR>
