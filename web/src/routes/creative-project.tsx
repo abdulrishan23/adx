@@ -1,124 +1,23 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Download, ExternalLink, Link2, Pencil, Plus, Sparkles, Upload } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ExternalLink, Link2, Pencil, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
-import {
-  useCreateConcept,
-  useCreativeProject,
-  useGenerateConcepts,
-  useResolveComment,
-} from "@/api/creative";
+import { useCreateConcept, useGenerateConcepts, useResolveComment } from "@/api/creative";
 import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.gen";
-import { useSession } from "@/app/session";
-import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
+import { EmptyState, Eyebrow, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BrandKitForm } from "@/creative/brand-kit-form";
 import { fileUrl } from "@/creative/files";
 import { FORMATS } from "@/creative/naming";
-import { RendersTab } from "@/creative/renders-tab";
-import { SettingsTab } from "@/creative/settings-tab";
-import { ReviewState, ReviewTally } from "@/creative/ui";
+import { ReviewState } from "@/creative/ui";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-export type CreativeTab = "concepts" | "renders" | "brand" | "settings";
-
-export function creativeTabSearch(raw: Record<string, unknown>): { tab?: CreativeTab } {
-  const t = raw.tab;
-  return t === "renders" || t === "brand" || t === "settings" ? { tab: t } : {};
-}
 
 export function reviewLink(key: string) {
   return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/review/${key}`;
 }
 
-export function CreativeProjectPage({ projectId }: { projectId: number }) {
-  const project = useCreativeProject(projectId);
-  const { tab = "concepts" } = useSearch({ strict: false }) as { tab?: CreativeTab };
-  const navigate = useNavigate();
-  const session = useSession();
-  const canEdit = session.role !== "viewer";
-
-  if (project.isPending) return <LoadingRows rows={8} />;
-  if (project.error) return <ErrorNote error={project.error} />;
-  const p = project.data;
-  const ads = p.concepts.flatMap((c) => c.ads);
-  const count = (s: Ad["status"]) => ads.filter((a) => a.status === s).length;
-
-  return (
-    <section>
-      <Link to="/creative" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Creatives
-      </Link>
-      <PageHeader
-        className="mt-2"
-        title={p.settings.projectName}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>
-              Prefix <span className="font-mono">{p.settings.prefix}</span> · {p.concepts.length}{" "}
-              {p.concepts.length === 1 ? "concept" : "concepts"} · {ads.length}{" "}
-              {ads.length === 1 ? "ad" : "ads"}
-            </span>
-            <ReviewTally
-              approved={count("approved")}
-              revise={count("revise")}
-              waiting={count("waiting")}
-            />
-          </span>
-        }
-        actions={
-          <>
-            <ReviewLinkButtons settings={p.settings} />
-            <a
-              href={`/api/creative/projects/${projectId}/download?set=approved`}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Download />
-              Approved
-            </a>
-            {canEdit && (
-              <Link
-                to="/creative/$projectId/upload"
-                params={{ projectId: String(projectId) }}
-                className={buttonVariants()}
-              >
-                <Upload />
-                Upload ads
-              </Link>
-            )}
-          </>
-        }
-      />
-      <Segmented
-        label="Project sections"
-        value={tab}
-        onChange={(t) =>
-          navigate({
-            to: "/creative/$projectId",
-            params: { projectId: String(projectId) },
-            search: t === "concepts" ? {} : { tab: t },
-            replace: true,
-          })
-        }
-        options={[
-          { value: "concepts", label: "Concepts", count: p.concepts.length },
-          { value: "renders", label: "Renders", count: p.renders.filter((r) => !r.hidden).length },
-          { value: "brand", label: "Brand kit" },
-          { value: "settings", label: "Settings" },
-        ]}
-        className="mb-6"
-      />
-      {tab === "concepts" && <ConceptsTab project={p} canEdit={canEdit} />}
-      {tab === "renders" && <RendersTab project={p} canEdit={canEdit} />}
-      {tab === "brand" && <BrandKitForm settings={p.settings} canEdit={canEdit} />}
-      {tab === "settings" && <SettingsTab settings={p.settings} canEdit={canEdit} />}
-    </section>
-  );
-}
-
-function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"] }) {
+export function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"] }) {
   const [copied, setCopied] = useState(false);
   const link = reviewLink(settings.reviewKey);
   if (!settings.reviewActive) {
@@ -155,7 +54,7 @@ function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"]
   );
 }
 
-function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
+export function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
   const projectId = project.settings.projectId;
   return (
     <div className="space-y-8">

@@ -66,10 +66,11 @@ export function BrandPage() {
   return (
     <>
       <Link
-        to="/brands"
+        to={brand.data?.brand.kind === "competitor" ? "/competitors" : "/projects"}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Brands
+        <ArrowLeft className="size-4" />{" "}
+        {brand.data?.brand.kind === "competitor" ? "Competitors" : "Projects"}
       </Link>
       {brand.isPending && <LoadingRows rows={8} />}
       {brand.error && <ErrorNote error={brand.error} />}
@@ -145,7 +146,7 @@ function Body({ id, d }: { id: number; d: NonNullable<ReturnType<typeof useBrand
           <div className="space-y-6">
             <Projects brandId={id} projects={d.projects} canEdit={admin} />
             <Offers offers={d.offers} projects={d.projects} />
-            <ResearchPanel briefs={mine} loading={briefs.isPending} brandId={id} />
+            <ResearchPanel briefs={mine} loading={briefs.isPending} />
           </div>
         </div>
       </div>
@@ -377,15 +378,16 @@ function Projects({
         {projects.map((p) => (
           <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
             <Link
-              to="/brands/$brandId/projects/$projectId"
-              params={{ brandId: String(brandId), projectId: String(p.id) }}
+              to="/projects/$projectId"
+              params={{ projectId: String(p.id) }}
               className="font-medium hover:underline"
             >
               {p.name}
             </Link>
             <Link
-              to="/creative/$projectId"
+              to="/projects/$projectId"
               params={{ projectId: String(p.id) }}
+              search={{ tab: "concepts" }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               Creatives
@@ -468,15 +470,7 @@ function Offers({
   );
 }
 
-function ResearchPanel({
-  briefs,
-  loading,
-  brandId,
-}: {
-  briefs: Brief[];
-  loading: boolean;
-  brandId: number;
-}) {
+function ResearchPanel({ briefs, loading }: { briefs: Brief[]; loading: boolean }) {
   return (
     <Panel
       title="Research"
@@ -495,7 +489,7 @@ function ResearchPanel({
       )}
       {!loading && briefs.length === 0 && (
         <EmptyState title="No research yet">
-          Start a brand with a website and Adx opens the first brief. Brand {brandId} has none.
+          Start a project with a website and Adx opens the first brief.
         </EmptyState>
       )}
       <ul className="divide-y">

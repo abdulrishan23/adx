@@ -85,8 +85,9 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
   return (
     <section>
       <Link
-        to="/creative/$projectId"
+        to="/projects/$projectId"
         params={{ projectId: String(projectId) }}
+        search={{ tab: "concepts" }}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
         ← {project.settings.projectName}

@@ -3159,6 +3159,7 @@ export interface PriorHypothesis {
 export interface Project {
     id: number;
     name: string;
+    brandId: number | null;
     createdAt: string;
 }
 

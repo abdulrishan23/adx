@@ -13,8 +13,10 @@ import (
 )
 
 type Project struct {
-	ID        int64     `json:"id"`
-	Name      string    `json:"name"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
+	// BrandID is the brand that markets it, or nil while it has none.
+	BrandID   *int64    `json:"brandId"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -71,5 +73,10 @@ func (p *Projects) Create(ctx context.Context, actor core.Actor, in CreateInput)
 }
 
 func fromRow(r store.Project) Project {
-	return Project{ID: r.ID, Name: r.Name, CreatedAt: r.CreatedAt}
+	p := Project{ID: r.ID, Name: r.Name, CreatedAt: r.CreatedAt}
+	if r.BrandID.Valid {
+		b := r.BrandID.Int64
+		p.BrandID = &b
+	}
+	return p
 }

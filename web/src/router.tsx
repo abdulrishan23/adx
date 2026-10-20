@@ -18,15 +18,12 @@ import { ApprovePage } from "@/routes/approve";
 import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
-import { BrandsPage } from "@/routes/brands";
 import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
-import { CreativePage } from "@/routes/creative";
 import { CreativeConceptPage } from "@/routes/creative-concept";
 import { CreativeEditorPage } from "@/routes/creative-editor";
-import { CreativeProjectPage, creativeTabSearch } from "@/routes/creative-project";
 import { CreativeUploadPage } from "@/routes/creative-upload";
 import { DataQualityPage } from "@/routes/data-quality";
 import { EnginePage } from "@/routes/engine";
@@ -44,7 +41,8 @@ import { PeoplePage } from "@/routes/people";
 import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
-import { ProjectPage } from "@/routes/project";
+import { ProjectPage, projectTabSearch } from "@/routes/project";
+import { CompetitorsPage, ProjectsPage } from "@/routes/projects";
 import { ProjectsOverviewPage } from "@/routes/projects-overview";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
@@ -54,7 +52,7 @@ import { ScoringPage } from "@/routes/scoring";
 import { SignInPage } from "@/routes/sign-in";
 import { SourcePage } from "@/routes/source";
 import { LaunchPage } from "@/routes/studio/launch";
-import { PagePage, PagesPage } from "@/routes/studio/pages";
+import { PagePage } from "@/routes/studio/pages";
 import { PlanPage, PlansPage } from "@/routes/studio/plans";
 import { ResearchPage } from "@/routes/studio/research";
 import { StartBrandPage } from "@/routes/studio/start";
@@ -164,12 +162,12 @@ const oldFunnelRoute = createRoute({
   },
 });
 
-// Projects became Brands under Studio. The old paths still open the brand.
+// Projects lived under Settings once; they lead Studio now.
 const oldProjectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/projects",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
 // Alerts are cards in the Inbox now.
@@ -185,7 +183,7 @@ const oldBrandKnowledgeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create/brand",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
 // Create became Studio. Old links land on the same screen.
@@ -196,18 +194,64 @@ const oldCreateRoute = createRoute({
     throw redirect({ href: `/studio/${params._splat ?? ""}` });
   },
 });
-const oldProjectsListRoute = createRoute({
+// Our side has one developer, so Studio opens on its projects; Brands and
+// the Creatives and Landing pages lists became tabs of a project (BD-63).
+const oldBrandsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/projects",
+  path: "/brands",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
-const oldProjectRoute = createRoute({
+const oldStartRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/projects/$projectId",
+  path: "/brands/new",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects/new" });
+  },
+});
+const oldBrandProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/projects/$projectId",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/projects/$projectId", params: { projectId: params.projectId } });
+  },
+});
+const oldCreativeListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/creative",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+const oldCreativeProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/creative/$projectId",
+  validateSearch: projectTabSearch,
+  beforeLoad: ({ params, search }) => {
+    throw redirect({
+      to: "/projects/$projectId",
+      params: { projectId: params.projectId },
+      search: { tab: search.tab ?? "concepts" },
+    });
+  },
+});
+const oldPagesListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/pages",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const projectRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects/$projectId",
+  validateSearch: projectTabSearch,
+  component: function Project() {
+    const { projectId } = projectRoute.useParams();
+    const { tab } = projectRoute.useSearch();
+    return <ProjectPage projectId={Number(projectId)} tab={tab} />;
   },
 });
 
@@ -295,16 +339,6 @@ const reviewRoute = createRoute({
   }),
 });
 
-const creativeProjectRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/creative/$projectId",
-  validateSearch: creativeTabSearch,
-  component: function CreativeProject() {
-    const { projectId } = creativeProjectRoute.useParams();
-    return <CreativeProjectPage projectId={Number(projectId)} />;
-  },
-});
-
 const creativeUploadRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/creative/$projectId/upload",
@@ -353,11 +387,15 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   oldFunnelRoute,
   oldProjectsRoute,
-  oldProjectsListRoute,
+  oldBrandsRoute,
+  oldStartRoute,
+  oldBrandProjectRoute,
+  oldCreativeListRoute,
+  oldCreativeProjectRoute,
+  oldPagesListRoute,
   oldBrandKnowledgeRoute,
   oldCreateRoute,
   oldAlertsRoute,
-  oldProjectRoute,
   presentRoute,
   oldFocusRoute,
   briefRedirect,
@@ -368,7 +406,6 @@ const routeTree = rootRoute.addChildren([
     page("/studio/research", ResearchPage),
     page("/studio/plans", PlansPage),
     page("/studio/plans/$planId", PlanPage),
-    page("/studio/pages", PagesPage),
     page("/studio/pages/$pageId", PagePage),
     page("/studio/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
@@ -383,8 +420,6 @@ const routeTree = rootRoute.addChildren([
     projectsOverviewRoute,
     page("/leads", LeadsPage),
     page("/leads/$leadId", LeadDetailPage),
-    page("/creative", CreativePage),
-    creativeProjectRoute,
     creativeUploadRoute,
     creativeConceptRoute,
     creativeEditorRoute,
@@ -405,10 +440,11 @@ const routeTree = rootRoute.addChildren([
     page("/settings/guardrails", GuardrailsPage),
     page("/settings/scoring", ScoringPage),
     page("/inbox", InboxPage),
-    page("/brands", BrandsPage),
-    page("/brands/new", StartBrandPage),
+    page("/projects", ProjectsPage),
+    page("/projects/new", StartBrandPage),
+    projectRoute,
+    page("/competitors", CompetitorsPage),
     page("/brands/$brandId", BrandPage),
-    page("/brands/$brandId/projects/$projectId", ProjectPage),
     page("/engine", EnginePage),
     page("/engine/home", E.home),
     page("/engine/projects", E.projects),

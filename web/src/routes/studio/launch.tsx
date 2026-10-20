@@ -205,7 +205,7 @@ function FixLink({ item }: { item: LaunchItem }) {
   }
   if (item.area === "assets") {
     return (
-      <Link to="/creative" className={cls}>
+      <Link to="/projects" className={cls}>
         Open creatives
       </Link>
     );

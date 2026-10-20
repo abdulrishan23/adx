@@ -19,7 +19,6 @@ import {
   type LucideIcon,
   Megaphone,
   MessageSquareText,
-  Palette,
   PanelsTopLeft,
   PenTool,
   PhoneCall,
@@ -89,16 +88,24 @@ export const INBOX: NavItem = {
 export const NAV: readonly NavGroup[] = [
   {
     label: "Studio",
-    door: { to: "/brands", phase: 1, icon: PenTool },
+    door: { to: "/projects", phase: 1, icon: PenTool },
     items: [
       {
-        label: "Brands",
-        to: "/brands",
+        label: "Projects",
+        to: "/projects",
         icon: FolderKanban,
         phase: 1,
         status: "live",
         summary:
-          "Each brand Reportage markets, such as The Wadi, and where it is on the way from brand knowledge to live campaign. Setting one up is how Create starts.",
+          "Each development Adx markets, such as The Wadi: its facts and offers, the ads Adx writes, pictures and films, and its landing pages.",
+      },
+      {
+        label: "Competitors",
+        to: "/competitors",
+        icon: Building2,
+        phase: 2,
+        status: "live",
+        summary: "The developers Adx watches and what research reads of them.",
       },
       {
         label: "Research",
@@ -116,23 +123,6 @@ export const NAV: readonly NavGroup[] = [
         status: "live",
         summary:
           "Budget split by channel and week, with the assumptions behind it and the approval that lets it launch.",
-      },
-      {
-        label: "Creatives",
-        to: "/creative",
-        icon: Palette,
-        phase: 1,
-        status: "live",
-        summary:
-          "Each project's ads in four sizes, built from copy or uploaded, edited on a canvas and reviewed on a shared link.",
-      },
-      {
-        label: "Landing pages",
-        to: "/studio/pages",
-        icon: Globe,
-        phase: 3,
-        status: "live",
-        summary: "Pages built from approved facts, with their forms wired to GoHighLevel.",
       },
       {
         label: "Launch",

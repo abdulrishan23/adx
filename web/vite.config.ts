@@ -20,7 +20,8 @@ export default defineConfig({
     // Everything the Go server owns: the API, public landing pages and the
     // forms they post, and provider webhooks.
     proxy: Object.fromEntries(
-      ["/api", "/p", "/webhooks"].map((path) => [
+      // "^/p/" is a pattern so /projects stays with the app.
+      ["/api", "^/p/", "/webhooks"].map((path) => [
         path,
         { target: "http://localhost:8080", changeOrigin: false },
       ]),

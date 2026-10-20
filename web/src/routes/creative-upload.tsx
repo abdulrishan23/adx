@@ -178,8 +178,9 @@ export function CreativeUploadPage({ projectId }: { projectId: number }) {
   return (
     <section>
       <Link
-        to="/creative/$projectId"
+        to="/projects/$projectId"
         params={{ projectId: String(projectId) }}
+        search={{ tab: "concepts" }}
         className="text-sm text-muted-foreground hover:text-foreground"
       >
         ← {project.data.settings.projectName}
@@ -232,8 +233,9 @@ export function CreativeUploadPage({ projectId }: { projectId: number }) {
                 <Button
                   onClick={() =>
                     navigate({
-                      to: "/creative/$projectId",
+                      to: "/projects/$projectId",
                       params: { projectId: String(projectId) },
+                      search: { tab: "concepts" },
                     })
                   }
                 >

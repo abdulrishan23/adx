@@ -8,7 +8,6 @@ import {
   usePagePreview,
   usePageReadiness,
   usePageSubmissions,
-  usePages,
   usePublishPage,
   useRollbackPage,
   useTestSubmission,
@@ -18,7 +17,6 @@ import type {
   Deployment,
   PageDetail,
   PageReadinessIssue,
-  PageSummary,
   Submission,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
@@ -32,112 +30,15 @@ import { formatDateTime, formatRelative } from "@/lib/format";
 
 const route = getRouteApi("/app/studio/pages/$pageId");
 
-// A page is live when a deployment is published; a draft until then. The
-// list can't tell a broken form from here, so the page view says that.
-function standing(p: PageSummary): { status: Status; label: string } {
-  if (p.publishedVersion === null) return { status: "pending", label: "Draft" };
-  if (p.publishedVersion < p.latestVersion) {
-    return { status: "caution", label: `Live v${p.publishedVersion}, draft v${p.latestVersion}` };
-  }
-  return { status: "ready", label: `Live v${p.publishedVersion}` };
-}
-
-// Landing pages are built from approved facts, with their forms wired to
-// GoHighLevel, so what the ad promises and what the page says agree.
-export function PagesPage() {
-  const pages = usePages();
-  const list = pages.data?.pages ?? [];
-  return (
-    <>
-      <PageHeader
-        title="Landing pages"
-        subtitle="One per brand, language and offer, served by Adx. A page is ready when it's live, its form reaches someone, and every claim on it is an approved fact."
-        actions={
-          <Link to="/engine/pages" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            New page
-          </Link>
-        }
-      />
-      {pages.isPending && <LoadingRows rows={5} />}
-      {pages.error && <ErrorNote error={pages.error} />}
-      {pages.data && <AskForPage />}
-      {pages.data && list.length === 0 && (
-        <Panel>
-          <EmptyState title="No pages yet">
-            Start one on the{" "}
-            <Link to="/engine/pages" className="underline underline-offset-4">
-              engine's pages screen
-            </Link>{" "}
-            from a brand and an offer, then publish and test it here.
-          </EmptyState>
-        </Panel>
-      )}
-      {list.length > 0 && (
-        <Panel bodyClassName="p-0">
-          <Table>
-            <THead>
-              <TR>
-                <TH>Page</TH>
-                <TH>Brand</TH>
-                <TH>Standing</TH>
-                <TH>Language</TH>
-                <TH>Updated</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {list.map((p) => {
-                const s = standing(p);
-                return (
-                  <TR key={p.id}>
-                    <TD>
-                      <Link
-                        to="/studio/pages/$pageId"
-                        params={{ pageId: String(p.id) }}
-                        className="font-medium hover:underline"
-                        dir={p.language === "ar" ? "rtl" : undefined}
-                        lang={p.language === "ar" ? "ar" : undefined}
-                      >
-                        {p.name}
-                      </Link>
-                      <p className="font-mono text-xs text-muted-foreground">{p.publicUrl}</p>
-                    </TD>
-                    <TD>
-                      {p.brandName}
-                      {p.projectName && (
-                        <span className="text-muted-foreground"> · {p.projectName}</span>
-                      )}
-                    </TD>
-                    <TD>
-                      <StatusChip status={s.status}>{s.label}</StatusChip>
-                    </TD>
-                    <TD>{p.language === "ar" ? "Arabic" : "English"}</TD>
-                    <TD className="text-muted-foreground">{formatRelative(p.updatedAt)}</TD>
-                  </TR>
-                );
-              })}
-            </TBody>
-          </Table>
-        </Panel>
-      )}
-      {pages.data && !pages.data.publishing.external.available && (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Pages are served by Adx ({pages.data.publishing.local}). Publishing to an outside host
-          waits on {pages.data.publishing.external.unblocks}.
-        </p>
-      )}
-    </>
-  );
-}
-
 // Adx writes the page from the brand's approved facts, the offer and the
 // studio's pictures for the project, in English and Arabic as twins that
 // link to each other. Each lands as a draft version to edit and publish.
-function AskForPage() {
+export function AskForPage({ fixed }: { fixed?: { brandId: number; projectId: number } }) {
   const session = useSession();
   const brands = useBrands();
-  const [brandId, setBrandId] = useState<number | null>(null);
+  const [brandId, setBrandId] = useState<number | null>(fixed?.brandId ?? null);
   const brand = useBrand(brandId);
-  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(fixed?.projectId ?? null);
   const [offerId, setOfferId] = useState<number>(0);
   const [language, setLanguage] = useState<"" | "en" | "ar">("");
   const [instructions, setInstructions] = useState("");
@@ -151,7 +52,7 @@ function AskForPage() {
   return (
     <Panel
       title="Ask Adx for a page"
-      description="Written from the brand's approved facts, the offer and the project's pictures. Figures the facts don't state are left out and said below."
+      description="Written from the approved facts, the offer and the project's pictures, in English and Arabic as twins. Figures the facts don't state are left out and said below."
       className="mb-5"
     >
       <form
@@ -170,25 +71,29 @@ function AskForPage() {
           });
         }}
       >
-        <Select
-          aria-label="Brand"
-          placeholder="Brand"
-          value={brandId === null ? null : String(brandId)}
-          onValueChange={(v) => {
-            setBrandId(Number(v));
-            setProjectId(null);
-            setOfferId(0);
-          }}
-          options={own.map((b) => ({ value: String(b.id), label: b.name }))}
-        />
-        <Select
-          aria-label="Project"
-          placeholder="Project"
-          value={projectId === null ? null : String(projectId)}
-          onValueChange={(v) => setProjectId(Number(v))}
-          options={projects.map((p) => ({ value: String(p.id), label: p.name }))}
-          disabled={brandId === null}
-        />
+        {!fixed && (
+          <>
+            <Select
+              aria-label="Brand"
+              placeholder="Brand"
+              value={brandId === null ? null : String(brandId)}
+              onValueChange={(v) => {
+                setBrandId(Number(v));
+                setProjectId(null);
+                setOfferId(0);
+              }}
+              options={own.map((b) => ({ value: String(b.id), label: b.name }))}
+            />
+            <Select
+              aria-label="Project"
+              placeholder="Project"
+              value={projectId === null ? null : String(projectId)}
+              onValueChange={(v) => setProjectId(Number(v))}
+              options={projects.map((p) => ({ value: String(p.id), label: p.name }))}
+              disabled={brandId === null}
+            />
+          </>
+        )}
         <Select
           aria-label="Offer"
           value={String(offerId)}
@@ -265,12 +170,23 @@ export function PagePage() {
   const shown = versions.find((x) => x.version === picked) ?? latest;
   return (
     <>
-      <Link
-        to="/studio/pages"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Landing pages
-      </Link>
+      {d.page.projectId !== null ? (
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: String(d.page.projectId) }}
+          search={{ tab: "pages" }}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Landing pages
+        </Link>
+      ) : (
+        <Link
+          to="/projects"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Projects
+        </Link>
+      )}
       <PageHeader
         title={<span dir={d.page.language === "ar" ? "rtl" : undefined}>{d.page.name}</span>}
         subtitle={

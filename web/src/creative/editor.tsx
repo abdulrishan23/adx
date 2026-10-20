@@ -328,8 +328,9 @@ export function Editor({ detail }: { detail: AdDetail }) {
       <div className="min-w-0 space-y-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
           <Link
-            to="/creative/$projectId"
+            to="/projects/$projectId"
             params={{ projectId: String(projectId) }}
+            search={{ tab: "concepts" }}
             className="text-muted-foreground hover:text-foreground"
           >
             ← {settings.projectName}
@@ -642,7 +643,7 @@ export function Editor({ detail }: { detail: AdDetail }) {
             </div>
           )}
           <Link
-            to="/creative/$projectId"
+            to="/projects/$projectId"
             params={{ projectId: String(projectId) }}
             search={{ tab: "renders" }}
             className="text-xs underline-offset-4 hover:underline"
