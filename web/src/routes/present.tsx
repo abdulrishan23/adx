@@ -134,7 +134,7 @@ export function PresentPage() {
   );
 }
 
-const DOOR_LABEL = { studio: "Studio", perform: "Perform", convert: "Convert" } as const;
+const DOOR_LABEL = { studio: "Projects", perform: "Perform", convert: "Convert" } as const;
 
 function SlideView({ card: c }: { card: Card }) {
   return (

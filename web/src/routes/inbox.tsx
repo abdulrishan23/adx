@@ -109,7 +109,7 @@ export function InboxPage() {
                 onChange={setDoor}
                 options={[
                   { value: "any", label: "Every door" },
-                  { value: "studio", label: "Studio" },
+                  { value: "studio", label: "Projects" },
                   { value: "perform", label: "Perform" },
                   { value: "convert", label: "Convert" },
                 ]}

@@ -19,7 +19,7 @@ import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
 import { CampaignPage } from "@/routes/campaign";
-import { CampaignsPage, CampaignsPage as StudioCampaignsPage } from "@/routes/campaigns";
+import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
@@ -43,7 +43,7 @@ import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectPage, projectTabSearch } from "@/routes/project";
-import { CompetitorsPage, ProjectsPage } from "@/routes/projects";
+import { ProjectsPage } from "@/routes/projects";
 import { ProjectsOverviewPage } from "@/routes/projects-overview";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
@@ -246,11 +246,41 @@ const oldPagesListRoute = createRoute({
 
 // Research moved into the project (its Research tab); plans and launch are
 // stages of a campaign. The old lists redirect to where the work now starts.
+const projectsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects",
+  // ?view=campaigns shows every campaign across projects instead of the grid.
+  validateSearch: (search: Record<string, unknown>): { view?: "campaigns" } =>
+    search.view === "campaigns" ? { view: "campaigns" } : {},
+  component: function Projects() {
+    const { view } = projectsRoute.useSearch();
+    return <ProjectsPage view={view ?? "projects"} />;
+  },
+});
+
+// Competitors live in a project's Research tab; the campaigns list is a view
+// of Projects.
+const oldCompetitorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/competitors",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const oldCampaignsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/campaigns",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects", search: { view: "campaigns" } });
+  },
+});
+
 const oldPlansRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/studio/plans",
   beforeLoad: () => {
-    throw redirect({ to: "/studio/campaigns" });
+    throw redirect({ to: "/projects", search: { view: "campaigns" } });
   },
 });
 
@@ -430,7 +460,7 @@ const routeTree = rootRoute.addChildren([
   publicRoute.addChildren([privacyRoute, approveRoute]),
   appRoute.addChildren([
     indexRoute,
-    page("/studio/campaigns", StudioCampaignsPage),
+    oldCampaignsListRoute,
     oldResearchRoute,
     oldPlansRoute,
     page("/studio/plans/$planId", PlanPage),
@@ -468,11 +498,11 @@ const routeTree = rootRoute.addChildren([
     page("/settings/guardrails", GuardrailsPage),
     page("/settings/scoring", ScoringPage),
     page("/inbox", InboxPage),
-    page("/projects", ProjectsPage),
+    projectsRoute,
     page("/projects/new", StartBrandPage),
     projectRoute,
     campaignRoute,
-    page("/competitors", CompetitorsPage),
+    oldCompetitorsRoute,
     page("/brands/$brandId", BrandPage),
     page("/engine", EnginePage),
     page("/engine/home", E.home),

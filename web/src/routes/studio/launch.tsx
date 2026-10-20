@@ -106,7 +106,11 @@ export function LaunchPage() {
         <Panel>
           <EmptyState title="Nothing to launch yet">
             A launch starts from a{" "}
-            <Link to="/studio/campaigns" className="underline underline-offset-4">
+            <Link
+              to="/projects"
+              search={{ view: "campaigns" }}
+              className="underline underline-offset-4"
+            >
               campaign
             </Link>{" "}
             whose plan is accepted.

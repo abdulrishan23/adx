@@ -182,7 +182,7 @@ function SidebarNav({
                 active={open?.label === g.label}
               />
             )}
-            {!collapsed && open?.label === g.label && (
+            {!collapsed && open?.label === g.label && g.items.length > 1 && (
               <ul className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
                 {g.items.map((item) => (
                   <li key={item.to}>

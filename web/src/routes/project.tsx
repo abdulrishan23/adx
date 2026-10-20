@@ -21,10 +21,11 @@ import { useProjects } from "@/engine/api/projects";
 import { formatDate, formatRelative } from "@/lib/format";
 import { CLASS, factValue, keyLabel } from "./brand";
 import { STATE } from "./campaign";
-import { CampaignsTab } from "./campaigns";
 import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
+import { CompetitorsPanel } from "./projects";
 import { AskForPage } from "./studio/pages";
 import { BriefView } from "./studio/research";
+import { CampaignsTab } from "./studio-campaigns";
 
 export type ProjectTab =
   | "overview"
@@ -527,20 +528,24 @@ function ResearchTab({ projectId }: { projectId: number }) {
   if (briefs.error) return <ErrorNote error={briefs.error} />;
   if (list.length === 0) {
     return (
-      <Panel>
-        <EmptyState title="No research for this project yet">
-          Adx opens a brief when a project starts with its website and competitors. Anything else
-          can be set up on the{" "}
-          <Link to="/engine/research" className="underline underline-offset-4">
-            engine's research screen
-          </Link>
-          .
-        </EmptyState>
-      </Panel>
+      <div className="space-y-6">
+        <CompetitorsPanel />
+        <Panel>
+          <EmptyState title="No research for this project yet">
+            Adx opens a brief when a project starts with its website and competitors. Anything else
+            can be set up on the{" "}
+            <Link to="/engine/research" className="underline underline-offset-4">
+              engine's research screen
+            </Link>
+            .
+          </EmptyState>
+        </Panel>
+      </div>
     );
   }
   return (
     <div className="space-y-6">
+      <CompetitorsPanel />
       {list.length > 1 && (
         <Segmented
           label="Briefs"

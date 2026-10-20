@@ -19,11 +19,9 @@ import {
   Megaphone,
   MessageSquareText,
   PanelsTopLeft,
-  PenTool,
   PhoneCall,
   Plug,
   RefreshCw,
-  Rocket,
   Send,
   Share2,
   ShieldAlert,
@@ -64,7 +62,7 @@ export type NavGroup = {
   items: readonly NavItem[];
   door?: { to: RoutePath; phase: Phase; icon: LucideIcon };
   // under lists path prefixes the group owns beyond its items, such as the
-  // Studio screens reached from a campaign (plans, pages, launch).
+  // Projects screens reached from a campaign (plans, pages, launch).
   under?: readonly string[];
 };
 
@@ -88,9 +86,9 @@ export const INBOX: NavItem = {
 
 export const NAV: readonly NavGroup[] = [
   {
-    label: "Studio",
-    door: { to: "/projects", phase: 1, icon: PenTool },
-    under: ["/studio/", "/brands/", "/creative/"],
+    label: "Projects",
+    door: { to: "/projects", phase: 1, icon: FolderKanban },
+    under: ["/studio/", "/brands/", "/creative/", "/competitors"],
     items: [
       {
         label: "Projects",
@@ -99,24 +97,7 @@ export const NAV: readonly NavGroup[] = [
         phase: 1,
         status: "live",
         summary:
-          "Each development Adx markets, such as The Wadi: its facts and offers, the ads Adx writes, pictures and films, and its landing pages.",
-      },
-      {
-        label: "Campaigns",
-        to: "/studio/campaigns",
-        icon: Rocket,
-        phase: 2,
-        status: "live",
-        summary:
-          "Every push across projects: its brief, ads, page, plan and launch, with what's done and what's next.",
-      },
-      {
-        label: "Competitors",
-        to: "/competitors",
-        icon: Building2,
-        phase: 2,
-        status: "live",
-        summary: "The developers Adx watches and what research reads of them.",
+          "Each development Adx markets, such as The Wadi, and its campaigns: the brief, the ads Adx writes, the page, the plan and the launch for each push.",
       },
     ],
   },

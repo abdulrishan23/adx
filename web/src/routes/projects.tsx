@@ -1,17 +1,20 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useBrands } from "@/api/brands";
 import { useCreativeOverview } from "@/api/creative";
 import { usePages } from "@/api/pages";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
+import { Segmented } from "@/components/segmented";
 import { buttonVariants } from "@/components/ui/button";
 import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
+import { CampaignsView } from "./studio-campaigns";
 
 // Projects is where Studio starts: each development Reportage markets, with
 // its ads and pages at a glance. Competitors live on their own screen.
-export function ProjectsPage() {
+export function ProjectsPage({ view }: { view: "projects" | "campaigns" }) {
+  const navigate = useNavigate();
   const projects = useProjects();
   const brands = useBrands();
   const creative = useCreativeOverview();
@@ -25,18 +28,36 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle="Each development Adx markets, with its own facts, offers, ads and pages."
+        subtitle={
+          view === "campaigns"
+            ? "Every push across projects, with its window, budget and where it stands."
+            : "Each development Adx markets, with its campaigns, pictures, brand and research."
+        }
         actions={
-          session.role === "admin" && (
-            <Link to="/projects/new" className={buttonVariants()}>
-              <Plus /> New project
-            </Link>
-          )
+          <>
+            <Segmented
+              label="View"
+              value={view}
+              onChange={(v) =>
+                navigate({ to: "/projects", search: v === "campaigns" ? { view: v } : {} })
+              }
+              options={[
+                { value: "projects", label: "Projects" },
+                { value: "campaigns", label: "Campaigns" },
+              ]}
+            />
+            {session.role === "admin" && (
+              <Link to="/projects/new" className={buttonVariants()}>
+                <Plus /> New project
+              </Link>
+            )}
+          </>
         }
       />
-      {(projects.isPending || brands.isPending) && <LoadingRows rows={4} />}
-      {projects.error && <ErrorNote error={projects.error} />}
-      {projects.data && brands.data && (
+      {view === "campaigns" && <CampaignsView />}
+      {view === "projects" && (projects.isPending || brands.isPending) && <LoadingRows rows={4} />}
+      {view === "projects" && projects.error && <ErrorNote error={projects.error} />}
+      {view === "projects" && projects.data && brands.data && (
         <div className="space-y-8">
           {ours.length === 0 ? (
             <Panel>
@@ -120,53 +141,54 @@ export function ProjectsPage() {
   );
 }
 
-// Competitors are the other developers Adx watches; research compares
-// against what it reads of them.
-export function CompetitorsPage() {
+// CompetitorsPanel is the developers Adx watches, in a project's Research
+// tab: research reads their pages and compares; nothing here is ever stated
+// as ours.
+export function CompetitorsPanel() {
   const brands = useBrands();
   const list = brands.data?.brands.filter((b) => b.kind === "competitor") ?? [];
   return (
-    <>
-      <PageHeader
-        title="Competitors"
-        subtitle="The developers Adx watches. Research reads their pages and compares; nothing here is ever stated as ours."
-        actions={
-          <Link to="/engine/brands" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            Add a competitor
-          </Link>
-        }
-      />
-      {brands.isPending && <LoadingRows rows={4} />}
+    <Panel
+      title="Competitors"
+      description="The developers Adx watches. Research reads their pages and compares; nothing here is ever stated as ours."
+      action={
+        <Link
+          to="/engine/brands"
+          className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground"
+        >
+          Add a competitor
+        </Link>
+      }
+      bodyClassName="p-0"
+    >
+      {brands.isPending && <LoadingRows rows={2} />}
       {brands.error && <ErrorNote error={brands.error} />}
       {brands.data && list.length === 0 && (
-        <Panel>
-          <EmptyState title="No competitors yet">
-            Name them when starting a project, or add one on the engine's brands screen.
-          </EmptyState>
-        </Panel>
+        <p className="px-6 py-5 text-sm text-muted-foreground">
+          No competitors yet. Name them when starting a project, or add one on the engine's brands
+          screen.
+        </p>
       )}
       {list.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="divide-y">
           {list.map((b) => (
-            <Link
-              key={b.id}
-              to="/brands/$brandId"
-              params={{ brandId: String(b.id) }}
-              className="flex flex-col border bg-card p-6 transition-colors hover:border-foreground/40"
-            >
-              <h2 className="font-heading text-xl font-semibold tracking-tight">{b.name}</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {b.projectCount === 0
-                  ? "No projects tracked"
-                  : `${b.projectCount} ${b.projectCount === 1 ? "project" : "projects"} tracked`}
-              </p>
-              {b.notes && (
-                <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">{b.notes}</p>
-              )}
-            </Link>
+            <li key={b.id}>
+              <Link
+                to="/brands/$brandId"
+                params={{ brandId: String(b.id) }}
+                className="flex items-center gap-3 px-6 py-3.5 text-sm hover:bg-muted"
+              >
+                <span className="min-w-0 flex-1 truncate font-medium">{b.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {b.projectCount === 0
+                    ? "No projects tracked"
+                    : `${b.projectCount} ${b.projectCount === 1 ? "project" : "projects"} tracked`}
+                </span>
+              </Link>
+            </li>
           ))}
-        </div>
+        </ul>
       )}
-    </>
+    </Panel>
   );
 }
