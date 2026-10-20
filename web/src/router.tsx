@@ -35,7 +35,6 @@ import { InboxPage } from "@/routes/inbox";
 import { LeadDetailPage } from "@/routes/lead-detail";
 import { LeadsPage } from "@/routes/leads";
 import { ListsPage } from "@/routes/lists";
-import { MarketersPage } from "@/routes/marketers";
 import { OrganicPage } from "@/routes/organic";
 import { OutcomesPage } from "@/routes/outcomes";
 import { PeoplePage } from "@/routes/people";
@@ -262,6 +261,15 @@ const oldCampaignsListRoute = createRoute({
   path: "/studio/campaigns",
   beforeLoad: () => {
     throw redirect({ to: "/projects" });
+  },
+});
+
+// By marketer was results split by source owner; People covers who's who.
+const oldMarketersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketers",
+  beforeLoad: () => {
+    throw redirect({ to: "/analytics", search: analyticsSearch({}) });
   },
 });
 
@@ -494,7 +502,7 @@ const routeTree = rootRoute.addChildren([
     creativeConceptRoute,
     creativeEditorRoute,
     page("/enrichment", EnrichmentPage),
-    page("/marketers", MarketersPage),
+    oldMarketersRoute,
     page("/portals", PortalsPage),
     page("/data-quality", DataQualityPage),
     page("/reports", ReportsPage),

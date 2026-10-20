@@ -23,7 +23,6 @@ import {
   RefreshCw,
   ShieldAlert,
   UserCog,
-  UserRound,
   UserSearch,
   Users,
   UsersRound,
@@ -145,14 +144,6 @@ export const NAV: readonly NavGroup[] = [
         status: "live",
         summary:
           "Leads, qualified leads, deals and cost per lead for each property portal, with spend typed in each month.",
-      },
-      {
-        label: "By marketer",
-        to: "/marketers",
-        icon: UserRound,
-        phase: 1,
-        status: "live",
-        summary: "Each marketer's own leads, spend and cost per lead, from the sources they own.",
       },
       {
         label: "Reports",
