@@ -31,7 +31,7 @@ describe("nav", () => {
     expect(doorOf("/creative/producer")?.label).toBe("Creative");
     expect(doorOf("/creative/1/concepts/2")?.label).toBe("Creative");
     expect(doorOf("/leads/1001")?.label).toBe("Convert");
-    expect(doorOf("/perform/projects")?.label).toBe("Perform");
+    expect(doorOf("/campaigns")?.label).toBe("Perform");
     expect(doorOf("/settings/people")).toBeUndefined();
     expect(doorOf("/")).toBeUndefined();
   });

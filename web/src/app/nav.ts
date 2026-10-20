@@ -21,7 +21,6 @@ import {
   Megaphone,
   MessageSquareText,
   Palette,
-  PanelsTopLeft,
   PhoneCall,
   Plug,
   RefreshCw,
@@ -156,15 +155,6 @@ export const NAV: readonly NavGroup[] = [
         status: "live",
         summary:
           "Campaign, ad set and ad views with spend, leads, qualified leads, deals and the temperature mix.",
-      },
-      {
-        label: "By project",
-        to: "/perform/projects",
-        icon: PanelsTopLeft,
-        phase: 1,
-        status: "live",
-        summary:
-          "Each project's week: cost per qualified lead, meetings, budget pacing and its funnel.",
       },
       {
         label: "Revenue",

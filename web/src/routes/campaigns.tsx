@@ -1,13 +1,20 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 import { useId, useMemo, useState } from "react";
-import { useAds, useCampaigns, useDailyBudget, useProposeChange } from "@/api/adx";
+import {
+  useAds,
+  useCampaigns,
+  useDailyBudget,
+  useProjectsOverview,
+  useProposeChange,
+} from "@/api/adx";
 import { projectOf } from "@/api/mock/data";
 import type { AdRow, Campaign, Proposal } from "@/api/models";
 import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
 import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
 import { Form } from "@/components/form";
+import { PacingCell } from "@/components/pacing";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformMark, platformLabel } from "@/components/platform";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -15,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { analyticsSearch } from "@/lib/analytics";
 import { formatMoneyShort, formatNumber, formatPercent, NOT_AVAILABLE } from "@/lib/format";
 import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
@@ -49,6 +57,10 @@ export function CampaignsPage() {
   const campaigns = useCampaigns();
   const scope = useScope();
   const session = useSession();
+  // The month's budget pacing per project, which By project used to show.
+  const overview = useProjectsOverview(analyticsSearch({}));
+  const pacingOf = (projectId: number) =>
+    overview.data?.find((p) => p.projectId === projectId)?.pacing ?? null;
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "spend",
     dir: "desc",
@@ -149,14 +161,19 @@ export function CampaignsPage() {
             {groups.map((g) => (
               <TBody key={g.projectId}>
                 <TR className="bg-muted/60">
-                  <TD
-                    className="font-heading font-semibold"
-                    colSpan={g.campaigns.length > 1 ? 1 : 7}
-                  >
-                    {projectOf(g.projectId)}
+                  <TD className="py-4 align-top">
+                    <Link
+                      to="/projects/$projectId"
+                      params={{ projectId: String(g.projectId) }}
+                      className="font-heading font-semibold hover:underline"
+                    >
+                      {projectOf(g.projectId)}
+                    </Link>
+                    <div className="mt-3 max-w-72">
+                      <PacingCell pacing={pacingOf(g.projectId)} />
+                    </div>
                   </TD>
-                  {/* A lone campaign's figures are the project's, so show them once. */}
-                  {g.campaigns.length > 1 && <Figures c={g.total} />}
+                  <Figures c={g.total} />
                 </TR>
                 {g.campaigns.map((c) => (
                   <TR

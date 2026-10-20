@@ -11,7 +11,7 @@ import { AppShell } from "@/app/app-shell";
 import { findNavItem } from "@/app/nav";
 import { AdxWordmark } from "@/components/brand";
 import { ENGINE_PAGES as E } from "@/engine/routes";
-import { type AnalyticsSearch, analyticsSearch } from "@/lib/analytics";
+import { analyticsSearch } from "@/lib/analytics";
 import { released } from "@/lib/release";
 import { AnalyticsPage } from "@/routes/analytics";
 import { ApprovePage } from "@/routes/approve";
@@ -46,7 +46,6 @@ import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectPage, projectTabSearch } from "@/routes/project";
 import { ProjectsPage } from "@/routes/projects";
-import { ProjectsOverviewPage } from "@/routes/projects-overview";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
 import { RevenuePage } from "@/routes/revenue";
@@ -433,16 +432,14 @@ const approveRoute = createRoute({
   head: () => ({ meta: [{ title: "Approve a change | Adx" }] }),
 });
 
+// By project folded into Campaigns: each project's row carries its totals
+// and the month's budget pacing (BD-67).
 const projectsOverviewRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: () => rootRoute,
   path: "/perform/projects",
-  validateSearch: (
-    raw: Record<string, unknown>,
-  ): Pick<AnalyticsSearch, "from" | "to" | "compare" | "comparisonFrom" | "comparisonTo"> => {
-    const { from, to, compare, comparisonFrom, comparisonTo } = analyticsSearch(raw);
-    return { from, to, compare, comparisonFrom, comparisonTo };
+  beforeLoad: () => {
+    throw redirect({ to: "/campaigns" });
   },
-  component: ProjectsOverviewPage,
 });
 
 const analyticsRoute = createRoute({
