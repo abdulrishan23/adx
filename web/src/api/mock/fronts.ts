@@ -455,6 +455,16 @@ export function desk(): HomeDesk {
         ]
       : []),
     {
+      id: "outcomes",
+      door: "perform",
+      status: "caution",
+      title: "Deals aren't reaching Google",
+      why: "The last three Done-Deals from GoHighLevel matched no Google click: the gclid is missing on the form. Meta is matching 91%.",
+      figure: { value: "3", count: 3, unit: "deals unmatched" },
+      question: "Why are deals not matching on Google, and what does Meta do differently?",
+      action: { label: "Outcome sync", to: "/outcomes" },
+    },
+    {
       id: "drafts",
       door: "convert",
       status: "caution",

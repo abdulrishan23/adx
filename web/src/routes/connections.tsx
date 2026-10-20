@@ -38,6 +38,31 @@ export function ConnectionsPage() {
               </section>
             );
           })}
+          <section className="space-y-3">
+            <Eyebrow>Checks on the pipes</Eyebrow>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <Link
+                to="/data-quality"
+                className="block rounded-lg border bg-card p-5 hover:border-foreground/40"
+              >
+                <h2 className="text-lg font-semibold">Data quality</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Platform leads against GoHighLevel leads per form, status coverage and attribution
+                  coverage. A gap shows up in the Inbox.
+                </p>
+              </Link>
+              <Link
+                to="/outcomes"
+                className="block rounded-lg border bg-card p-5 hover:border-foreground/40"
+              >
+                <h2 className="text-lg font-semibold">Outcome sync</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Qualified leads and deals sent back to Google and Meta, with match rates and
+                  failures. A drop shows up in the Inbox.
+                </p>
+              </Link>
+            </div>
+          </section>
         </div>
       )}
     </>

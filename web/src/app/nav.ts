@@ -11,7 +11,6 @@ import {
   Filter,
   FolderKanban,
   Gauge,
-  Globe,
   Inbox,
   Inbox as InboxIcon,
   ListChecks,
@@ -22,10 +21,7 @@ import {
   PhoneCall,
   Plug,
   RefreshCw,
-  Send,
-  Share2,
   ShieldAlert,
-  ShieldCheck,
   UserCog,
   UserRound,
   UserSearch,
@@ -104,6 +100,7 @@ export const NAV: readonly NavGroup[] = [
   {
     label: "Perform",
     door: { to: "/analytics", phase: 1, icon: Activity },
+    under: ["/data-quality", "/outcomes", "/website", "/organic"],
     items: [
       {
         label: "Analytics",
@@ -150,12 +147,12 @@ export const NAV: readonly NavGroup[] = [
           "Leads, qualified leads, deals and cost per lead for each property portal, with spend typed in each month.",
       },
       {
-        label: "Marketers",
+        label: "By marketer",
         to: "/marketers",
         icon: UserRound,
         phase: 1,
         status: "live",
-        summary: "Results split by source owner.",
+        summary: "Each marketer's own leads, spend and cost per lead, from the sources they own.",
       },
       {
         label: "Reports",
@@ -166,57 +163,12 @@ export const NAV: readonly NavGroup[] = [
         summary: "Monthly and weekly reports for the CMO and CEO.",
       },
       {
-        label: "Data quality",
-        to: "/data-quality",
-        icon: ShieldCheck,
-        phase: 1,
-        status: "live",
-        summary:
-          "Platform leads against GoHighLevel leads per form, status coverage and attribution coverage.",
-      },
-      {
-        label: "Proposals",
-        to: "/proposals",
-        icon: ClipboardCheck,
-        phase: 3,
-        status: "live",
-        summary:
-          "Changes to Google, Meta and GoHighLevel waiting for approval, and the log of every change Adx made.",
-      },
-      {
         label: "Audiences",
         to: "/audiences",
         icon: UsersRound,
         phase: 3,
         status: "live",
         summary: "Meta custom audiences and Google Customer Match built from leads that went cold.",
-      },
-      {
-        label: "Outcome sync",
-        to: "/outcomes",
-        icon: Send,
-        phase: 3,
-        status: "live",
-        summary:
-          "Qualified leads and Done-Deals sent back to Google and Meta, with match rates, failures and an audit of the current setup.",
-      },
-      {
-        label: "Website",
-        to: "/website",
-        icon: Globe,
-        phase: 6,
-        status: "live",
-        summary:
-          "GA4 traffic and landing page performance, with flags for broken or password-gated pages.",
-      },
-      {
-        label: "Organic",
-        to: "/organic",
-        icon: Share2,
-        phase: 6,
-        status: "live",
-        summary:
-          "Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, plus Search Console.",
       },
     ],
   },
@@ -333,6 +285,16 @@ export const NAV: readonly NavGroup[] = [
         summary:
           "Caps on spend increases and changes per day, monthly budgets, and a kill switch per account.",
         roles: ["admin"],
+      },
+      {
+        label: "Change log",
+        to: "/proposals",
+        icon: ClipboardCheck,
+        phase: 3,
+        status: "live",
+        roles: ["admin", "marketer"],
+        summary:
+          "Every change Adx made to Google, Meta and GoHighLevel, and the ones still waiting for approval. Approvals themselves arrive in the Inbox.",
       },
       {
         label: "Scoring",

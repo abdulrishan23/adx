@@ -38,12 +38,12 @@ In the screens a project is called a brand: a development such as The Wadi, mark
 | | By project | `/perform/projects` | 1 |
 | | Revenue | `/revenue` | 1 |
 | | Portals | `/portals` | 1 |
-| | Marketers | `/marketers` | 1 |
+| | By marketer | `/marketers` | 1 |
 | | Reports | `/reports` | 1 |
-| | Data quality | `/data-quality` | 1 |
-| | Proposals | `/proposals` | 3 |
+| | Data quality (from Connections and the Inbox) | `/data-quality` | 1 |
+| Settings | Change log | `/proposals` | 3 |
 | | Audiences | `/audiences` | 3 |
-| | Outcome sync | `/outcomes` | 3 |
+| | Outcome sync (from Connections and the Inbox) | `/outcomes` | 3 |
 | | Website | `/website` | 6 |
 | | Organic | `/organic` | 6 |
 | Convert | Leads | `/leads` | 1 |
