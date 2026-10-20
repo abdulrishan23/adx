@@ -19,7 +19,7 @@ import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
 import { CampaignPage } from "@/routes/campaign";
-import { CampaignsPage } from "@/routes/campaigns";
+import { CampaignsPage, CampaignsPage as StudioCampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
@@ -54,8 +54,7 @@ import { SignInPage } from "@/routes/sign-in";
 import { SourcePage } from "@/routes/source";
 import { LaunchPage } from "@/routes/studio/launch";
 import { PagePage } from "@/routes/studio/pages";
-import { PlanPage, PlansPage } from "@/routes/studio/plans";
-import { ResearchPage } from "@/routes/studio/research";
+import { PlanPage } from "@/routes/studio/plans";
 import { StartBrandPage } from "@/routes/studio/start";
 import { WebsitePage } from "@/routes/website";
 
@@ -245,6 +244,24 @@ const oldPagesListRoute = createRoute({
   },
 });
 
+// Research moved into the project (its Research tab); plans and launch are
+// stages of a campaign. The old lists redirect to where the work now starts.
+const oldPlansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/plans",
+  beforeLoad: () => {
+    throw redirect({ to: "/studio/campaigns" });
+  },
+});
+
+const oldResearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/research",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
 const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects/$projectId",
@@ -261,7 +278,7 @@ const campaignRoute = createRoute({
   path: "/projects/$projectId/campaigns/$campaignId",
   component: function Campaign() {
     const { projectId, campaignId } = campaignRoute.useParams();
-    return <CampaignPage projectId={Number(projectId)} campaignId={campaignId} />;
+    return <CampaignPage projectId={Number(projectId)} campaignId={Number(campaignId)} />;
   },
 });
 
@@ -413,8 +430,9 @@ const routeTree = rootRoute.addChildren([
   publicRoute.addChildren([privacyRoute, approveRoute]),
   appRoute.addChildren([
     indexRoute,
-    page("/studio/research", ResearchPage),
-    page("/studio/plans", PlansPage),
+    page("/studio/campaigns", StudioCampaignsPage),
+    oldResearchRoute,
+    oldPlansRoute,
     page("/studio/plans/$planId", PlanPage),
     page("/studio/pages/$pageId", PagePage),
     page("/studio/launch", LaunchPage),

@@ -33,13 +33,21 @@ const route = getRouteApi("/app/studio/pages/$pageId");
 // Adx writes the page from the brand's approved facts, the offer and the
 // studio's pictures for the project, in English and Arabic as twins that
 // link to each other. Each lands as a draft version to edit and publish.
-export function AskForPage({ fixed }: { fixed?: { brandId: number; projectId: number } }) {
+export function AskForPage({
+  fixed,
+  campaignId = 0,
+  offerId: fixedOffer,
+}: {
+  fixed?: { brandId: number; projectId: number };
+  campaignId?: number;
+  offerId?: number;
+}) {
   const session = useSession();
   const brands = useBrands();
   const [brandId, setBrandId] = useState<number | null>(fixed?.brandId ?? null);
   const brand = useBrand(brandId);
   const [projectId, setProjectId] = useState<number | null>(fixed?.projectId ?? null);
-  const [offerId, setOfferId] = useState<number>(0);
+  const [offerId, setOfferId] = useState<number>(fixedOffer ?? 0);
   const [language, setLanguage] = useState<"" | "en" | "ar">("");
   const [instructions, setInstructions] = useState("");
   const draft = useDraftPage();
@@ -67,6 +75,7 @@ export function AskForPage({ fixed }: { fixed?: { brandId: number; projectId: nu
             name: "",
             offerId,
             instructions,
+            campaignId,
             pageId: 0,
           });
         }}

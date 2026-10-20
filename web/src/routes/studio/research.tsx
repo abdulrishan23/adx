@@ -87,7 +87,7 @@ export function ResearchPage() {
   );
 }
 
-function BriefView({ id }: { id: number }) {
+export function BriefView({ id }: { id: number }) {
   const brief = useBrief(id);
   const start = useStartResearchRun(id);
   const d = brief.data;

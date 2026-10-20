@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Download, Upload } from "lucide-react";
+import { useState } from "react";
 import { useBrand } from "@/api/brands";
+import { useProjectCampaigns } from "@/api/campaigns";
 import { useCreativeOverview, useCreativeProject, useSetUpCreative } from "@/api/creative";
 import { usePages } from "@/api/pages";
-import { usePlans } from "@/api/plans";
 import { useBriefs } from "@/api/research";
-import type { Ad, CreativeProject } from "@/api/types.gen";
+import type { Ad } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
@@ -17,16 +18,36 @@ import { RendersTab } from "@/creative/renders-tab";
 import { SettingsTab } from "@/creative/settings-tab";
 import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
-import { formatRelative } from "@/lib/format";
-import { CLASS, factValue } from "./brand";
-import { campaignLink } from "./campaign";
+import { formatDate, formatRelative } from "@/lib/format";
+import { CLASS, factValue, keyLabel } from "./brand";
+import { STATE } from "./campaign";
+import { CampaignsTab } from "./campaigns";
 import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
 import { AskForPage } from "./studio/pages";
-import { SampleChip } from "./studio/shared";
+import { BriefView } from "./studio/research";
 
-export type ProjectTab = "overview" | "concepts" | "renders" | "pages" | "brand" | "settings";
+export type ProjectTab =
+  | "overview"
+  | "campaigns"
+  | "renders"
+  | "brand"
+  | "research"
+  | "settings"
+  | "concepts"
+  | "pages";
 
-const TABS: ProjectTab[] = ["overview", "concepts", "renders", "pages", "brand", "settings"];
+// "concepts" and "pages" are the ads and pages not filed under a campaign;
+// their tabs show only while such things exist.
+const TABS: ProjectTab[] = [
+  "overview",
+  "campaigns",
+  "renders",
+  "brand",
+  "research",
+  "settings",
+  "concepts",
+  "pages",
+];
 
 export function projectTabSearch(raw: Record<string, unknown>): { tab?: ProjectTab } {
   const t = raw.tab;
@@ -56,6 +77,9 @@ export function ProjectPage({
   const creative = useCreativeOverview();
   const studio = creative.data?.projects.find((p) => p.projectId === projectId) ?? null;
   const studioProject = useCreativeProject(studio ? projectId : 0);
+  const campaigns = useProjectCampaigns(projectId);
+  const pages = usePages();
+  const briefs = useBriefs();
 
   if (projects.isPending) return <LoadingRows rows={8} />;
   if (projects.error) return <ErrorNote error={projects.error} />;
@@ -69,6 +93,10 @@ export function ProjectPage({
   const p = studio && studioProject.data ? studioProject.data : null;
   const ads = p?.concepts.flatMap((c) => c.ads) ?? [];
   const count = (s: Ad["status"]) => ads.filter((a) => a.status === s).length;
+  const loose = p?.concepts.filter((c) => c.campaignId === null).length ?? 0;
+  const loosePages = (pages.data?.pages ?? []).filter(
+    (x) => x.projectId === projectId && x.campaignId === null,
+  ).length;
 
   return (
     <section>
@@ -152,15 +180,31 @@ export function ProjectPage({
         }
         options={[
           { value: "overview", label: "Overview" },
-          { value: "concepts", label: "Concepts", count: p?.concepts.length },
-          { value: "renders", label: "Renders", count: p?.renders.filter((r) => !r.hidden).length },
-          { value: "pages", label: "Landing pages" },
-          { value: "brand", label: "Brand kit" },
+          { value: "campaigns", label: "Campaigns", count: campaigns.data?.campaigns.length },
+          {
+            value: "renders",
+            label: "Pictures",
+            count: p?.renders.filter((r) => !r.hidden).length,
+          },
+          { value: "brand", label: "Brand" },
+          {
+            value: "research",
+            label: "Research",
+            count: briefs.data?.briefs.filter((b) => b.projectId === projectId).length,
+          },
           { value: "settings", label: "Settings" },
+          ...(loose > 0 || tab === "concepts"
+            ? [{ value: "concepts" as const, label: "Unfiled ads", count: loose }]
+            : []),
+          ...(loosePages > 0 || tab === "pages"
+            ? [{ value: "pages" as const, label: "Unfiled pages", count: loosePages }]
+            : []),
         ]}
         className="mb-8"
       />
-      {tab === "overview" && <Overview projectId={projectId} brandId={brandId} studio={p} />}
+      {tab === "overview" && <Overview projectId={projectId} brandId={brandId} />}
+      {tab === "campaigns" && <CampaignsTab projectId={projectId} brandId={brandId} />}
+      {tab === "research" && <ResearchTab projectId={projectId} />}
       {tab === "pages" && <PagesTab projectId={projectId} brandId={brandId} />}
       {(tab === "concepts" || tab === "renders" || tab === "brand" || tab === "settings") &&
         (studio === null && creative.data ? (
@@ -168,7 +212,10 @@ export function ProjectPage({
         ) : !p ? (
           <LoadingRows rows={6} />
         ) : tab === "concepts" ? (
-          <ConceptsTab project={p} canEdit={canEdit} />
+          <ConceptsTab
+            project={{ ...p, concepts: p.concepts.filter((c) => c.campaignId === null) }}
+            canEdit={canEdit}
+          />
         ) : tab === "renders" ? (
           <RendersTab project={p} canEdit={canEdit} />
         ) : tab === "brand" ? (
@@ -201,28 +248,14 @@ function SetUpStudio({ projectId, canEdit }: { projectId: number; canEdit: boole
   );
 }
 
-function Overview({
-  projectId,
-  brandId,
-  studio,
-}: {
-  projectId: number;
-  brandId: number | null;
-  studio: CreativeProject | null;
-}) {
+function Overview({ projectId, brandId }: { projectId: number; brandId: number | null }) {
   const brand = useBrand(brandId);
-  const pages = usePages();
-  const plans = usePlans();
   const briefs = useBriefs();
   if (brandId !== null && brand.isPending) return <LoadingRows rows={6} />;
   const d = brand.data;
   const facts = d?.facts.filter((f) => f.projectId === projectId || f.projectId === null) ?? [];
   const offers = d?.offers.filter((o) => o.projectId === projectId || o.projectId === null) ?? [];
-  const projectPages = (pages.data?.pages ?? []).filter((x) => x.projectId === projectId);
-  const projectPlans = (plans.data?.plans ?? []).filter((x) => x.projectId === projectId);
   const projectBriefs = (briefs.data?.briefs ?? []).filter((x) => x.projectId === projectId);
-  const ads = studio?.concepts.flatMap((c) => c.ads) ?? [];
-
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
       <div className="space-y-6">
@@ -250,8 +283,8 @@ function Overview({
                 <li key={f.id} className="flex items-start gap-4 px-6 py-4">
                   <StatusMark status={CLASS[f.class].status} className="mt-1.5" />
                   <div className="min-w-0 flex-1">
-                    <p className="font-mono text-xs text-muted-foreground">
-                      {f.key}
+                    <p className="text-sm text-muted-foreground" title={f.key}>
+                      {keyLabel(f.key)}
                       {f.projectId === null && " · all projects"}
                     </p>
                     <p className="mt-0.5">{factValue(f)}</p>
@@ -302,69 +335,10 @@ function Overview({
       </div>
 
       <div className="space-y-6">
-        <Panel
-          title={
-            <span className="flex items-center gap-3">
-              Campaigns <SampleChip />
-            </span>
-          }
-          bodyClassName="p-0"
-        >
-          <ul className="divide-y">
-            <li>
-              <Link
-                {...campaignLink(projectId)}
-                className="flex items-center gap-3 px-6 py-3.5 text-sm hover:bg-muted"
-              >
-                <StatusMark status="caution" />
-                <span className="flex-1 font-medium">Launch weekend</span>
-                <span className="text-muted-foreground">24 to 26 Oct · in production</span>
-              </Link>
-            </li>
-          </ul>
-        </Panel>
-        <SideList
-          title="Creatives"
-          open={{ tab: "concepts", projectId }}
-          empty={studio ? undefined : "Not set up yet."}
-          rows={
-            studio
-              ? studio.concepts.map((c) => ({
-                  label: `${c.code} ${c.name}`,
-                  status: (c.ads.some((a) => a.status === "revise")
-                    ? "caution"
-                    : c.ads.length > 0 && c.ads.every((a) => a.status === "approved")
-                      ? "ready"
-                      : "pending") as Status,
-                  note: `${c.ads.length} ${c.ads.length === 1 ? "ad" : "ads"}`,
-                }))
-              : []
-          }
-          footer={studio && ads.length > 0 ? `${ads.length} ads in all` : undefined}
-        />
-        <SideList
-          title="Landing pages"
-          open={{ tab: "pages", projectId }}
-          empty={projectPages.length === 0 ? "No pages yet." : undefined}
-          rows={projectPages.map((x) => ({
-            label: x.name,
-            status: x.publishedVersion === null ? "pending" : "ready",
-            note: x.publishedVersion === null ? "Draft" : `Live v${x.publishedVersion}`,
-          }))}
-        />
-        <SideList
-          title="Media plans"
-          open={{ to: "plans" }}
-          empty={projectPlans.length === 0 ? "No plans yet." : undefined}
-          rows={projectPlans.map((x) => ({
-            label: x.title,
-            status: x.accepted ? "ready" : "pending",
-            note: `v${x.latestVersion}${x.accepted ? " · accepted" : ""}`,
-          }))}
-        />
+        <CampaignsSide projectId={projectId} />
         <SideList
           title="Research"
-          open={{ to: "research" }}
+          open={{ tab: "research", projectId }}
           empty={projectBriefs.length === 0 ? "No research yet." : undefined}
           rows={projectBriefs.map((x) => ({
             label: x.title,
@@ -378,7 +352,7 @@ function Overview({
 }
 
 type SideRow = { label: string; status: Status; note?: string };
-type Open = { tab: ProjectTab; projectId: number } | { to: "plans" | "research" };
+type Open = { tab: ProjectTab; projectId: number };
 
 function SideList({
   title,
@@ -394,21 +368,16 @@ function SideList({
   footer?: string;
 }) {
   const cls = "text-xs text-muted-foreground hover:text-foreground";
-  const action =
-    "tab" in open ? (
-      <Link
-        to="/projects/$projectId"
-        params={{ projectId: String(open.projectId) }}
-        search={{ tab: open.tab }}
-        className={cls}
-      >
-        Open
-      </Link>
-    ) : (
-      <Link to={open.to === "plans" ? "/studio/plans" : "/studio/research"} className={cls}>
-        Open
-      </Link>
-    );
+  const action = (
+    <Link
+      to="/projects/$projectId"
+      params={{ projectId: String(open.projectId) }}
+      search={{ tab: open.tab }}
+      className={cls}
+    >
+      Open
+    </Link>
+  );
   return (
     <Panel title={title} action={action} bodyClassName="p-0">
       {empty ? (
@@ -493,6 +462,94 @@ function PagesTab({ projectId, brandId }: { projectId: number; brandId: number |
           </Table>
         </Panel>
       )}
+    </div>
+  );
+}
+
+// CampaignsSide is the project's campaigns at a glance: the one to open
+// first is the one furthest along.
+function CampaignsSide({ projectId }: { projectId: number }) {
+  const campaigns = useProjectCampaigns(projectId);
+  const list = campaigns.data?.campaigns ?? [];
+  return (
+    <Panel
+      title="Campaigns"
+      action={
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: String(projectId) }}
+          search={{ tab: "campaigns" }}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          Open
+        </Link>
+      }
+      bodyClassName="p-0"
+    >
+      {campaigns.isPending && <LoadingRows rows={2} />}
+      {campaigns.data && list.length === 0 && (
+        <p className="px-6 py-5 text-sm text-muted-foreground">No campaigns yet.</p>
+      )}
+      {list.length > 0 && (
+        <ul className="divide-y">
+          {list.map((c) => {
+            const st = STATE[c.state] ?? { label: c.state, status: "pending" as Status };
+            return (
+              <li key={c.id}>
+                <Link
+                  to="/projects/$projectId/campaigns/$campaignId"
+                  params={{ projectId: String(projectId), campaignId: String(c.id) }}
+                  className="flex items-center gap-3 px-6 py-3.5 text-sm hover:bg-muted"
+                >
+                  <StatusMark status={st.status} />
+                  <span className="min-w-0 flex-1 truncate font-medium">{c.name}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {c.startsOn ? `${formatDate(c.startsOn)} · ` : ""}
+                    {st.label}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
+  );
+}
+
+// ResearchTab is what Adx read for this project: its briefs, one at a time.
+function ResearchTab({ projectId }: { projectId: number }) {
+  const briefs = useBriefs();
+  const [chosen, setChosen] = useState<number | null>(null);
+  const list = (briefs.data?.briefs ?? []).filter((b) => b.projectId === projectId);
+  const id = chosen ?? list[0]?.id ?? null;
+  if (briefs.isPending) return <LoadingRows rows={6} />;
+  if (briefs.error) return <ErrorNote error={briefs.error} />;
+  if (list.length === 0) {
+    return (
+      <Panel>
+        <EmptyState title="No research for this project yet">
+          Adx opens a brief when a project starts with its website and competitors. Anything else
+          can be set up on the{" "}
+          <Link to="/engine/research" className="underline underline-offset-4">
+            engine's research screen
+          </Link>
+          .
+        </EmptyState>
+      </Panel>
+    );
+  }
+  return (
+    <div className="space-y-6">
+      {list.length > 1 && (
+        <Segmented
+          label="Briefs"
+          value={String(id)}
+          onChange={(v) => setChosen(Number(v))}
+          options={list.map((b) => ({ value: String(b.id), label: b.title }))}
+        />
+      )}
+      {id !== null && <BriefView id={id} />}
     </div>
   );
 }

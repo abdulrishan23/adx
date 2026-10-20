@@ -82,7 +82,13 @@ export function ConceptsTab({ project, canEdit }: { project: CreativeProject; ca
   );
 }
 
-function NewConceptForm({ projectId }: { projectId: number }) {
+export function NewConceptForm({
+  projectId,
+  campaignId = 0,
+}: {
+  projectId: number;
+  campaignId?: number;
+}) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const create = useCreateConcept(projectId);
@@ -93,7 +99,7 @@ function NewConceptForm({ projectId }: { projectId: number }) {
       onSubmit={(e) => {
         e.preventDefault();
         create.mutate(
-          { code, name },
+          { code, name, campaignId },
           {
             onSuccess: (c) =>
               navigate({
@@ -135,7 +141,13 @@ function NewConceptForm({ projectId }: { projectId: number }) {
 
 // Adx proposes concepts from the brand's approved facts and current
 // offers. They land as ordinary concepts, to edit or delete like any other.
-function AskForConcepts({ projectId }: { projectId: number }) {
+export function AskForConcepts({
+  projectId,
+  campaignId = 0,
+}: {
+  projectId: number;
+  campaignId?: number;
+}) {
   const [instructions, setInstructions] = useState("");
   const [count, setCount] = useState(3);
   const generate = useGenerateConcepts(projectId);
@@ -144,7 +156,7 @@ function AskForConcepts({ projectId }: { projectId: number }) {
       className="flex flex-wrap items-end gap-2"
       onSubmit={(e) => {
         e.preventDefault();
-        generate.mutate({ count, instructions });
+        generate.mutate({ count, instructions, campaignId });
       }}
     >
       <div className="flex flex-col gap-1.5">
@@ -191,7 +203,7 @@ function AskForConcepts({ projectId }: { projectId: number }) {
   );
 }
 
-function ConceptSection({
+export function ConceptSection({
   concept,
   projectId,
   canEdit,

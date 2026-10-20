@@ -56,10 +56,10 @@ type CampaignInput struct {
 	Markets     []string `json:"markets"`
 }
 
-// Stage is one step of the campaign's work, with the state a person needs
+// CampaignStage is one step of the campaign's work, with the state a person needs
 // at a glance. Status is ready, caution or pending, the same words the
 // screens use.
-type Stage struct {
+type CampaignStage struct {
 	ID     string `json:"id"` // brief, ads, page, plan, approvals, live
 	Status string `json:"status"`
 	Note   string `json:"note"`
@@ -69,8 +69,8 @@ type Stage struct {
 // lists.
 type CampaignSummary struct {
 	Campaign
-	ProjectName string  `json:"projectName"`
-	Stages      []Stage `json:"stages"`
+	ProjectName string          `json:"projectName"`
+	Stages      []CampaignStage `json:"stages"`
 	// State is the campaign's overall word: planning, in_production,
 	// awaiting_approval, live, done.
 	State string `json:"state"`
@@ -362,14 +362,14 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 			}
 		}
 	}
-	brief := Stage{ID: "brief", Status: "pending", Note: "No goal yet"}
+	brief := CampaignStage{ID: "brief", Status: "pending", Note: "No goal yet"}
 	switch {
 	case row.Goal != "" && d.Offer != nil && d.Offer.Current.State == brands.OfferApproved:
-		brief = Stage{ID: "brief", Status: "ready", Note: "Set"}
+		brief = CampaignStage{ID: "brief", Status: "ready", Note: "Set"}
 	case row.Goal != "" && d.Offer != nil:
-		brief = Stage{ID: "brief", Status: "caution", Note: "Offer not approved"}
+		brief = CampaignStage{ID: "brief", Status: "caution", Note: "Offer not approved"}
 	case row.Goal != "":
-		brief = Stage{ID: "brief", Status: "ready", Note: "Set, no offer"}
+		brief = CampaignStage{ID: "brief", Status: "ready", Note: "Set, no offer"}
 	}
 
 	// Ads: the campaign's concepts and their review state.
@@ -395,18 +395,18 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 			}
 		}
 	}
-	ads := Stage{ID: "ads", Status: "pending", Note: "No ads yet"}
+	ads := CampaignStage{ID: "ads", Status: "pending", Note: "No ads yet"}
 	switch {
 	case d.Ads.Revise > 0:
-		ads = Stage{ID: "ads", Status: "caution", Note: plural(d.Ads.Revise, "needs changes", "need changes")}
+		ads = CampaignStage{ID: "ads", Status: "caution", Note: plural(d.Ads.Revise, "needs changes", "need changes")}
 	case d.Ads.Total > 0 && d.Ads.Approved == d.Ads.Total:
-		ads = Stage{ID: "ads", Status: "ready", Note: "All approved"}
+		ads = CampaignStage{ID: "ads", Status: "ready", Note: "All approved"}
 	case d.Ads.Waiting > 0:
-		ads = Stage{ID: "ads", Status: "caution", Note: plural(d.Ads.Waiting, "awaiting review", "awaiting review")}
+		ads = CampaignStage{ID: "ads", Status: "caution", Note: plural(d.Ads.Waiting, "awaiting review", "awaiting review")}
 	case d.Ads.Total > 0:
-		ads = Stage{ID: "ads", Status: "caution", Note: "Not reviewed"}
+		ads = CampaignStage{ID: "ads", Status: "caution", Note: "Not reviewed"}
 	case len(d.Concepts) > 0:
-		ads = Stage{ID: "ads", Status: "pending", Note: "Ideas, no ads yet"}
+		ads = CampaignStage{ID: "ads", Status: "pending", Note: "Ideas, no ads yet"}
 	}
 
 	// Page: the campaign's pages, published or not.
@@ -421,7 +421,7 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 			}
 		}
 	}
-	page := Stage{ID: "page", Status: "pending", Note: "No page yet"}
+	page := CampaignStage{ID: "page", Status: "pending", Note: "No page yet"}
 	if n := len(d.Pages); n > 0 {
 		live := 0
 		for _, p := range d.Pages {
@@ -431,11 +431,11 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 		}
 		switch {
 		case live == n:
-			page = Stage{ID: "page", Status: "ready", Note: "Live"}
+			page = CampaignStage{ID: "page", Status: "ready", Note: "Live"}
 		case live > 0:
-			page = Stage{ID: "page", Status: "caution", Note: "Partly live"}
+			page = CampaignStage{ID: "page", Status: "caution", Note: "Partly live"}
 		default:
-			page = Stage{ID: "page", Status: "caution", Note: "Drafted, not published"}
+			page = CampaignStage{ID: "page", Status: "caution", Note: "Drafted, not published"}
 		}
 	}
 
@@ -452,15 +452,15 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 			}
 		}
 	}
-	plan := Stage{ID: "plan", Status: "pending", Note: "No plan yet"}
+	plan := CampaignStage{ID: "plan", Status: "pending", Note: "No plan yet"}
 	if d.Plan != nil {
 		switch {
 		case d.Plan.Accepted:
-			plan = Stage{ID: "plan", Status: "ready", Note: "Accepted"}
+			plan = CampaignStage{ID: "plan", Status: "ready", Note: "Accepted"}
 		case d.Plan.LatestState == plans.StateReady:
-			plan = Stage{ID: "plan", Status: "caution", Note: "Ready to accept"}
+			plan = CampaignStage{ID: "plan", Status: "caution", Note: "Ready to accept"}
 		default:
-			plan = Stage{ID: "plan", Status: "caution", Note: "Draft"}
+			plan = CampaignStage{ID: "plan", Status: "caution", Note: "Draft"}
 		}
 	}
 
@@ -472,34 +472,34 @@ func (c *Campaigns) detail(ctx context.Context, actor core.Actor, row store.Camp
 		}
 		d.Launch = &ls
 	}
-	approvals := Stage{ID: "approvals", Status: "pending", Note: "Spend not authorized"}
-	live := Stage{ID: "live", Status: "pending", Note: "Not yet"}
+	approvals := CampaignStage{ID: "approvals", Status: "pending", Note: "Spend not authorized"}
+	live := CampaignStage{ID: "live", Status: "pending", Note: "Not yet"}
 	if d.Launch != nil {
 		switch d.Launch.State {
 		case "none":
 		case "confirmed":
-			approvals = Stage{ID: "approvals", Status: "ready", Note: "Authorized"}
-			live = Stage{ID: "live", Status: "ready", Note: "Live on every platform"}
+			approvals = CampaignStage{ID: "approvals", Status: "ready", Note: "Authorized"}
+			live = CampaignStage{ID: "live", Status: "ready", Note: "Live on every platform"}
 		case "failed":
-			approvals = Stage{ID: "approvals", Status: "ready", Note: "Authorized"}
-			live = Stage{ID: "live", Status: "error", Note: "Failed"}
+			approvals = CampaignStage{ID: "approvals", Status: "ready", Note: "Authorized"}
+			live = CampaignStage{ID: "live", Status: "error", Note: "Failed"}
 		default:
-			approvals = Stage{ID: "approvals", Status: "ready", Note: "Authorized"}
-			live = Stage{ID: "live", Status: "caution", Note: "Submitting"}
+			approvals = CampaignStage{ID: "approvals", Status: "ready", Note: "Authorized"}
+			live = CampaignStage{ID: "live", Status: "caution", Note: "Submitting"}
 		}
 	}
 	if approvals.Status == "pending" && d.Ads.Total > 0 && d.Ads.Approved < d.Ads.Total {
 		approvals.Note = "Creative and spend"
 	}
 
-	d.Stages = []Stage{brief, ads, page, plan, approvals, live}
+	d.Stages = []CampaignStage{brief, ads, page, plan, approvals, live}
 	d.State = overall(d.Stages)
 	return d, nil
 }
 
 // overall names the campaign by its furthest stage.
-func overall(stages []Stage) string {
-	by := map[string]Stage{}
+func overall(stages []CampaignStage) string {
+	by := map[string]CampaignStage{}
 	for _, s := range stages {
 		by[s.ID] = s
 	}

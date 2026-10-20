@@ -3,7 +3,6 @@ import {
   Activity,
   Bot,
   Building2,
-  CalendarRange,
   ChartNoAxesCombined,
   ClipboardCheck,
   Cog,
@@ -29,7 +28,6 @@ import {
   Share2,
   ShieldAlert,
   ShieldCheck,
-  Telescope,
   UserCog,
   UserRound,
   UserSearch,
@@ -65,6 +63,9 @@ export type NavGroup = {
   label: string;
   items: readonly NavItem[];
   door?: { to: RoutePath; phase: Phase; icon: LucideIcon };
+  // under lists path prefixes the group owns beyond its items, such as the
+  // Studio screens reached from a campaign (plans, pages, launch).
+  under?: readonly string[];
 };
 
 export const HOME: NavItem = {
@@ -89,6 +90,7 @@ export const NAV: readonly NavGroup[] = [
   {
     label: "Studio",
     door: { to: "/projects", phase: 1, icon: PenTool },
+    under: ["/studio/", "/brands/", "/creative/"],
     items: [
       {
         label: "Projects",
@@ -100,38 +102,21 @@ export const NAV: readonly NavGroup[] = [
           "Each development Adx markets, such as The Wadi: its facts and offers, the ads Adx writes, pictures and films, and its landing pages.",
       },
       {
+        label: "Campaigns",
+        to: "/studio/campaigns",
+        icon: Rocket,
+        phase: 2,
+        status: "live",
+        summary:
+          "Every push across projects: its brief, ads, page, plan and launch, with what's done and what's next.",
+      },
+      {
         label: "Competitors",
         to: "/competitors",
         icon: Building2,
         phase: 2,
         status: "live",
         summary: "The developers Adx watches and what research reads of them.",
-      },
-      {
-        label: "Research",
-        to: "/studio/research",
-        icon: Telescope,
-        phase: 2,
-        status: "live",
-        summary: "Competitors, keywords and audiences for each project, refreshed on a schedule.",
-      },
-      {
-        label: "Media plans",
-        to: "/studio/plans",
-        icon: CalendarRange,
-        phase: 2,
-        status: "live",
-        summary:
-          "Budget split by channel and week, with the assumptions behind it and the approval that lets it launch.",
-      },
-      {
-        label: "Launch",
-        to: "/studio/launch",
-        icon: Rocket,
-        phase: 3,
-        status: "live",
-        summary:
-          "Readiness checks, then campaigns submitted to Meta and Google, with every rejection and what fixes it.",
       },
     ],
   },
@@ -413,6 +398,9 @@ export function findNavItem(path: string): NavItem | undefined {
 // open. A screen outside every door, such as Settings, returns undefined.
 export function doorOf(path: string): NavGroup | undefined {
   return NAV.find(
-    (g) => g.door && g.items.some((i) => path === i.to || path.startsWith(`${i.to}/`)),
+    (g) =>
+      g.door &&
+      (g.items.some((i) => path === i.to || path.startsWith(`${i.to}/`)) ||
+        (g.under ?? []).some((u) => path.startsWith(u))),
   );
 }

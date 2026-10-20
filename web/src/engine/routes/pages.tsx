@@ -146,6 +146,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
         projectId: form.projectId,
         planId: 0,
         planVersion: 0,
+        campaignId: 0,
         slug: form.slug,
         name: form.name,
         language: form.language,

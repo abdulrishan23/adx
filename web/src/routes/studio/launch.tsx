@@ -105,11 +105,11 @@ export function LaunchPage() {
       {plans.data && !plan && (
         <Panel>
           <EmptyState title="Nothing to launch yet">
-            A launch starts from an accepted{" "}
-            <Link to="/studio/plans" className="underline underline-offset-4">
-              media plan
-            </Link>
-            .
+            A launch starts from a{" "}
+            <Link to="/studio/campaigns" className="underline underline-offset-4">
+              campaign
+            </Link>{" "}
+            whose plan is accepted.
           </EmptyState>
         </Panel>
       )}

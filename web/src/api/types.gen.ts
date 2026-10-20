@@ -746,9 +746,16 @@ export interface CampaignInput {
 }
 
 // From campaigns/campaigns.go
+export interface CampaignStage {
+    id: string;
+    status: string;
+    note: string;
+}
+
+// From campaigns/campaigns.go
 export interface CampaignSummary extends Campaign {
     projectName: string;
-    stages: Stage[];
+    stages: CampaignStage[];
     state: string;
 }
 
@@ -4308,7 +4315,7 @@ export interface SkillDocument {
 // From voice/voice.go
 export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
 
-// From campaigns, leads
+// From leads/funnel.go
 export type Stage = "attempted" | "dead" | "disqualified" | "engaged" | "excluded" | "meeting" | "offer" | "open" | "won";
 
 // From signals/signals.go

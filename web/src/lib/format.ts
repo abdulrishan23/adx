@@ -33,6 +33,15 @@ export function formatMoneyShort(minor: number | null | undefined, currency = "A
   return `${currency} ${value}`;
 }
 
+// formatMoneyWhole is for budgets and prices: whole units, no cents, since
+// nobody plans a campaign to the fil.
+export function formatMoneyWhole(minor: number | null | undefined, currency = "AED"): string {
+  if (minor === null || minor === undefined) {
+    return NOT_AVAILABLE;
+  }
+  return `${currency} ${new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(minor / 100)}`;
+}
+
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) {
     return NOT_AVAILABLE;

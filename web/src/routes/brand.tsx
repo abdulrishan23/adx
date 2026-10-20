@@ -46,14 +46,16 @@ const SOURCE: Record<FactSource, string> = {
 // Keys read as sentences in the brand page. Anything else shows as typed.
 const KEY_LABEL: Record<string, string> = {
   "price.from": "Prices from",
+  "discount.max": "Max discount",
   handover: "Handover",
   location: "Location",
   units: "Units",
+  unit_types: "Units",
   payment_plan: "Payment plan",
   usp: "USPs",
   audience: "Audience",
 };
-const keyLabel = (k: string) => KEY_LABEL[k] ?? k.replace(/[._]/g, " ");
+export const keyLabel = (k: string) => KEY_LABEL[k] ?? k.replace(/[._]/g, " ");
 
 // A brand is where Create starts: the projects it markets, the facts Adx is
 // allowed to state about them, the offers running, and the research that

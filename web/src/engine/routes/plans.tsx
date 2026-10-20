@@ -163,6 +163,7 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
       {
         brandId,
         projectId: form.projectId,
+        campaignId: 0,
         title: form.title,
         note: "",
         document: {
