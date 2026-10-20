@@ -19,8 +19,10 @@ import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
 import { formatRelative } from "@/lib/format";
 import { CLASS, factValue } from "./brand";
+import { campaignLink } from "./campaign";
 import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
 import { AskForPage } from "./studio/pages";
+import { SampleChip } from "./studio/shared";
 
 export type ProjectTab = "overview" | "concepts" | "renders" | "pages" | "brand" | "settings";
 
@@ -300,6 +302,27 @@ function Overview({
       </div>
 
       <div className="space-y-6">
+        <Panel
+          title={
+            <span className="flex items-center gap-3">
+              Campaigns <SampleChip />
+            </span>
+          }
+          bodyClassName="p-0"
+        >
+          <ul className="divide-y">
+            <li>
+              <Link
+                {...campaignLink(projectId)}
+                className="flex items-center gap-3 px-6 py-3.5 text-sm hover:bg-muted"
+              >
+                <StatusMark status="caution" />
+                <span className="flex-1 font-medium">Launch weekend</span>
+                <span className="text-muted-foreground">24 to 26 Oct · in production</span>
+              </Link>
+            </li>
+          </ul>
+        </Panel>
         <SideList
           title="Creatives"
           open={{ tab: "concepts", projectId }}

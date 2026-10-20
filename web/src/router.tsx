@@ -18,6 +18,7 @@ import { ApprovePage } from "@/routes/approve";
 import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
+import { CampaignPage } from "@/routes/campaign";
 import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
@@ -255,6 +256,15 @@ const projectRoute = createRoute({
   },
 });
 
+const campaignRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects/$projectId/campaigns/$campaignId",
+  component: function Campaign() {
+    const { projectId, campaignId } = campaignRoute.useParams();
+    return <CampaignPage projectId={Number(projectId)} campaignId={campaignId} />;
+  },
+});
+
 // parentPath drops the last segment, so a detail page is gated by its list.
 const parentPath = (p: string) => p.replace(/\/[^/]+$/, "");
 
@@ -443,6 +453,7 @@ const routeTree = rootRoute.addChildren([
     page("/projects", ProjectsPage),
     page("/projects/new", StartBrandPage),
     projectRoute,
+    campaignRoute,
     page("/competitors", CompetitorsPage),
     page("/brands/$brandId", BrandPage),
     page("/engine", EnginePage),
