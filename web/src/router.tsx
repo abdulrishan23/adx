@@ -246,20 +246,8 @@ const oldPagesListRoute = createRoute({
 
 // Research moved into the project (its Research tab); plans and launch are
 // stages of a campaign. The old lists redirect to where the work now starts.
-const projectsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/projects",
-  // ?view=campaigns shows every campaign across projects instead of the grid.
-  validateSearch: (search: Record<string, unknown>): { view?: "campaigns" } =>
-    search.view === "campaigns" ? { view: "campaigns" } : {},
-  component: function Projects() {
-    const { view } = projectsRoute.useSearch();
-    return <ProjectsPage view={view ?? "projects"} />;
-  },
-});
-
-// Competitors live in a project's Research tab; the campaigns list is a view
-// of Projects.
+// Competitors live in a project's Research tab; campaigns live in their
+// project.
 const oldCompetitorsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/competitors",
@@ -272,7 +260,7 @@ const oldCampaignsListRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/studio/campaigns",
   beforeLoad: () => {
-    throw redirect({ to: "/projects", search: { view: "campaigns" } });
+    throw redirect({ to: "/projects" });
   },
 });
 
@@ -280,7 +268,7 @@ const oldPlansRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/studio/plans",
   beforeLoad: () => {
-    throw redirect({ to: "/projects", search: { view: "campaigns" } });
+    throw redirect({ to: "/projects" });
   },
 });
 
@@ -498,7 +486,7 @@ const routeTree = rootRoute.addChildren([
     page("/settings/guardrails", GuardrailsPage),
     page("/settings/scoring", ScoringPage),
     page("/inbox", InboxPage),
-    projectsRoute,
+    page("/projects", ProjectsPage),
     page("/projects/new", StartBrandPage),
     projectRoute,
     campaignRoute,

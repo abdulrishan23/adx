@@ -1,20 +1,17 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useBrands } from "@/api/brands";
 import { useCreativeOverview } from "@/api/creative";
 import { usePages } from "@/api/pages";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
-import { Segmented } from "@/components/segmented";
 import { buttonVariants } from "@/components/ui/button";
 import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
-import { CampaignsView } from "./studio-campaigns";
 
 // Projects is where Studio starts: each development Reportage markets, with
 // its ads and pages at a glance. Competitors live on their own screen.
-export function ProjectsPage({ view }: { view: "projects" | "campaigns" }) {
-  const navigate = useNavigate();
+export function ProjectsPage() {
   const projects = useProjects();
   const brands = useBrands();
   const creative = useCreativeOverview();
@@ -28,36 +25,18 @@ export function ProjectsPage({ view }: { view: "projects" | "campaigns" }) {
     <>
       <PageHeader
         title="Projects"
-        subtitle={
-          view === "campaigns"
-            ? "Every push across projects, with its window, budget and where it stands."
-            : "Each development Adx markets, with its campaigns, pictures, brand and research."
-        }
+        subtitle="Each development Adx markets, with its campaigns, pictures, brand and research."
         actions={
-          <>
-            <Segmented
-              label="View"
-              value={view}
-              onChange={(v) =>
-                navigate({ to: "/projects", search: v === "campaigns" ? { view: v } : {} })
-              }
-              options={[
-                { value: "projects", label: "Projects" },
-                { value: "campaigns", label: "Campaigns" },
-              ]}
-            />
-            {session.role === "admin" && (
-              <Link to="/projects/new" className={buttonVariants()}>
-                <Plus /> New project
-              </Link>
-            )}
-          </>
+          session.role === "admin" && (
+            <Link to="/projects/new" className={buttonVariants()}>
+              <Plus /> New project
+            </Link>
+          )
         }
       />
-      {view === "campaigns" && <CampaignsView />}
-      {view === "projects" && (projects.isPending || brands.isPending) && <LoadingRows rows={4} />}
-      {view === "projects" && projects.error && <ErrorNote error={projects.error} />}
-      {view === "projects" && projects.data && brands.data && (
+      {(projects.isPending || brands.isPending) && <LoadingRows rows={4} />}
+      {projects.error && <ErrorNote error={projects.error} />}
+      {projects.data && brands.data && (
         <div className="space-y-8">
           {ours.length === 0 ? (
             <Panel>

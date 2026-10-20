@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useBrand } from "@/api/brands";
-import { useCampaigns, useCreateCampaign, useProjectCampaigns } from "@/api/campaigns";
+import { useCreateCampaign, useProjectCampaigns } from "@/api/campaigns";
 import type { CampaignInput, CampaignSummary } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, Panel } from "@/components/page";
@@ -11,27 +11,6 @@ import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatDate, formatMoneyWhole } from "@/lib/format";
 import { BriefForm, STATE } from "./campaign";
-
-// CampaignsView is every campaign across projects: what's live, what's in
-// production, what's waiting on someone. The CMO's view of Projects.
-export function CampaignsView() {
-  const campaigns = useCampaigns();
-  const list = campaigns.data?.campaigns ?? [];
-  return (
-    <>
-      {campaigns.isPending && <LoadingRows rows={5} />}
-      {campaigns.error && <ErrorNote error={campaigns.error} />}
-      {campaigns.data && list.length === 0 && (
-        <Panel>
-          <EmptyState title="No campaigns yet">
-            Open a project and start one from its Campaigns tab.
-          </EmptyState>
-        </Panel>
-      )}
-      {list.length > 0 && <CampaignTable rows={list} showProject />}
-    </>
-  );
-}
 
 function CampaignTable({ rows, showProject }: { rows: CampaignSummary[]; showProject?: boolean }) {
   return (
