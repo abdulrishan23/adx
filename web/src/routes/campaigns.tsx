@@ -515,7 +515,7 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
       }}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <label htmlFor={id} className="text-xs text-muted-foreground">
             Daily budget, now {formatMoneyShort(budget.data)}
           </label>
@@ -528,11 +528,15 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
               propose.reset();
               setValue(e.target.value.replace(/[^\d.]/g, ""));
             }}
-            className="h-9 w-36 font-mono"
+            className="w-36 font-mono"
           />
         </div>
-        <Button type="submit" size="sm" disabled={!value || propose.isPending}>
-          {next > budget.data ? "Propose raise" : "Lower budget"}
+        <Button type="submit" disabled={!value || next === budget.data || propose.isPending}>
+          {!value || next === budget.data
+            ? "Change budget"
+            : next > budget.data
+              ? "Propose raise"
+              : "Lower budget"}
         </Button>
       </div>
       {propose.error && <ErrorNote error={propose.error} />}
