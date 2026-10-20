@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 const route = getRouteApi("/app/brands/$brandId");
 
-const CLASS: Record<FactClass, { status: Status; label: string }> = {
+export const CLASS: Record<FactClass, { status: Status; label: string }> = {
   approved: { status: "ready", label: "Approved" },
   needs_review: { status: "caution", label: "Needs review" },
   inferred: { status: "pending", label: "Inferred" },
@@ -238,10 +238,10 @@ function FactRow({
   );
 }
 
-function factValue(f: Fact) {
+export function factValue(f: Fact) {
   if (f.kind === "money" && f.currency) {
-    const n = Number(f.value);
-    // Prices are whole dirhams on a brand page; cents would be noise.
+    // Stored in minor units; shown in whole dirhams, cents would be noise.
+    const n = Number(f.value) / 100;
     return Number.isFinite(n) ? `${f.currency} ${Math.round(n).toLocaleString("en")}` : f.value;
   }
   if (f.kind === "percent") return `${f.value}%`;
@@ -376,7 +376,13 @@ function Projects({
       <ul className="divide-y">
         {projects.map((p) => (
           <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
-            <span className="font-medium">{p.name}</span>
+            <Link
+              to="/brands/$brandId/projects/$projectId"
+              params={{ brandId: String(brandId), projectId: String(p.id) }}
+              className="font-medium hover:underline"
+            >
+              {p.name}
+            </Link>
             <Link
               to="/creative/$projectId"
               params={{ projectId: String(p.id) }}

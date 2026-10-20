@@ -44,6 +44,7 @@ import { PeoplePage } from "@/routes/people";
 import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
+import { ProjectPage } from "@/routes/project";
 import { ProjectsOverviewPage } from "@/routes/projects-overview";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
@@ -407,6 +408,7 @@ const routeTree = rootRoute.addChildren([
     page("/brands", BrandsPage),
     page("/brands/new", StartBrandPage),
     page("/brands/$brandId", BrandPage),
+    page("/brands/$brandId/projects/$projectId", ProjectPage),
     page("/engine", EnginePage),
     page("/engine/home", E.home),
     page("/engine/projects", E.projects),
