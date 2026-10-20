@@ -1,12 +1,14 @@
 .PHONY: dev dev-server dev-web gen migration test check build
 
 # Runs the Go server (rebuilt on save by air) and the Vite dev server together.
-# Open http://localhost:5173.
+# Open http://localhost:5173. Data lives in server/data, which git ignores.
+# Without air (go install github.com/air-verse/air@latest) the server still
+# runs, but restart it by hand after a Go change.
 dev:
 	$(MAKE) -j2 dev-server dev-web
 
 dev-server:
-	cd server && ADX_ENV=dev air
+	cd server && if command -v air >/dev/null; then ADX_ENV=dev air; else ADX_ENV=dev go run ./cmd/adx; fi
 
 dev-web:
 	cd web && pnpm dev
