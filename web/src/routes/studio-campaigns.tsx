@@ -92,7 +92,6 @@ export function CampaignsTab({ projectId }: { projectId: number }) {
   );
   return (
     <div className="space-y-6">
-      {list.length > 0 && cta && <div className="flex justify-end">{cta}</div>}
       {campaigns.isPending && <LoadingRows rows={3} />}
       {campaigns.error && <ErrorNote error={campaigns.error} />}
       {campaigns.data && list.length === 0 && (

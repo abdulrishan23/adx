@@ -144,41 +144,47 @@ export function ProjectPage({
           </span>
         }
       />
-      <Segmented
-        label="Project sections"
-        value={tab}
-        onChange={(t) =>
-          navigate({
-            to: "/projects/$projectId",
-            params: { projectId: String(projectId) },
-            search: t === "overview" ? {} : { tab: t },
-            replace: true,
-          })
-        }
-        options={[
-          { value: "overview", label: "Overview" },
-          { value: "campaigns", label: "Campaigns", count: campaigns.data?.campaigns.length },
-          {
-            value: "renders",
-            label: "Pictures",
-            count: p?.renders.filter((r) => !r.hidden).length,
-          },
-          { value: "brand", label: "Brand" },
-          {
-            value: "research",
-            label: "Research",
-            count: briefs.data?.briefs.filter((b) => b.projectId === projectId).length,
-          },
-          { value: "settings", label: "Settings" },
-          ...(loose > 0 || tab === "concepts"
-            ? [{ value: "concepts" as const, label: "Unfiled ads", count: loose }]
-            : []),
-          ...(loosePages > 0 || tab === "pages"
-            ? [{ value: "pages" as const, label: "Unfiled pages", count: loosePages }]
-            : []),
-        ]}
-        className="mb-8"
-      />
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+        <Segmented
+          label="Project sections"
+          value={tab}
+          onChange={(t) =>
+            navigate({
+              to: "/projects/$projectId",
+              params: { projectId: String(projectId) },
+              search: t === "overview" ? {} : { tab: t },
+              replace: true,
+            })
+          }
+          options={[
+            { value: "overview", label: "Overview" },
+            { value: "campaigns", label: "Campaigns", count: campaigns.data?.campaigns.length },
+            {
+              value: "renders",
+              label: "Pictures",
+              count: p?.renders.filter((r) => !r.hidden).length,
+            },
+            { value: "brand", label: "Brand" },
+            {
+              value: "research",
+              label: "Research",
+              count: briefs.data?.briefs.filter((b) => b.projectId === projectId).length,
+            },
+            { value: "settings", label: "Settings" },
+            ...(loose > 0 || tab === "concepts"
+              ? [{ value: "concepts" as const, label: "Unfiled ads", count: loose }]
+              : []),
+            ...(loosePages > 0 || tab === "pages"
+              ? [{ value: "pages" as const, label: "Unfiled pages", count: loosePages }]
+              : []),
+          ]}
+        />
+        {tab === "campaigns" && canEdit && (
+          <Link to="/campaigns/new" search={{ project: projectId }} className={buttonVariants()}>
+            <Plus /> New campaign
+          </Link>
+        )}
+      </div>
       {tab === "overview" && <Overview projectId={projectId} brandId={brandId} />}
       {tab === "campaigns" && <CampaignsTab projectId={projectId} />}
       {tab === "research" && <ResearchTab projectId={projectId} />}
