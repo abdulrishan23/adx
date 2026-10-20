@@ -3,6 +3,7 @@ import { ExternalLink, Link2, Pencil, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useCreateConcept, useGenerateConcepts, useResolveComment } from "@/api/creative";
 import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.gen";
+import { FieldError, Form } from "@/components/form";
 import { EmptyState, Eyebrow, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -94,7 +95,7 @@ export function NewConceptForm({
   const create = useCreateConcept(projectId);
   const navigate = useNavigate();
   return (
-    <form
+    <Form
       className="flex flex-wrap items-end gap-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -121,7 +122,9 @@ export function NewConceptForm({
           placeholder="C1"
           className="w-24 font-mono"
           required
+          data-error="Give the idea a code, like C1."
         />
+        <FieldError htmlFor="concept-code" />
       </div>
       <Input
         aria-label="Concept name"
@@ -130,12 +133,12 @@ export function NewConceptForm({
         placeholder="Cash offer"
         className="w-56"
       />
-      <Button type="submit" variant="outline" disabled={create.isPending || !code}>
+      <Button type="submit" variant="outline" disabled={create.isPending}>
         <Plus />
         Add
       </Button>
       {create.error && <p className="w-full text-sm text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -152,7 +155,7 @@ export function AskForConcepts({
   const [count, setCount] = useState(3);
   const generate = useGenerateConcepts(projectId);
   return (
-    <form
+    <Form
       className="flex flex-wrap items-end gap-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -199,7 +202,7 @@ export function AskForConcepts({
           ))}
         </div>
       )}
-    </form>
+    </Form>
   );
 }
 

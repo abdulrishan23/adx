@@ -11,6 +11,7 @@ import {
 import { ApiError } from "@/api/client";
 import { REQUIRED_SCOPES } from "@/api/mock/crm";
 import type { Connection as CrmConnection, LeadSync } from "@/api/types.legacy";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { SourceName } from "@/components/platform";
 import { Button } from "@/components/ui/button";
@@ -269,7 +270,7 @@ function ConnectForm() {
         </li>
         <li>Copy the token and paste it below.</li>
       </ol>
-      <form onSubmit={onSubmit} className="space-y-3">
+      <Form onSubmit={onSubmit} className="space-y-3">
         <div className="space-y-1">
           <label htmlFor={idField} className="text-sm">
             Workspace ID
@@ -315,7 +316,7 @@ function ConnectForm() {
             Connected <span className="font-medium">{connect.data.name}</span>. It's in the list.
           </p>
         )}
-      </form>
+      </Form>
     </Panel>
   );
 }

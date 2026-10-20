@@ -20,6 +20,7 @@ import type {
   Offer,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -313,7 +314,7 @@ function RecordFact({
       title="Record a fact"
       description="Arrives as needs review. An admin's approval makes it a claim."
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <Form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Select
           aria-label="Scope"
           value={projectId}
@@ -356,7 +357,7 @@ function RecordFact({
           </Button>
         </div>
         {add.error && <p className="text-xs text-destructive sm:col-span-2">{add.error.message}</p>}
-      </form>
+      </Form>
     </Panel>
   );
 }

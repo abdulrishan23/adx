@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react";
 import { usePortals, useSetPortalSpend } from "@/api/adx";
 import type { PortalRow } from "@/api/models";
+import { Form } from "@/components/form";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { SourceName } from "@/components/platform";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,7 @@ function SpendField({ portal }: { portal: PortalRow }) {
     );
   }
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2">
+    <Form onSubmit={onSubmit} className="flex items-center gap-2">
       <Input
         aria-label={`${portal.name} spend in AED`}
         inputMode="decimal"
@@ -103,6 +104,6 @@ function SpendField({ portal }: { portal: PortalRow }) {
         Save
       </Button>
       {save.error && <span className="text-xs text-destructive">{save.error.message}</span>}
-    </form>
+    </Form>
   );
 }

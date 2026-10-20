@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -174,7 +175,7 @@ function Releases({ canEvaluate, isAdmin }: { canEvaluate: boolean; isAdmin: boo
         </ul>
       )}
       {canEvaluate && (
-        <form
+        <Form
           className="flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
@@ -193,7 +194,7 @@ function Releases({ canEvaluate, isAdmin }: { canEvaluate: boolean; isAdmin: boo
           <Button type="submit" disabled={evaluate.isPending || !model}>
             Evaluate
           </Button>
-        </form>
+        </Form>
       )}
       {(evaluate.error || decide.error) && (
         <p className="text-destructive">{(evaluate.error ?? decide.error)?.message}</p>

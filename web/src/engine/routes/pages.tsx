@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import type { FormField, PageDetail, PageDocument, Section } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBrand, useBrands } from "@/engine/api/brands";
@@ -156,7 +157,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
     );
   }
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New page</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -220,7 +221,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
         Create (version 1)
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 

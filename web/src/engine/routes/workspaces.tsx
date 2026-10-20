@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { IndustryDocument, Role } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "@/engine/api/session";
@@ -64,7 +65,7 @@ function NewWorkspace() {
   const [name, setName] = useState("");
   const [industry, setIndustry] = useState("");
   return (
-    <form
+    <Form
       className="flex flex-wrap items-end gap-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -111,7 +112,7 @@ function NewWorkspace() {
         Add client
       </Button>
       {create.error && <p className="w-full text-sm text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -153,7 +154,7 @@ function Members() {
           ))}
         </ul>
       )}
-      <form
+      <Form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -188,7 +189,7 @@ function Members() {
         {(add.error || remove.error) && (
           <p className="w-full text-sm text-destructive">{(add.error ?? remove.error)?.message}</p>
         )}
-      </form>
+      </Form>
     </section>
   );
 }

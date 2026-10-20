@@ -80,6 +80,8 @@ Ported from Creative Studio into ADX's design. Images are files on the server ne
 | Editor | `/creative/$projectId/ads/$adId/edit` | Move and resize text and logos, edit copy, crop the render, switch size, save as a new version |
 | Review board | `/review/$key` | Phone frames per size, approve or ask for changes, comments with pins, render picks |
 
+Forms never show the browser's validation bubble. `components/form.tsx` wraps every form: on submit it checks the fields' own rules (required, min, email, pattern), marks the failing ones in the destructive colour, focuses the first, and writes the message in our words under the field (`FieldError`) or at the end of the form. A field's `data-error` replaces the message for a rule that needs explaining, such as an end date before its start.
+
 Rules carried over from Creative Studio: four sizes, each with and without CTA; no discount above 15% on screen, and every discount shows its condition; logo top centre; Arabic copy is always flagged for native review; any "needs changes" outranks approvals.
 
 One rule changes: a review belongs to the version it was given on. Saving an edited ad clears its approval, and the board shows the new version as waiting.

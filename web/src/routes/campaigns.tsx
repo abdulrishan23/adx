@@ -7,6 +7,7 @@ import type { AdRow, Campaign, Proposal } from "@/api/models";
 import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
 import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformMark, platformLabel } from "@/components/platform";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -426,7 +427,7 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
   if (!budget.data) return null;
   const next = Math.round(Number(value) * 100);
   return (
-    <form
+    <Form
       className="space-y-2 rounded-lg border p-4"
       onSubmit={(e) => {
         e.preventDefault();
@@ -456,7 +457,7 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
       </div>
       {propose.error && <ErrorNote error={propose.error} />}
       {propose.data && <ProposalResult proposal={propose.data} />}
-    </form>
+    </Form>
   );
 }
 

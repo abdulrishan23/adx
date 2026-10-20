@@ -13,6 +13,7 @@ import type {
   ChannelNeed,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
+import { FieldError, Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -724,7 +725,7 @@ export function BriefForm({
     );
   return (
     <Panel title={title} className="mb-6">
-      <form
+      <Form
         className="grid gap-4 sm:grid-cols-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -790,6 +791,8 @@ export function BriefForm({
           <Input
             id="brief-ends"
             type="date"
+            min={form.startsOn || undefined}
+            data-error="The end can't be before the start."
             value={form.endsOn}
             onChange={(e) => set("endsOn", e.target.value)}
           />
@@ -862,7 +865,7 @@ export function BriefForm({
           </Button>
         </div>
         {error && <p className="text-sm text-destructive sm:col-span-2">{error.message}</p>}
-      </form>
+      </Form>
     </Panel>
   );
 }
@@ -884,6 +887,7 @@ function Labelled({
         {label}
       </label>
       {children}
+      <FieldError htmlFor={id} />
     </div>
   );
 }

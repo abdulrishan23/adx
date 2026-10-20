@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 import { type FormEvent, type KeyboardEvent, type ReactNode, useState } from "react";
+import { Form } from "@/components/form";
 import { useAnalytics } from "@/engine/api/analytics";
 import { useCost, useReadiness } from "@/engine/api/ops";
 import { useAlerts } from "@/engine/api/reports";
@@ -269,7 +270,7 @@ function Composer() {
       <h2 id="ask-title" className="text-2xl leading-8">
         Ask ADX
       </h2>
-      <form
+      <Form
         onSubmit={onSubmit}
         className="flex items-end gap-2 border border-input bg-card p-2 transition-colors hover:border-ring focus-within:border-foreground focus-within:hover:border-foreground"
       >
@@ -290,7 +291,7 @@ function Composer() {
         >
           <ArrowRight size={16} strokeWidth={2} aria-hidden="true" />
         </button>
-      </form>
+      </Form>
       <ul className="flex flex-wrap gap-2">
         {PROMPTS.map((p) => (
           <li key={p}>

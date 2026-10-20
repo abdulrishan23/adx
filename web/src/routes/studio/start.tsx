@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { useAssignProject, useBrands, useCreateBrand } from "@/api/brands";
 import type { Analyst } from "@/api/create";
 import { useCreateBrief } from "@/api/research";
+import { FieldError, Form } from "@/components/form";
 import { ErrorNote, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -122,7 +123,7 @@ export function StartBrandPage() {
         title="New project"
         subtitle="Tell Adx what the development is and who should look at it. Adx sets it up and works from analysis and research to a first media plan."
       />
-      <form
+      <Form
         onSubmit={onSubmit}
         className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
       >
@@ -347,7 +348,7 @@ export function StartBrandPage() {
             )}
           </Panel>
         </aside>
-      </form>
+      </Form>
     </>
   );
 }
@@ -372,6 +373,7 @@ function Field({
         {optional && <span className="text-xs font-normal text-muted-foreground">Optional</span>}
       </label>
       {children}
+      <FieldError htmlFor={id} />
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );

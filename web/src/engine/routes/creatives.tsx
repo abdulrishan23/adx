@@ -1,5 +1,6 @@
 import { type FormEvent, type PointerEvent as ReactPointerEvent, useRef, useState } from "react";
 import type { Document, Layer, QueueItem, ReviewState, Version } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -174,7 +175,7 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New creative</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -311,7 +312,7 @@ function NewCreative({ onCreated }: { onCreated: (id: number) => void }) {
         Create draft
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 

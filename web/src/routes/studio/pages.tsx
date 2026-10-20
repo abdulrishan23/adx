@@ -20,6 +20,7 @@ import type {
   Submission,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +64,7 @@ export function AskForPage({
       description="Written from the approved facts, the offer and the project's pictures, in English and Arabic as twins. Figures the facts don't state are left out and said below."
       className="mb-5"
     >
-      <form
+      <Form
         className="flex flex-wrap items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
@@ -160,7 +161,7 @@ export function AskForPage({
               ))}
           </div>
         )}
-      </form>
+      </Form>
     </Panel>
   );
 }
