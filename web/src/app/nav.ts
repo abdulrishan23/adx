@@ -2,7 +2,6 @@ import type { RegisteredRouter } from "@tanstack/react-router";
 import {
   Activity,
   Bot,
-  Building2,
   ChartNoAxesCombined,
   Clapperboard,
   ClipboardCheck,
@@ -163,15 +162,6 @@ export const NAV: readonly NavGroup[] = [
         phase: 1,
         status: "live",
         summary: "Spend against Done-Deal revenue by month and by channel, and where leads live.",
-      },
-      {
-        label: "Portals",
-        to: "/portals",
-        icon: Building2,
-        phase: 1,
-        status: "live",
-        summary:
-          "Leads, qualified leads, deals and cost per lead for each property portal, with spend typed in each month.",
       },
       {
         label: "Reports",

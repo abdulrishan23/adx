@@ -61,6 +61,16 @@ export function ConnectionsPage() {
                   failures. A drop shows up in the Inbox.
                 </p>
               </Link>
+              <Link
+                to="/portals"
+                className="block rounded-lg border bg-card p-5 hover:border-foreground/40"
+              >
+                <h2 className="text-lg font-semibold">Portal fees</h2>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Each month's Bayut and Property Finder fee, so their leads carry a cost like paid
+                  channels do.
+                </p>
+              </Link>
             </div>
           </section>
         </div>

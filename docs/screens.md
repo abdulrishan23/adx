@@ -39,7 +39,6 @@ In the screens a project is called a brand: a development such as The Wadi, mark
 | | Campaigns | `/campaigns` | 1 |
 | | Alerts | `/alerts` | 1 |
 | | Revenue | `/revenue` | 1 |
-| | Portals | `/portals` | 1 |
 | | Reports | `/reports` | 1 |
 | | Data quality (from Connections and the Inbox) | `/data-quality` | 1 |
 | Settings | Change log | `/proposals` | 3 |
