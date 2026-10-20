@@ -3,25 +3,19 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useState } from "react";
 import { useBrand } from "@/api/brands";
 import { useProjectCampaigns } from "@/api/campaigns";
-import { useCreativeOverview, useCreativeProject, useSetUpCreative } from "@/api/creative";
+import { useSetUpCreative } from "@/api/creative";
 import { usePages } from "@/api/pages";
 import { useBriefs } from "@/api/research";
-import type { Ad } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { BrandKitForm } from "@/creative/brand-kit-form";
-import { RendersTab } from "@/creative/renders-tab";
-import { SettingsTab } from "@/creative/settings-tab";
-import { ReviewTally } from "@/creative/ui";
 import { useProjects } from "@/engine/api/projects";
 import { formatDate, formatRelative } from "@/lib/format";
 import { CLASS, factValue, keyLabel } from "./brand";
 import { STATE } from "./campaign";
-import { ConceptsTab } from "./creative-project";
 import { CompetitorsPanel } from "./projects";
 import { AskForPage } from "./studio/pages";
 import { BriefView } from "./studio/research";
@@ -30,37 +24,36 @@ import { CampaignsTab } from "./studio-campaigns";
 export type ProjectTab =
   | "overview"
   | "campaigns"
+  | "research"
+  | "pages"
+  // Creative's now (BD-66); kept so old links redirect.
   | "renders"
   | "brand"
-  | "research"
   | "settings"
-  | "concepts"
-  | "pages";
+  | "concepts";
 
-// "concepts" and "pages" are the ads and pages not filed under a campaign;
-// their tabs show only while such things exist.
 const TABS: ProjectTab[] = [
   "overview",
   "campaigns",
+  "research",
+  "pages",
   "renders",
   "brand",
-  "research",
   "settings",
   "concepts",
-  "pages",
 ];
 
 export function projectTabSearch(raw: Record<string, unknown>): { tab?: ProjectTab } {
   const t = raw.tab;
-  // "concepts" was the old Creatives default, kept for links from before.
   return typeof t === "string" && (TABS as string[]).includes(t) && t !== "overview"
     ? { tab: t as ProjectTab }
     : {};
 }
 
-// A project is one development, such as The Wadi: its own name, kit, facts,
-// offers, ads and pages. Reportage, the developer behind it, sits under
-// every project rather than in front of it.
+// A project is one development, such as The Wadi: what Adx may say about it,
+// its offers, its campaigns and the research behind them. Its pictures,
+// brand and ads are in Creative; Reportage, the developer behind it, sits
+// under every project rather than in front of it.
 export function ProjectPage({
   projectId,
   tab = "overview",
@@ -75,9 +68,6 @@ export function ProjectPage({
   const project = projects.data?.projects.find((p) => p.id === projectId);
   const brandId = project?.brandId ?? null;
   const brand = useBrand(brandId);
-  const creative = useCreativeOverview();
-  const studio = creative.data?.projects.find((p) => p.projectId === projectId) ?? null;
-  const studioProject = useCreativeProject(studio ? projectId : 0);
   const campaigns = useProjectCampaigns(projectId);
   const pages = usePages();
   const briefs = useBriefs();
@@ -91,10 +81,6 @@ export function ProjectPage({
       </Panel>
     );
   }
-  const p = studio && studioProject.data ? studioProject.data : null;
-  const ads = p?.concepts.flatMap((c) => c.ads) ?? [];
-  const count = (s: Ad["status"]) => ads.filter((a) => a.status === s).length;
-  const loose = p?.concepts.filter((c) => c.campaignId === null).length ?? 0;
   const loosePages = (pages.data?.pages ?? []).filter(
     (x) => x.projectId === projectId && x.campaignId === null,
   ).length;
@@ -110,38 +96,20 @@ export function ProjectPage({
       <PageHeader
         title={project.name}
         subtitle={
-          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>
-              {brand.data ? (
-                <>
-                  By{" "}
-                  <Link
-                    to="/brands/$brandId"
-                    params={{ brandId: String(brand.data.brand.id) }}
-                    className="underline-offset-4 hover:underline"
-                  >
-                    {brand.data.brand.name}
-                  </Link>
-                </>
-              ) : (
-                "Not under a developer yet"
-              )}
-              {p && (
-                <>
-                  {" "}
-                  · {p.concepts.length} {p.concepts.length === 1 ? "concept" : "concepts"} ·{" "}
-                  {ads.length} {ads.length === 1 ? "ad" : "ads"}
-                </>
-              )}
-            </span>
-            {p && (
-              <ReviewTally
-                approved={count("approved")}
-                revise={count("revise")}
-                waiting={count("waiting")}
-              />
-            )}
-          </span>
+          brand.data ? (
+            <>
+              By{" "}
+              <Link
+                to="/brands/$brandId"
+                params={{ brandId: String(brand.data.brand.id) }}
+                className="underline-offset-4 hover:underline"
+              >
+                {brand.data.brand.name}
+              </Link>
+            </>
+          ) : (
+            "Not under a developer yet"
+          )
         }
       />
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
@@ -160,20 +128,10 @@ export function ProjectPage({
             { value: "overview", label: "Overview" },
             { value: "campaigns", label: "Campaigns", count: campaigns.data?.campaigns.length },
             {
-              value: "renders",
-              label: "Pictures",
-              count: p?.renders.filter((r) => !r.hidden).length,
-            },
-            { value: "brand", label: "Brand" },
-            {
               value: "research",
               label: "Research",
               count: briefs.data?.briefs.filter((b) => b.projectId === projectId).length,
             },
-            { value: "settings", label: "Settings" },
-            ...(loose > 0 || tab === "concepts"
-              ? [{ value: "concepts" as const, label: "Unfiled ads", count: loose }]
-              : []),
             ...(loosePages > 0 || tab === "pages"
               ? [{ value: "pages" as const, label: "Unfiled pages", count: loosePages }]
               : []),
@@ -189,28 +147,11 @@ export function ProjectPage({
       {tab === "campaigns" && <CampaignsTab projectId={projectId} />}
       {tab === "research" && <ResearchTab projectId={projectId} />}
       {tab === "pages" && <PagesTab projectId={projectId} brandId={brandId} />}
-      {(tab === "concepts" || tab === "renders" || tab === "brand" || tab === "settings") &&
-        (studio === null && creative.data ? (
-          <SetUpStudio projectId={projectId} canEdit={canEdit} />
-        ) : !p ? (
-          <LoadingRows rows={6} />
-        ) : tab === "concepts" ? (
-          <ConceptsTab
-            project={{ ...p, concepts: p.concepts.filter((c) => c.campaignId === null) }}
-            canEdit={canEdit}
-          />
-        ) : tab === "renders" ? (
-          <RendersTab project={p} canEdit={canEdit} />
-        ) : tab === "brand" ? (
-          <BrandKitForm settings={p.settings} canEdit={canEdit} />
-        ) : (
-          <SettingsTab settings={p.settings} canEdit={canEdit} />
-        ))}
     </section>
   );
 }
 
-function SetUpStudio({ projectId, canEdit }: { projectId: number; canEdit: boolean }) {
+export function SetUpStudio({ projectId, canEdit }: { projectId: number; canEdit: boolean }) {
   const setUp = useSetUpCreative();
   return (
     <Panel>

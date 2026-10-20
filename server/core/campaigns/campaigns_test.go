@@ -266,3 +266,22 @@ func TestChannelsDecideWhatIsNeeded(t *testing.T) {
 		t.Fatalf("legacy channels should map to the catalogue, got %v", legacy.Channels)
 	}
 }
+
+// Catches a campaign on a project with no creative set up leaving its Ads
+// stage with nowhere to put ads.
+func TestCreateSetsUpCreative(t *testing.T) {
+	e := setup(t)
+	p, err := e.db.Writer().CreateProject(t.Context(), store.CreateProjectParams{WorkspaceID: core.DefaultWorkspace, Name: "Sila", CreatedAt: time.Now()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := e.brands.AssignProject(t.Context(), admin, p.ID, e.brand); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.c.Create(t.Context(), marketer, CampaignInput{ProjectID: p.ID, Name: "Masdar"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.studio.Project(t.Context(), viewer, p.ID); err != nil {
+		t.Fatalf("creative should be set up for the project, got %v", err)
+	}
+}

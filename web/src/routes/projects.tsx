@@ -1,21 +1,22 @@
 import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useBrands } from "@/api/brands";
+import { useCampaigns } from "@/api/campaigns";
 import { useCreativeOverview } from "@/api/creative";
-import { usePages } from "@/api/pages";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
-import { ReviewTally } from "@/creative/ui";
+import { StatusMark } from "@/components/ui/status-chip";
 import { useProjects } from "@/engine/api/projects";
+import { STATE } from "./campaign";
 
 // Projects is where Studio starts: each development Reportage markets, with
-// its ads and pages at a glance. Competitors live on their own screen.
+// its campaigns at a glance. Competitors sit in each project's Research.
 export function ProjectsPage() {
   const projects = useProjects();
   const brands = useBrands();
   const creative = useCreativeOverview();
-  const pages = usePages();
+  const campaigns = useCampaigns();
   const session = useSession();
   const own = new Set(brands.data?.brands.filter((b) => b.kind === "own").map((b) => b.id) ?? []);
   const all = projects.data?.projects ?? [];
@@ -25,7 +26,7 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle="Each development Adx markets, with its campaigns, pictures, brand and research."
+        subtitle="Each development Adx markets, with its campaigns and the research behind them."
         actions={
           session.role === "admin" && (
             <Link to="/projects/new" className={buttonVariants()}>
@@ -48,8 +49,11 @@ export function ProjectsPage() {
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {ours.map((p, i) => {
                 const s = creative.data?.projects.find((x) => x.projectId === p.id);
-                const pp = (pages.data?.pages ?? []).filter((x) => x.projectId === p.id);
-                const live = pp.filter((x) => x.publishedVersion !== null).length;
+                const cs = (campaigns.data?.campaigns ?? []).filter((x) => x.projectId === p.id);
+                const lead = cs[0];
+                const leadState = lead
+                  ? (STATE[lead.state] ?? { label: lead.state, status: "pending" as const })
+                  : null;
                 return (
                   <Link
                     key={p.id}
@@ -75,18 +79,16 @@ export function ProjectsPage() {
                       {p.name}
                     </h2>
                     <p className="mt-3 text-sm text-muted-foreground">
-                      {s
-                        ? `${s.concepts} ${s.concepts === 1 ? "concept" : "concepts"} · ${s.ads} ${s.ads === 1 ? "ad" : "ads"}`
-                        : "No creatives yet"}
-                      {" · "}
-                      {pp.length === 0
-                        ? "no pages"
-                        : `${pp.length} ${pp.length === 1 ? "page" : "pages"}, ${live} live`}
+                      {cs.length === 0
+                        ? "No campaigns yet"
+                        : `${cs.length} ${cs.length === 1 ? "campaign" : "campaigns"}`}
                     </p>
-                    {s && s.ads > 0 && (
-                      <div className="mt-3">
-                        <ReviewTally approved={s.approved} revise={s.revise} waiting={s.waiting} />
-                      </div>
+                    {lead && (
+                      <p className="mt-1 flex items-center gap-2 text-sm">
+                        <StatusMark status={leadState?.status ?? "pending"} />
+                        <span className="truncate">{lead.name}</span>
+                        <span className="text-muted-foreground">· {leadState?.label}</span>
+                      </p>
                     )}
                   </Link>
                 );

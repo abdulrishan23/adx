@@ -150,6 +150,15 @@ func (c *Campaigns) Create(ctx context.Context, actor core.Actor, in CampaignInp
 	if err != nil {
 		return CampaignDetail{}, err
 	}
+	// A campaign's ads are made in the studio, so the project gets its file
+	// prefix and review link now rather than at a Set up button.
+	if c.deps.Studio != nil {
+		if _, err := c.deps.Studio.Project(ctx, actor, in.ProjectID); isNotFound(err) {
+			if _, err := c.deps.Studio.SetUp(ctx, actor, studio.SetupInput{ProjectID: in.ProjectID}); err != nil && !isConflict(err) {
+				return CampaignDetail{}, err
+			}
+		}
+	}
 	return c.Get(ctx, actor, row.ID)
 }
 
@@ -538,6 +547,11 @@ func plural(n int, one, many string) string {
 func itoa(n int) string {
 	b, _ := json.Marshal(n)
 	return string(b)
+}
+
+func isConflict(err error) bool {
+	var ce *core.Error
+	return errors.As(err, &ce) && ce.Kind == core.KindConflict
 }
 
 func isNotFound(err error) bool {

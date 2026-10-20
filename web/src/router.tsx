@@ -245,7 +245,9 @@ const creativeLibraryRoute = createRoute({
     ...(typeof search.project === "number" && search.project > 0
       ? { project: search.project }
       : {}),
-    ...(search.section === "brand" ? { section: "brand" as const } : {}),
+    ...(search.section === "brand" || search.section === "settings"
+      ? { section: search.section }
+      : {}),
   }),
   component: function Library() {
     const { project, section } = creativeLibraryRoute.useSearch();
@@ -266,7 +268,7 @@ const oldCreativeProjectRoute = createRoute({
     throw redirect({
       to: "/projects/$projectId",
       params: { projectId: params.projectId },
-      search: { tab: search.tab ?? "concepts" },
+      search: search.tab ? { tab: search.tab } : {},
     });
   },
 });
@@ -327,16 +329,19 @@ const projectRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects/$projectId",
   validateSearch: projectTabSearch,
-  // Pictures and Brand moved to Creative's Library.
+  // Pictures, Brand, Settings and loose concepts moved to Creative (BD-66).
   beforeLoad: ({ params, search }) => {
-    if (search.tab === "renders" || search.tab === "brand") {
+    if (search.tab === "renders" || search.tab === "brand" || search.tab === "settings") {
       throw redirect({
         to: "/creative/library",
         search: {
           project: Number(params.projectId),
-          ...(search.tab === "brand" ? { section: "brand" as const } : {}),
+          ...(search.tab === "renders" ? {} : { section: search.tab }),
         },
       });
+    }
+    if (search.tab === "concepts") {
+      throw redirect({ to: "/creative/concepts" });
     }
   },
   component: function Project() {

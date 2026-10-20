@@ -249,6 +249,13 @@ export function factValue(f: Fact) {
     return Number.isFinite(n) ? `${f.currency} ${Math.round(n).toLocaleString("en")}` : f.value;
   }
   if (f.kind === "percent") return `${f.value}%`;
+  if (f.kind === "date" && /^\d{4}-\d{2}-\d{2}$/.test(f.value)) {
+    return new Date(`${f.value}T00:00:00Z`).toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
   return f.value;
 }
 

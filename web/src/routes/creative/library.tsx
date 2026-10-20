@@ -6,9 +6,11 @@ import { Segmented } from "@/components/segmented";
 import { Select } from "@/components/ui/select";
 import { BrandKitForm } from "@/creative/brand-kit-form";
 import { RendersTab } from "@/creative/renders-tab";
+import { SettingsTab } from "@/creative/settings-tab";
+import { SetUpStudio } from "../project";
 import { useAllCreative } from "./shared";
 
-export type LibrarySection = "pictures" | "brand";
+export type LibrarySection = "pictures" | "brand" | "settings";
 
 // Library keeps what every campaign of a project draws on: its pictures
 // (renders, uploads and what Adx made) and its brand (logos, fonts, colours).
@@ -24,14 +26,19 @@ export function CreativeLibraryPage({
   const all = useAllCreative();
   const session = useSession();
   const canEdit = session.role !== "viewer";
-  const projectId = given ?? all.projects[0]?.settings.projectId ?? 0;
-  const project = useCreativeProject(projectId);
+  const choices = [
+    ...all.projects.map((p) => ({ id: p.settings.projectId, name: p.settings.projectName })),
+    ...(all.overview?.notSetUp ?? []).map((p) => ({ id: p.projectId, name: p.name })),
+  ].sort((a, b) => a.name.localeCompare(b.name));
+  const projectId = given ?? choices[0]?.id ?? 0;
+  const setUp = all.projects.some((p) => p.settings.projectId === projectId);
+  const project = useCreativeProject(setUp ? projectId : 0);
   const go = (next: { project?: number; section?: LibrarySection }) =>
     navigate({
       to: "/creative/library",
       search: {
         project: next.project ?? projectId,
-        ...((next.section ?? section) === "brand" ? { section: "brand" as const } : {}),
+        ...((next.section ?? section) !== "pictures" ? { section: next.section ?? section } : {}),
       },
       replace: true,
     });
@@ -42,15 +49,12 @@ export function CreativeLibraryPage({
         title="Library"
         subtitle="Each project's pictures and brand. Ads and pages in every campaign are built from these."
         actions={
-          all.projects.length > 0 && (
+          choices.length > 0 && (
             <Select
               aria-label="Project"
               value={String(projectId)}
               onValueChange={(v) => go({ project: Number(v) })}
-              options={all.projects.map((p) => ({
-                value: String(p.settings.projectId),
-                label: p.settings.projectName,
-              }))}
+              options={choices.map((p) => ({ value: String(p.id), label: p.name }))}
             />
           )
         }
@@ -66,19 +70,26 @@ export function CreativeLibraryPage({
             count: project.data?.renders.filter((r) => !r.hidden).length,
           },
           { value: "brand", label: "Brand" },
+          { value: "settings", label: "Settings" },
         ]}
         className="mb-8"
       />
-      {(all.isPending || (projectId > 0 && project.isPending)) && <LoadingRows rows={6} />}
+      {(all.isPending || (setUp && project.isPending)) && <LoadingRows rows={6} />}
       {all.error && <ErrorNote error={all.error} />}
-      {!all.isPending && all.projects.length === 0 && (
+      {!all.isPending && choices.length === 0 && (
         <Panel>
-          <EmptyState title="No projects set up for creative yet" />
+          <EmptyState title="No projects yet" />
         </Panel>
       )}
-      {project.data &&
+      {!all.isPending && projectId > 0 && !setUp && (
+        <SetUpStudio projectId={projectId} canEdit={canEdit} />
+      )}
+      {setUp &&
+        project.data &&
         (section === "brand" ? (
           <BrandKitForm settings={project.data.settings} canEdit={canEdit} />
+        ) : section === "settings" ? (
+          <SettingsTab settings={project.data.settings} canEdit={canEdit} />
         ) : (
           <RendersTab project={project.data} canEdit={canEdit} />
         ))}
