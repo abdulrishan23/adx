@@ -17,6 +17,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/calls"
 	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/conversations"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evaluation"
@@ -93,6 +94,7 @@ type Deps struct {
 	Registry      *registry.Registry
 	Workflows     *workflows.Workflows
 	Supervisor    *supervisor.Supervisor
+	Conversations *conversations.Conversations
 	Learning      *learning.Learning
 	Workspaces    *workspaces.Workspaces
 	// Wiring says what this server has configured, for the capability matrix.
@@ -100,54 +102,68 @@ type Deps struct {
 	// WebhookSecret is the shared secret public webhook adapters require.
 	// Empty disables them.
 	WebhookSecret string
+	// WhatsAppWebhook configures Meta's inbound webhook. Without an app
+	// secret the endpoint is not mounted.
+	WhatsAppWebhook WhatsAppWebhookConfig
+}
+
+// WhatsAppWebhookConfig is what the inbound WhatsApp endpoint needs: the
+// app secret deliveries are signed with, the verify token for Meta's
+// subscription check, and the Business number id deliveries must name.
+type WhatsAppWebhookConfig struct {
+	AppSecret     string
+	VerifyToken   string
+	PhoneNumberID string
 }
 
 type handlers struct {
-	log           *slog.Logger
-	dev           bool
-	projects      *projects.Projects
-	connections   *connections.Connections
-	ops           *ops.Ops
-	identity      *identity.Identity
-	devUser       *users.User
-	policies      *policies.Policies
-	runs          *runs.Runs
-	leads         *leads.Leads
-	reporting     *reporting.Reporting
-	reports       *reports.Reports
-	alerts        *alerts.Alerts
-	assistant     *assistant.Assistant
-	creative      *creative.Service
-	studio        *studio.Studio
-	campaigns     *campaigns.Campaigns
-	brands        *brands.Brands
-	research      *research.Research
-	plans         *plans.Plans
-	pages         *pages.Pages
-	measurement   *measurement.Measurement
-	proposals     *proposals.Proposals
-	execution     *execution.Dispatcher
-	launch        *launch.Service
-	crm           *crm.CRM
-	signals       *signals.Signals
-	outreach      *outreach.Outreach
-	calls         *calls.Calls
-	qualification *qualification.Qualification
-	evaluation    *evaluation.Evaluation
-	pipeline      *pipeline.Pipeline
-	registry      *registry.Registry
-	workflows     *workflows.Workflows
-	supervisor    *supervisor.Supervisor
-	learning      *learning.Learning
-	workspaces    *workspaces.Workspaces
-	wiring        connections.Wiring
-	webhookSecret string
+	log             *slog.Logger
+	dev             bool
+	projects        *projects.Projects
+	connections     *connections.Connections
+	ops             *ops.Ops
+	identity        *identity.Identity
+	devUser         *users.User
+	policies        *policies.Policies
+	runs            *runs.Runs
+	leads           *leads.Leads
+	reporting       *reporting.Reporting
+	reports         *reports.Reports
+	alerts          *alerts.Alerts
+	assistant       *assistant.Assistant
+	creative        *creative.Service
+	studio          *studio.Studio
+	campaigns       *campaigns.Campaigns
+	brands          *brands.Brands
+	research        *research.Research
+	plans           *plans.Plans
+	pages           *pages.Pages
+	measurement     *measurement.Measurement
+	proposals       *proposals.Proposals
+	execution       *execution.Dispatcher
+	launch          *launch.Service
+	crm             *crm.CRM
+	signals         *signals.Signals
+	outreach        *outreach.Outreach
+	calls           *calls.Calls
+	qualification   *qualification.Qualification
+	evaluation      *evaluation.Evaluation
+	pipeline        *pipeline.Pipeline
+	registry        *registry.Registry
+	workflows       *workflows.Workflows
+	supervisor      *supervisor.Supervisor
+	conversations   *conversations.Conversations
+	learning        *learning.Learning
+	workspaces      *workspaces.Workspaces
+	wiring          connections.Wiring
+	webhookSecret   string
+	whatsappWebhook WhatsAppWebhookConfig
 }
 
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, conversations: d.Conversations, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret, whatsappWebhook: d.WhatsAppWebhook}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -176,6 +192,11 @@ func NewRouter(d Deps) http.Handler {
 				r.Get("/webhooks/voice/stream/{id}", h.voiceStream)
 			}
 		}
+	}
+	// Inbound WhatsApp: Meta's verification and its signed deliveries.
+	if h.conversations != nil && h.whatsappWebhook.AppSecret != "" {
+		r.Get("/webhooks/whatsapp", h.whatsappVerify)
+		r.Post("/webhooks/whatsapp", h.whatsappWebhookPost)
 	}
 
 	// Public: the review board works by its link, and files by their
@@ -530,6 +551,26 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/workflows/runs/{id}/cancel", h.workflowTransition("cancel"))
 			r.Post("/api/workflows/tasks/{id}/retry", h.retryWorkflowTask)
 			r.Post("/api/workflows/tasks/{id}/correct", h.correctWorkflowTask)
+		}
+		if h.conversations != nil {
+			r.Get("/api/conversations", h.listThreads)
+			r.Get("/api/conversations/readiness", h.conversationReadiness)
+			r.Get("/api/conversations/pending", h.conversationsPending)
+			r.Get("/api/conversations/{id}", h.getConversation)
+			r.Get("/api/conversations/{id}/instructions", h.conversationInstructions)
+			r.Post("/api/conversations/{id}/reply", h.conversationReply)
+			r.Post("/api/conversations/{id}/messages", h.conversationSend)
+			r.Post("/api/conversations/{id}/take", h.conversationTake)
+			r.Post("/api/conversations/{id}/hand-back", h.conversationHandBack)
+			r.Post("/api/conversations/{id}/close", h.conversationClose)
+			r.Post("/api/conversations/{id}/read", h.conversationRead)
+			r.Post("/api/conversations/{id}/confirm", h.conversationConfirm)
+			r.Post("/api/conversations/{id}/outcome", h.conversationCorrect)
+			r.Post("/api/conversations/turns/{id}/approve", h.conversationTurnApprove)
+			r.Post("/api/conversations/turns/{id}/discard", h.conversationTurnDiscard)
+			if h.dev {
+				r.Post("/api/conversations/simulate", h.simulateInbound)
+			}
 		}
 		if h.supervisor != nil {
 			r.Get("/api/supervisor/inbox", h.supervisorInbox)

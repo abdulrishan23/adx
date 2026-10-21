@@ -11,6 +11,7 @@
 package crm
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -1070,4 +1071,156 @@ func idPtr(n sql.NullInt64) *int64 {
 	}
 	v := n.Int64
 	return &v
+}
+
+// Contacts from a channel.
+
+// ContactInput is a message's sender as the channel reports them: the
+// number it came from and whatever name the channel attaches.
+type ContactInput struct {
+	Phone string
+	Name  string
+	// Source names the channel ("whatsapp"); it is kept on the identifier.
+	Source string
+	At     time.Time
+	// ProjectID, when known, picks or opens the enquiry for that project.
+	ProjectID int64
+}
+
+// Contact is who a message came from and the enquiry it belongs to.
+type Contact struct {
+	Person  Person
+	Enquiry Enquiry
+	// MatchLevel is exact (one person has the number), new (nobody did) or
+	// candidate (several did and a person decides which).
+	MatchLevel string
+}
+
+// ResolveContact finds the person behind a number that wrote in, or makes
+// one. The number itself is the identity, so one person holding it is an
+// exact match whatever the channel calls them; several people holding it
+// (a family phone) make a new person with candidates for someone to
+// decide, never a guess. The enquiry is the person's open enquiry for the
+// project, or their latest open one when no project is known, or a new
+// one. Marketers and jobs may.
+func (c *CRM) ResolveContact(ctx context.Context, actor core.Actor, in ContactInput) (Contact, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return Contact{}, core.ErrForbidden
+	}
+	phone := c.NormalizePhone(in.Phone)
+	if phone == "" {
+		return Contact{}, core.Invalid("the number %q could not be read as a phone", in.Phone)
+	}
+	if in.Source == "" {
+		in.Source = "channel"
+	}
+	at := in.At
+	if at.IsZero() {
+		at = c.clock.Now()
+	}
+	at = at.UTC()
+	now := c.clock.Now().UTC()
+	byPhone, err := c.db.Reader().FindPeopleByIdentifier(ctx, store.FindPeopleByIdentifierParams{WorkspaceID: actor.WorkspaceID, Kind: "phone", Value: phone})
+	if err != nil {
+		return Contact{}, err
+	}
+	out := Contact{MatchLevel: "new"}
+	var prow store.Person
+	err = c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+		var err error
+		switch len(byPhone) {
+		case 1:
+			prow, out.MatchLevel = byPhone[0], "exact"
+			if prow.DisplayName == "" && strings.TrimSpace(in.Name) != "" {
+				if err := q.UpdatePersonPrimary(ctx, store.UpdatePersonPrimaryParams{DisplayName: strings.TrimSpace(in.Name), PrimaryPhone: prow.PrimaryPhone, PrimaryEmail: prow.PrimaryEmail, UpdatedAt: now, ID: prow.ID}); err != nil {
+					return err
+				}
+			}
+		default:
+			prow, err = q.CreatePerson(ctx, store.CreatePersonParams{WorkspaceID: actor.WorkspaceID, DisplayName: strings.TrimSpace(in.Name), PrimaryPhone: nullStr(phone), CreatedAt: now, UpdatedAt: now})
+			if err != nil {
+				return err
+			}
+			if err := q.CreatePersonIdentifier(ctx, store.CreatePersonIdentifierParams{WorkspaceID: actor.WorkspaceID, PersonID: prow.ID, Kind: "phone", Value: phone, Class: "stated", Source: in.Source, FirstSeenAt: at}); err != nil {
+				return err
+			}
+			if len(byPhone) > 1 {
+				out.MatchLevel = "candidate"
+				reason, _ := json.Marshal(map[string]any{"phone": true, "phoneSharedBy": len(byPhone), "source": in.Source})
+				for _, cand := range byPhone {
+					if err := q.CreateMatchCandidate(ctx, store.CreateMatchCandidateParams{WorkspaceID: actor.WorkspaceID, PersonID: prow.ID, CandidateID: cand.ID, Reason: string(reason), CreatedAt: now}); err != nil {
+						return err
+					}
+				}
+			}
+		}
+		var open store.Enquiry
+		if in.ProjectID != 0 {
+			open, err = q.FindOpenEnquiry(ctx, store.FindOpenEnquiryParams{PersonID: prow.ID, ProjectID: optionalID(in.ProjectID)})
+		} else {
+			var list []store.Enquiry
+			list, err = q.ListEnquiriesForPerson(ctx, prow.ID)
+			err = cmp.Or(err, sql.ErrNoRows)
+			for _, e := range list {
+				if e.State == "open" {
+					open, err = e, nil
+					break
+				}
+			}
+		}
+		switch {
+		case err == nil:
+			if err := q.TouchEnquiry(ctx, store.TouchEnquiryParams{LastActivityAt: maxTime(open.LastActivityAt, at), ID: open.ID}); err != nil {
+				return err
+			}
+			open, err = q.GetEnquiry(ctx, store.GetEnquiryParams{ID: open.ID, WorkspaceID: actor.WorkspaceID})
+			if err != nil {
+				return err
+			}
+		case errors.Is(err, sql.ErrNoRows):
+			open, err = q.CreateEnquiry(ctx, store.CreateEnquiryParams{WorkspaceID: actor.WorkspaceID, PersonID: prow.ID, ProjectID: optionalID(in.ProjectID), SourceKind: in.Source, SourceRef: phone, FirstContactAt: at, LastActivityAt: at, CreatedAt: now})
+			if err != nil {
+				return err
+			}
+		default:
+			return err
+		}
+		out.Enquiry = enquiryFromRow(open)
+		return nil
+	})
+	if err != nil {
+		return Contact{}, err
+	}
+	out.Person, err = c.person(ctx, actor.WorkspaceID, prow.ID)
+	return out, err
+}
+
+// SetEnquiryProject names the project of an enquiry that had none, when
+// the customer says which one they are asking about. An enquiry already
+// on a project keeps it. Marketers and jobs may.
+func (c *CRM) SetEnquiryProject(ctx context.Context, actor core.Actor, enquiryID, projectID int64) (Enquiry, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return Enquiry{}, core.ErrForbidden
+	}
+	if _, err := c.db.Reader().GetProject(ctx, store.GetProjectParams{ID: projectID, WorkspaceID: actor.WorkspaceID}); err != nil {
+		return Enquiry{}, core.NotFound("project %d not found", projectID)
+	}
+	row, err := c.db.Reader().GetEnquiry(ctx, store.GetEnquiryParams{ID: enquiryID, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Enquiry{}, core.NotFound("enquiry %d not found", enquiryID)
+	}
+	if err != nil {
+		return Enquiry{}, err
+	}
+	if row.ProjectID.Valid {
+		return Enquiry{}, core.Conflict("enquiry %d is already about project %d", enquiryID, row.ProjectID.Int64)
+	}
+	if _, err := c.db.Writer().SetEnquiryProject(ctx, store.SetEnquiryProjectParams{ProjectID: optionalID(projectID), ID: enquiryID}); err != nil {
+		return Enquiry{}, err
+	}
+	row, err = c.db.Reader().GetEnquiry(ctx, store.GetEnquiryParams{ID: enquiryID, WorkspaceID: actor.WorkspaceID})
+	if err != nil {
+		return Enquiry{}, err
+	}
+	return enquiryFromRow(row), nil
 }

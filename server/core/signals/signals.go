@@ -46,6 +46,7 @@ var Catalog = []SignalKind{
 	{Kind: "page_view", Source: "web", Description: "A pricing or floor-plan page view tied to a known person", Supported: true},
 	{Kind: "message_reply", Source: "messaging", Description: "A reply to an ADX message", Supported: true},
 	{Kind: "call_outcome", Source: "voice", Description: "A qualification call's outcome", Supported: true},
+	{Kind: "conversation_outcome", Source: "messaging", Description: "A text qualification conversation's outcome", Supported: true},
 	{Kind: "email_open", Source: "email", Description: "An email open", Supported: false, Reason: "No email channel sends from ADX, and opens are not reliably observable."},
 	{Kind: "portal_view", Source: "portals", Description: "A view on a property portal", Supported: false, Reason: "Portals expose no per-person events."},
 }
@@ -271,6 +272,7 @@ func SuggestedRules() ScoringDocument {
 			{Kind: "page_view", Points: 5, HalfLifeDays: 7, RepeatFactor: 0.8, Cap: 20},
 			{Kind: "message_reply", Points: 15, HalfLifeDays: 10, RepeatFactor: 0.6, Cap: 30},
 			{Kind: "call_outcome", Points: 25, HalfLifeDays: 21, RepeatFactor: 0.5, Cap: 40},
+			{Kind: "conversation_outcome", Points: 25, HalfLifeDays: 21, RepeatFactor: 0.5, Cap: 40},
 		},
 		Stages: nil,
 		Note:   "Suggested starting point. Stage thresholds are left unset on purpose: nobody is hot or warm until Reportage says what hot and warm mean.",
