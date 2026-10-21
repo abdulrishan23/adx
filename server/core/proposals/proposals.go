@@ -242,24 +242,35 @@ func (p *Proposals) OpenEnvelopes(ctx context.Context, actor core.Actor, planID,
 		return nil, core.Conflict("plan version %d is %s; only an accepted version can open budget", version, pv.State)
 	}
 	now := p.clock.Now().UTC()
+	// One envelope per channel. Two lines of the same channel (say Google
+	// Search for AE and for KSA) share it, so it holds their sum: an
+	// envelope sized by the first line alone would refuse the second's spend.
+	byChannel := map[string]int64{}
+	var channels []string
 	for _, a := range pv.Document.Allocations {
+		if _, seen := byChannel[a.Channel]; !seen {
+			channels = append(channels, a.Channel)
+		}
+		byChannel[a.Channel] += a.BudgetMinor
+	}
+	for _, channel := range channels {
 		platform := ""
 		switch {
-		case strings.HasPrefix(a.Channel, "google_"):
+		case strings.HasPrefix(channel, "google_"):
 			platform = "google_ads"
-		case strings.HasPrefix(a.Channel, "meta_"):
+		case strings.HasPrefix(channel, "meta_"):
 			platform = "meta"
 		default:
 			continue
 		}
 		acct := accountByPlatform[platform]
 		if acct == 0 {
-			return nil, core.Invalid("no %s account named for channel %s", platform, a.Channel)
+			return nil, core.Invalid("no %s account named for channel %s", platform, channel)
 		}
 		if _, err := p.db.Reader().GetAccountByID(ctx, acct); err != nil {
 			return nil, core.NotFound("account %d is not connected", acct)
 		}
-		_, err := p.db.Writer().CreateBudgetEnvelope(ctx, store.CreateBudgetEnvelopeParams{WorkspaceID: actor.WorkspaceID, PlanID: planID, PlanVersion: pv.Version, Channel: a.Channel, AccountID: sql.NullInt64{Int64: acct, Valid: true}, Currency: pv.Document.Currency, AmountMinor: a.BudgetMinor, OpenedBy: optionalID(actor.UserID), OpenedAt: now})
+		_, err := p.db.Writer().CreateBudgetEnvelope(ctx, store.CreateBudgetEnvelopeParams{WorkspaceID: actor.WorkspaceID, PlanID: planID, PlanVersion: pv.Version, Channel: channel, AccountID: sql.NullInt64{Int64: acct, Valid: true}, Currency: pv.Document.Currency, AmountMinor: byChannel[channel], OpenedBy: optionalID(actor.UserID), OpenedAt: now})
 		if err != nil && !store.IsUniqueViolation(err) {
 			return nil, err
 		}

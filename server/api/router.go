@@ -410,6 +410,7 @@ func NewRouter(d Deps) http.Handler {
 		if h.launch != nil {
 			r.Get("/api/launch/resolution", h.launchResolution)
 			r.Post("/api/launch/picks", h.launchPick)
+			r.Post("/api/launch/submit", h.launchSubmit)
 		}
 		if h.crm != nil {
 			r.Get("/api/crm/people", h.listPeople)

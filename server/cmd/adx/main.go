@@ -377,6 +377,7 @@ func run() error {
 	// but a pause or a budget cut through on a campaign (BD-60).
 	launchService := launch.New(db, planService, reportingService, launch.Config{})
 	proposalService := proposals.New(db, policyService, planService, proposals.Config{Coverage: launchService})
+	launchService.AttachProposals(proposalService)
 	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write
 	// adapter is registered and every intent is held with that reason.
 	writers := map[string]execution.Writer{}

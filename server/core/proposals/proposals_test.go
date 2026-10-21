@@ -398,3 +398,22 @@ func TestUnplannedCampaignTakesOnlySafetyActions(t *testing.T) {
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindInvalid, ce.Kind)
 }
+
+// Catches: two lines of one channel getting an envelope sized by the first
+// line alone, which would refuse the second line's spend (BD-60 point 10).
+func TestEnvelopeHoldsEveryLineOfItsChannel(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	cpl := int64(25000)
+	ae := plans.Allocation{Channel: "google_search", Objective: "leads", BudgetMinor: 6_000, Geography: "AE", ExpectedCPLMinor: &cpl}
+	ksa := ae
+	ksa.Geography, ksa.BudgetMinor = "SA", 4_000
+	d, err := e.plans.Create(ctx, coretest.Marketer, plans.PlanInput{BrandID: e.reportage, ProjectID: e.wadi, Title: "Two lines", Document: plans.PlanDocument{Objective: "Leads", BudgetMinor: 10_000, Currency: "AED", PeriodFrom: "2026-11-01", PeriodTo: "2026-11-30", Allocations: []plans.Allocation{ae, ksa}}})
+	require.NoError(t, err)
+	_, err = e.plans.Accept(ctx, coretest.Admin, d.Plan.ID, 1)
+	require.NoError(t, err)
+	envs, err := e.props.OpenEnvelopes(ctx, coretest.Admin, d.Plan.ID, 1, map[string]int64{"google_ads": e.googleAcc})
+	require.NoError(t, err)
+	require.Len(t, envs, 1)
+	assert.Equal(t, int64(10_000), envs[0].AmountMinor)
+}

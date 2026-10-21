@@ -24,6 +24,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/plans"
+	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/store"
 )
@@ -123,6 +124,7 @@ type Service struct {
 	clock     core.Clock
 	plans     *plans.Plans
 	reporting *reporting.Reporting
+	proposals *proposals.Proposals
 }
 
 func New(db *store.DB, pl *plans.Plans, rep *reporting.Reporting, cfg Config) *Service {
