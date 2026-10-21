@@ -576,7 +576,6 @@ const routeTree = rootRoute.addChildren([
     oldCompetitorsRoute,
     page("/brands/$brandId", BrandPage),
     page("/engine", EnginePage),
-    page("/engine/home", E.home),
     page("/engine/projects", E.projects),
     page("/engine/analytics", E.analytics),
     engineAskRoute,

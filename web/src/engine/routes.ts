@@ -8,7 +8,6 @@ import { ConnectionsPage } from "@/engine/routes/connections";
 import { CreativesPage } from "@/engine/routes/creatives";
 import { EvaluationPage } from "@/engine/routes/evaluation";
 import { FunnelPage } from "@/engine/routes/funnel";
-import { HomePage } from "@/engine/routes/home";
 import { LaunchPage } from "@/engine/routes/launch";
 import { LeadsPage } from "@/engine/routes/leads";
 import { LearningPage } from "@/engine/routes/learning";
@@ -34,7 +33,6 @@ import { WorkspacesPage } from "@/engine/routes/workspaces";
 // Engine group, until the screen in our design is rewired to the same API;
 // then its entry here goes.
 export const ENGINE_SCREENS: { path: string; label: string; group: string }[] = [
-  { path: "/engine/home", label: "Home desk", group: "Work" },
   { path: "/engine/projects", label: "Projects", group: "Work" },
   { path: "/engine/analytics", label: "Analytics", group: "Work" },
   { path: "/engine/ask", label: "Ask", group: "Work" },
@@ -78,7 +76,6 @@ export const ENGINE_PAGES = {
   creatives: CreativesPage,
   evaluation: EvaluationPage,
   funnel: FunnelPage,
-  home: HomePage,
   launch: LaunchPage,
   leads: LeadsPage,
   learning: LearningPage,

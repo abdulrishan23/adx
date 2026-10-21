@@ -600,9 +600,9 @@ export function useDismissAlert() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { id: string; reason: string }) =>
-      USE_MOCK
-        ? mockResponse(() => mock.dismissAlert(input.id, input.reason), 300)
-        : postJSON(`/api/alerts/${input.id}/dismiss`, { reason: input.reason }),
+      isLive("fronts")
+        ? postJSON(`/api/alerts/${input.id}/dismiss`, { reason: input.reason })
+        : mockResponse(() => mock.dismissAlert(input.id, input.reason), 300),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
       // Alerts arrive in the Inbox as cards too.
@@ -615,9 +615,9 @@ export function useSnoozeAlert() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: { id: string; days: number }) =>
-      USE_MOCK
-        ? mockResponse(() => mock.snoozeAlert(input.id, input.days), 300)
-        : postJSON(`/api/alerts/${input.id}/snooze`, { days: input.days }),
+      isLive("fronts")
+        ? postJSON(`/api/alerts/${input.id}/snooze`, { days: input.days })
+        : mockResponse(() => mock.snoozeAlert(input.id, input.days), 300),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
       // Alerts arrive in the Inbox as cards too.

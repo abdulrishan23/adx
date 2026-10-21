@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronDown, LayoutGrid, List, MessageSquareText } from "lucide-react";
 import { useState } from "react";
-import { type Card, type Door, needsYou, useHomeDesk, type WorkItem } from "@/api/fronts";
+import { type Card, type Door, type InboxShow, useInbox, type WorkItem } from "@/api/fronts";
 import { CardView, DOOR_LABEL } from "@/components/front/card";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
@@ -9,10 +9,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { StatusMark } from "@/components/ui/status-chip";
 import { formatRelative } from "@/lib/format";
 import { AlertActions } from "./brief";
-import { SampleChip } from "./studio/shared";
 
 type View = "cards" | "list";
-type Show = "all" | "needs" | "updates";
 
 const VIEW_KEY = "adx.inbox.view";
 const readView = (): View => {
@@ -23,30 +21,19 @@ const readView = (): View => {
   }
 };
 
-const RANK = { error: 0, caution: 1, pending: 2, ready: 3 } as const;
-
-// Things that need a person come first, worst first; then updates, newest
-// first. Home's carousel shows the top of the same order.
-export function inboxOrder(cards: Card[]): Card[] {
-  return [...cards].sort((a, b) => {
-    const n = Number(needsYou(b)) - Number(needsYou(a));
-    if (n !== 0) return n;
-    const r = RANK[a.status] - RANK[b.status];
-    if (r !== 0) return r;
-    return b.at.localeCompare(a.at);
-  });
-}
-
 // Inbox holds every card Adx has put in front of you: what needs you
-// (approvals, blocks, anomalies) and what Adx finished. Home shows the top of
-// it. Work still running is a count you can open, not a feed to watch.
+// (approvals, blocks, anomalies) and what Adx finished, in the server's
+// order: needs-you first, worst first, then updates, newest first. Home
+// shows the top of it. Work still running is a count you can open, not a
+// feed to watch. The filters are the server's, so the counts on the
+// segments are of every card, not of the ones shown.
 export function InboxPage() {
-  const desk = useHomeDesk();
+  const [view, setView] = useState<View>(readView);
+  const [show, setShow] = useState<InboxShow>("all");
+  const [door, setDoor] = useState<Door | "any">("any");
+  const desk = useInbox(show, door);
   const navigate = useNavigate();
   const ask = (q: string) => navigate({ to: "/ask", search: { q } });
-  const [view, setView] = useState<View>(readView);
-  const [show, setShow] = useState<Show>("all");
-  const [door, setDoor] = useState<Door | "any">("any");
 
   const pickView = (v: View) => {
     setView(v);
@@ -57,24 +44,14 @@ export function InboxPage() {
     }
   };
 
-  const all = desk.data ? inboxOrder(desk.data.cards) : [];
-  const needs = all.filter(needsYou);
-  const shown = all
-    .filter((c) => (show === "needs" ? needsYou(c) : show === "updates" ? !needsYou(c) : true))
-    .filter((c) => door === "any" || c.door === door);
+  const shown = desk.data?.cards ?? [];
+  const counts = desk.data?.counts;
 
   return (
     <>
       <PageHeader
         title="Inbox"
-        subtitle={
-          desk.data && (
-            <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-              {desk.data.summary}
-              {desk.data.sample && <SampleChip />}
-            </span>
-          )
-        }
+        subtitle={desk.data?.summary}
         actions={
           <Segmented
             label="View"
@@ -88,7 +65,7 @@ export function InboxPage() {
         }
       />
       {desk.error && <ErrorNote error={desk.error} />}
-      {desk.isPending && <LoadingRows rows={6} />}
+      {desk.isPending && !desk.data && <LoadingRows rows={6} />}
       {desk.data && (
         <div className="space-y-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -98,9 +75,9 @@ export function InboxPage() {
                 value={show}
                 onChange={setShow}
                 options={[
-                  { value: "all", label: "All", count: all.length },
-                  { value: "needs", label: "Needs you", count: needs.length, tone: "caution" },
-                  { value: "updates", label: "Updates", count: all.length - needs.length },
+                  { value: "all", label: "All", count: counts?.all },
+                  { value: "needs", label: "Needs you", count: counts?.needsYou, tone: "caution" },
+                  { value: "updates", label: "Updates", count: counts?.updates },
                 ]}
               />
               <Segmented
