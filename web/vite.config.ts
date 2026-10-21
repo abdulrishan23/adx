@@ -14,7 +14,8 @@ export default defineConfig({
     alias: { "@": path.resolve(import.meta.dirname, "src") },
   },
   server: {
-    // The Go server runs on 8080. Proxying keeps the browser on one origin,
+    // The Go server runs on 8080 (ADX_API points at another, such as a
+    // worktree's own). Proxying keeps the browser on one origin,
     // which is how production works too. changeOrigin stays false so Go sees
     // the browser's Host, which its cross-origin check compares with Origin.
     // Everything the Go server owns: the API, public landing pages and the
@@ -23,7 +24,7 @@ export default defineConfig({
       // "^/p/" is a pattern so /projects stays with the app.
       ["/api", "^/p/", "/webhooks"].map((path) => [
         path,
-        { target: "http://localhost:8080", changeOrigin: false },
+        { target: process.env.ADX_API ?? "http://localhost:8080", changeOrigin: false },
       ]),
     ),
   },

@@ -4,25 +4,42 @@ import {
   useExecutionAction,
   useExecutionCapabilities,
   useLaunchReadiness,
+  useLaunchResolution,
   useLaunchStatus,
   useMilestones,
+  usePickCampaign,
+  useSubmitLaunch,
 } from "@/api/launch";
 import { usePlans } from "@/api/plans";
 import type {
+  ChannelInfo,
   IntentWithEvents,
   LaunchItem,
+  LaunchResolution,
+  LineResolution,
   Milestones,
   PlanLaunchReadiness,
   PlanSummary,
   PlatformLaunch,
+  SubmitResult,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
-import { type PlatformKey, PlatformTag } from "@/components/platform";
+import { type PlatformKey, PlatformTag, platformLabel } from "@/components/platform";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
-import { formatDateTime, formatRelative } from "@/lib/format";
+import { useAccounts } from "@/engine/api/accounts";
+import { useEnvelopes } from "@/engine/api/proposals";
+import { formatDate, formatDateTime, formatMoneyShort, formatRelative } from "@/lib/format";
+import {
+  accountsByPlatform,
+  campaignSpend,
+  lineFigures,
+  platformsWithoutAccount,
+  SUBMIT_STATE,
+  submitBlocker,
+} from "@/lib/launch";
 
 // Readiness areas in the order a launch is checked.
 const AREAS: { key: string; label: string }[] = [
@@ -113,12 +130,12 @@ export function LaunchPage() {
           </EmptyState>
         </Panel>
       )}
-      {plan && <LaunchBody plan={plan} />}
+      {plan && <LaunchBody plan={plan} channels={plans.data?.channels ?? []} />}
     </>
   );
 }
 
-function LaunchBody({ plan }: { plan: PlanSummary }) {
+function LaunchBody({ plan, channels }: { plan: PlanSummary; channels: ChannelInfo[] }) {
   const version = plan.latestVersion;
   const readiness = useLaunchReadiness(plan.id, version);
   const status = useLaunchStatus(plan.id, version);
@@ -154,6 +171,8 @@ function LaunchBody({ plan }: { plan: PlanSummary }) {
         </Panel>
       )}
 
+      <MoneyPanel plan={plan} version={version} channels={channels} liveWrites={liveWrites} />
+
       <div className="grid gap-5 lg:grid-cols-2">
         <Readiness readiness={r} pending={readiness.isPending} />
         <Where milestones={milestones.data} status={status.data} pending={milestones.isPending} />
@@ -174,9 +193,9 @@ function LaunchBody({ plan }: { plan: PlanSummary }) {
             : `${status.data.note} `}
           {!liveWrites &&
             "Live writes to ad accounts are off, so submissions are held until they're turned on. "}
-          Authorizing a launch happens on the{" "}
-          <Link to="/engine/launch" className="underline underline-offset-4">
-            engine's launch screen
+          Submitting starts from "Where the money goes" above; approvals are in{" "}
+          <Link to="/proposals" className="underline underline-offset-4">
+            Perform › Change log
           </Link>
           .
         </p>
@@ -448,5 +467,309 @@ function IntentRow({ item }: { item: IntentWithEvents }) {
       </div>
       {act.error && <p className="mt-2 text-sm text-status-error">{act.error.message}</p>}
     </li>
+  );
+}
+
+// What the launch would do for a line, as the server resolved it (BD-68).
+const KIND: Record<string, { status: Status; label: string }> = {
+  create: { status: "pending", label: "Creates" },
+  update: { status: "ready", label: "Updates" },
+  resume: { status: "ready", label: "Resumes" },
+  pick: { status: "caution", label: "Needs a pick" },
+  unsupported: { status: "pending", label: "Not launched" },
+};
+
+// Where the money goes: each plan line against its project's campaigns,
+// resolved by the server as of today in Dubai. One running match is
+// updated; more than one and a person picks; none running but a paused one
+// and it is resumed rather than duplicated; none and a campaign is created.
+// The plan is the month's ceiling, so spend this month nets off the line
+// and the rest is spread over the days left. Submit writes it out as one
+// proposal per line; nothing here reaches a platform.
+function MoneyPanel({
+  plan,
+  version,
+  channels,
+  liveWrites,
+}: {
+  plan: PlanSummary;
+  version: number;
+  channels: ChannelInfo[];
+  liveWrites: boolean;
+}) {
+  const resolution = useLaunchResolution(plan.id, version);
+  const label = (key: string) => channels.find((c) => c.key === key)?.label ?? key;
+  const res = resolution.data;
+  return (
+    <Panel
+      title="Where the money goes"
+      description={
+        res
+          ? `Each plan line against its project's campaigns, as of ${formatDate(res.today)}. One running match is updated; more than one and you pick; a paused one is resumed; none and Adx creates one. This month's spend comes off the line and the rest is spread over the ${res.daysLeft} days to ${formatDate(res.monthEnd)}.`
+          : undefined
+      }
+      bodyClassName="p-0"
+    >
+      {resolution.isPending && (
+        <div className="p-5">
+          <LoadingRows rows={3} />
+        </div>
+      )}
+      {resolution.error && (
+        <div className="p-5">
+          <ErrorNote error={resolution.error} />
+        </div>
+      )}
+      {res && (
+        <>
+          <ul className="divide-y">
+            {res.lines.map((l) => (
+              <MoneyLine key={l.line.index} line={l} resolution={res} label={label} />
+            ))}
+          </ul>
+          {res.unmatched.length > 0 && (
+            <p className="border-t px-5 py-3 text-xs text-muted-foreground">
+              Not under this plan: {res.unmatched.map((c) => c.name).join(", ")}. Running campaigns
+              no line takes; this launch leaves them as they are.
+            </p>
+          )}
+          <SubmitBlock resolution={res} label={label} liveWrites={liveWrites} />
+        </>
+      )}
+    </Panel>
+  );
+}
+
+function MoneyLine({
+  line: l,
+  resolution: res,
+  label,
+}: {
+  line: LineResolution;
+  resolution: LaunchResolution;
+  label: (channel: string) => string;
+}) {
+  const pick = usePickCampaign();
+  const kind = KIND[l.kind] ?? { status: "pending" as Status, label: l.kind };
+  const figures = lineFigures(l);
+  const cur = l.line.currency;
+  const sentence =
+    l.kind === "create"
+      ? `Creates a ${label(l.line.channel)} campaign.`
+      : l.kind === "update"
+        ? `Updates ${l.campaign?.name ?? "the matched campaign"}.`
+        : l.kind === "resume"
+          ? `Resumes ${l.campaign?.name ?? "the paused campaign"}.`
+          : l.kind === "pick"
+            ? l.note ||
+              `${l.candidates.length} campaigns match. Pick the one this line is for; Adx never updates both unasked.`
+            : l.note || "Not launched.";
+  return (
+    <li className="flex items-start gap-3 px-5 py-3">
+      <StatusMark status={kind.status} className="mt-2" />
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium">
+          <PlatformTag platform={platformKey(l.line.platform)} />
+          <span>
+            {label(l.line.channel)} · {formatMoneyShort(l.line.budgetMinor, cur)} this month
+          </span>
+          <StatusChip status={kind.status}>{kind.label}</StatusChip>
+        </p>
+        <p className={l.kind === "unsupported" ? "text-sm text-muted-foreground" : "text-sm"}>
+          {sentence}
+        </p>
+        {figures && (
+          <dl className="flex flex-wrap gap-x-6 gap-y-1">
+            <Figure label="Spent this month" value={figures.spent} />
+            <Figure label="Left" value={figures.left} />
+            <Figure label={`A day to ${formatDate(res.monthEnd)}`} value={figures.daily} />
+          </dl>
+        )}
+        {l.candidates.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 pt-0.5">
+            <Select
+              aria-label={`Campaign for line ${l.line.index + 1}, ${label(l.line.channel)}`}
+              value={l.pick ? String(l.pick.campaignId) : null}
+              onValueChange={(id) =>
+                pick.mutate({
+                  planId: res.planId,
+                  planVersion: res.planVersion,
+                  line: l.line.index,
+                  campaignId: Number(id),
+                })
+              }
+              options={l.candidates.map((c) => ({
+                value: String(c.id),
+                label: `${c.name} · ${campaignSpend(c, cur)} spent this month${c.running ? "" : " · paused"}`,
+              }))}
+              placeholder="Pick a campaign"
+              disabled={pick.isPending}
+              className="max-w-md"
+            />
+            {l.pick && (
+              <span className="text-xs text-muted-foreground">
+                Picked{l.pick.pickedBy !== null && ` by user ${l.pick.pickedBy}`}{" "}
+                {formatRelative(l.pick.pickedAt)}
+              </span>
+            )}
+          </div>
+        )}
+        {pick.error && <p className="text-sm text-status-error">{pick.error.message}</p>}
+        {l.note && l.kind !== "pick" && l.kind !== "unsupported" && (
+          <p className="text-xs text-muted-foreground">{l.note}</p>
+        )}
+        {l.paused.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            Left paused: {l.paused.map((c) => c.name).join(", ")}.
+          </p>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function Figure({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="text-sm font-medium tabular-nums">{value}</dd>
+    </div>
+  );
+}
+
+// Submit posts the resolution to /api/launch/submit. It waits while a line
+// still needs a pick, and says so. The version's envelopes are opened on
+// the way when none are, which needs an account per platform: the one the
+// line's campaign sits in, the only connected one, or a person's choice.
+function SubmitBlock({
+  resolution: res,
+  label,
+  liveWrites,
+}: {
+  resolution: LaunchResolution;
+  label: (channel: string) => string;
+  liveWrites: boolean;
+}) {
+  const session = useSession();
+  const envelopes = useEnvelopes();
+  const accounts = useAccounts();
+  const submit = useSubmitLaunch();
+  const [chosen, setChosen] = useState<Record<string, number>>({});
+  const connected = accounts.data?.accounts ?? [];
+  const open = (envelopes.data?.envelopes ?? []).some(
+    (e) => e.planId === res.planId && e.planVersion === res.planVersion,
+  );
+  const byPlatform = { ...accountsByPlatform(res.lines, connected), ...chosen };
+  const missing = open ? [] : platformsWithoutAccount(res.lines, byPlatform);
+  const toName = missing.filter((p) => connected.some((a) => a.provider === p));
+  const toConnect = missing.filter((p) => !connected.some((a) => a.provider === p));
+  const pl = (p: string) => platformLabel(platformKey(p));
+  const blocker =
+    submitBlocker(res.lines, label) ??
+    (toConnect.length > 0
+      ? `No ${toConnect.map(pl).join(" or ")} account is connected, so the version's envelopes cannot be opened.`
+      : toName.length > 0
+        ? `Name the ${toName.map(pl).join(" and ")} account to launch into.`
+        : null);
+  const result = submit.data;
+  return (
+    <div className="space-y-3 border-t px-5 py-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="max-w-2xl space-y-1 text-sm text-muted-foreground">
+          <p>
+            Submit writes one proposal per line under the version's budget envelopes
+            {open ? "" : ", opening them first"}. What policy allows you is sent to the outbox; the
+            rest waits for an admin in Perform.
+            {!liveWrites &&
+              " Live writes are off, so the outbox holds everything until they're on."}
+          </p>
+          {blocker && <p className="text-foreground">{blocker}</p>}
+        </div>
+        {session.role !== "viewer" && (
+          <Button
+            disabled={blocker !== null || submit.isPending}
+            onClick={() =>
+              submit.mutate({
+                planId: res.planId,
+                planVersion: res.planVersion,
+                accountByPlatform: open ? null : byPlatform,
+              })
+            }
+          >
+            {submit.isPending ? "Submitting…" : result ? "Submit again" : "Submit the launch"}
+          </Button>
+        )}
+      </div>
+      {toName.map((p) => (
+        <Select
+          key={p}
+          aria-label={`${pl(p)} account`}
+          value={chosen[p] ? String(chosen[p]) : null}
+          onValueChange={(id) => setChosen((c) => ({ ...c, [p]: Number(id) }))}
+          options={connected
+            .filter((a) => a.provider === p)
+            .map((a) => ({ value: String(a.id), label: a.name ?? a.externalId }))}
+          placeholder={`${pl(p)} account`}
+          className="max-w-sm"
+        />
+      ))}
+      {toConnect.length > 0 && (
+        <Link to="/settings/connections" className="text-sm underline underline-offset-4">
+          Connect an account
+        </Link>
+      )}
+      {submit.error && <ErrorNote error={submit.error} />}
+      {result && <SubmitOutcome result={result} label={label} />}
+    </div>
+  );
+}
+
+// What Submit did, line by line. Executed is an intent in the outbox, not
+// delivery; a line waiting for approval links to the proposal in Perform.
+function SubmitOutcome({
+  result,
+  label,
+}: {
+  result: SubmitResult;
+  label: (channel: string) => string;
+}) {
+  return (
+    <ul className="divide-y rounded-md border">
+      {result.lines.map((s) => {
+        const st = SUBMIT_STATE[s.state] ?? { status: "pending" as Status, label: s.state };
+        return (
+          <li key={s.line.index} className="flex items-start gap-3 px-4 py-2.5 text-sm">
+            <StatusMark status={st.status} className="mt-2" />
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <p className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{label(s.line.channel)}</span>
+                <StatusChip status={st.status}>{st.label}</StatusChip>
+                {s.proposal && (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    proposal #{s.proposal.id}
+                  </span>
+                )}
+                {s.intent && (
+                  <span className="font-mono text-xs text-muted-foreground">
+                    intent #{s.intent.id}
+                  </span>
+                )}
+              </p>
+              {s.note && <p className="text-muted-foreground">{s.note}</p>}
+              {s.state === "awaiting_approval" && s.proposal && (
+                <Link
+                  to="/proposals"
+                  search={{ open: String(s.proposal.id) }}
+                  className="underline underline-offset-4"
+                >
+                  Open in Perform › Change log
+                </Link>
+              )}
+            </div>
+          </li>
+        );
+      })}
+      <li className="px-4 py-2.5 text-xs text-muted-foreground">{result.note}</li>
+    </ul>
   );
 }

@@ -1,100 +1,110 @@
-// Where a plan's money goes when it launches (BD-68, decided 2026-10-18).
-// Create owns the first launch: each plan line is resolved against the
-// project's running campaigns before anything is submitted. One match is
-// updated; more than one and a person picks, never both unasked; none and a
-// campaign is created. The plan is the month's ceiling, so a matched
-// campaign's spend this month nets off its line, and the daily budget is what
-// remains spread over the days left in the month.
+// What the Launch screen says about where a plan version's money goes
+// (BD-68). The rules themselves moved to the server on 2026-10-19: which
+// campaign a line updates, resumes or picks from, how this month's spend
+// nets off the line and spreads over the days left, all live in
+// server/core/launch and are tested in launch_test.go. The browser decides
+// nothing; it reads GET /api/launch/resolution. What stays here is
+// presentation: the figures a resolved line shows, why Submit is disabled,
+// which account each platform launches into, and what each submitted
+// line's state is called.
 
-export type LaunchLine = {
-  platform: string;
-  // A line that names a campaign type (search, lead form) matches only that
-  // type; a line without one matches every type on its platform.
-  type?: string;
-  budgetMinor: number;
-};
+import type { LineResolution, ProjectCampaign } from "@/api/types.gen";
+import { formatMoneyShort, NOT_AVAILABLE } from "./format";
 
-export type LaunchCampaign = {
-  id: string;
-  name: string;
-  platform: string;
-  type: string;
-  projectId: number;
-  spentThisMonthMinor: number;
-};
+export type LineFigures = { spent: string; left: string; daily: string };
 
-export type MonthBudget = { spentMinor: number; remainingMinor: number; dailyMinor: number };
-
-export type Resolution =
-  | ({ kind: "create"; line: LaunchLine } & MonthBudget)
-  | ({ kind: "update"; line: LaunchLine; campaign: LaunchCampaign } & MonthBudget)
-  | { kind: "pick"; line: LaunchLine; candidates: LaunchCampaign[] };
-
-export function matches(line: LaunchLine, c: LaunchCampaign, projectId: number): boolean {
-  return (
-    c.projectId === projectId &&
-    c.platform === line.platform &&
-    (line.type === undefined || c.type === line.type)
-  );
-}
-
-// Days from today to the end of the month, today included.
-export function daysLeftInMonth(today: Date): number {
-  const last = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  return last - today.getDate() + 1;
-}
-
-export function monthBudget(line: LaunchLine, spentMinor: number, today: Date): MonthBudget {
-  const remainingMinor = Math.max(line.budgetMinor - spentMinor, 0);
+// The month's figures for an update, resume or create. Spend is "Not
+// available" when the campaign has no figures read this month, never 0.
+export function lineFigures(l: LineResolution): LineFigures | null {
+  if (!l.budget) return null;
+  const cur = l.line.currency;
   return {
-    spentMinor,
-    remainingMinor,
-    dailyMinor: Math.round(remainingMinor / daysLeftInMonth(today)),
+    spent: l.budget.spendKnown ? formatMoneyShort(l.budget.spentMinor, cur) : NOT_AVAILABLE,
+    left: formatMoneyShort(l.budget.remainingMinor, cur),
+    daily: formatMoneyShort(l.budget.dailyMinor, cur),
   };
 }
 
-// Spend on the days of today's month, from a campaign's daily points.
-export function spentThisMonth(daily: { date: string; spendMinor: number }[], today: Date): number {
-  const month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-  return daily.filter((d) => d.date.startsWith(month)).reduce((sum, d) => sum + d.spendMinor, 0);
+// A candidate's spend this month, for the pick list.
+export function campaignSpend(c: ProjectCampaign, currency: string): string {
+  return c.spentMinor === null
+    ? NOT_AVAILABLE
+    : formatMoneyShort(c.spentMinor, c.currency || currency);
 }
 
-export function resolveLaunch(
-  lines: LaunchLine[],
-  campaigns: LaunchCampaign[],
-  projectId: number,
-  today: Date,
-): Resolution[] {
-  return lines.map((line) => {
-    const candidates = campaigns.filter((c) => matches(line, c, projectId));
-    if (candidates.length === 0) {
-      return { kind: "create", line, ...monthBudget(line, 0, today) };
-    }
-    if (candidates.length === 1) {
-      const campaign = candidates[0] as LaunchCampaign;
-      return {
-        kind: "update",
-        line,
-        campaign,
-        ...monthBudget(line, campaign.spentThisMonthMinor, today),
-      };
-    }
-    return { kind: "pick", line, candidates };
-  });
+// Why nothing can be submitted yet, or null when it can. A line still
+// waiting on a pick stops the whole submission (the server refuses it too),
+// and a version with nothing ADX can deploy has nothing to submit.
+export function submitBlocker(
+  lines: LineResolution[],
+  label: (channel: string) => string = (c) => c,
+): string | null {
+  const open = lines.filter((l) => l.kind === "pick");
+  if (open.length > 0) {
+    const names = open.map((l) => `line ${l.line.index + 1} (${label(l.line.channel)})`);
+    return `${capitalize(names.join(" and "))} still ${open.length === 1 ? "needs" : "need"} a pick.`;
+  }
+  if (lines.length === 0) {
+    return "The version has no lines.";
+  }
+  if (lines.every((l) => l.kind === "unsupported")) {
+    return "Nothing in this version can be launched by Adx.";
+  }
+  return null;
 }
 
-// A person's choice for a line that matched more than one campaign.
-export function pickCampaign(
-  res: Extract<Resolution, { kind: "pick" }>,
-  campaignId: string,
-  today: Date,
-): Extract<Resolution, { kind: "update" }> | null {
-  const campaign = res.candidates.find((c) => c.id === campaignId);
-  if (!campaign) return null;
-  return {
-    kind: "update",
-    line: res.line,
-    campaign,
-    ...monthBudget(res.line, campaign.spentThisMonthMinor, today),
-  };
+// The account each platform launches into, for opening the version's
+// envelopes when none are open yet: the account the line's matched or
+// candidate campaign sits in, else the only connected account of the
+// platform. A platform with no campaign to go by and more than one account
+// is left out, so a person names it rather than Adx guessing.
+export function accountsByPlatform(
+  lines: LineResolution[],
+  accounts: { id: number; provider: string }[],
+): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const l of lines) {
+    if (l.kind === "unsupported" || out[l.line.platform]) continue;
+    const known = [l.campaign, ...l.candidates].filter((c): c is ProjectCampaign => c !== null);
+    const ids = new Set(known.map((c) => c.accountId));
+    if (ids.size === 1) {
+      out[l.line.platform] = known[0]?.accountId as number;
+      continue;
+    }
+    const connected = accounts.filter((a) => a.provider === l.line.platform);
+    if (connected.length === 1) {
+      out[l.line.platform] = connected[0]?.id as number;
+    }
+  }
+  return out;
+}
+
+// Platforms a deployable line needs that no account was found for.
+export function platformsWithoutAccount(
+  lines: LineResolution[],
+  byPlatform: Record<string, number>,
+): string[] {
+  const missing = new Set<string>();
+  for (const l of lines) {
+    if (l.kind !== "unsupported" && !byPlatform[l.line.platform]) missing.add(l.line.platform);
+  }
+  return [...missing];
+}
+
+export type SubmitTone = "ready" | "caution" | "error" | "pending";
+
+// What Submit did for a line, as the screen names it. Executed means an
+// intent is in the outbox, not that anything is live.
+export const SUBMIT_STATE: Record<string, { status: SubmitTone; label: string }> = {
+  submitted: { status: "ready", label: "Executed" },
+  awaiting_approval: { status: "pending", label: "Waiting for approval" },
+  denied: { status: "error", label: "Denied" },
+  held: { status: "caution", label: "Held" },
+  unchanged: { status: "pending", label: "Unchanged" },
+  exhausted: { status: "caution", label: "Spent for the month" },
+  skipped: { status: "pending", label: "Not launched" },
+};
+
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }

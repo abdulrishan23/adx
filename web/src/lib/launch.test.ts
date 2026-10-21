@@ -1,150 +1,155 @@
 import { describe, expect, it } from "vitest";
-import {
-  daysLeftInMonth,
-  type LaunchCampaign,
-  monthBudget,
-  pickCampaign,
-  resolveLaunch,
-  spentThisMonth,
-} from "./launch";
+import type { LineResolution, ProjectCampaign } from "@/api/types.gen";
+import { accountsByPlatform, lineFigures, platformsWithoutAccount, submitBlocker } from "./launch";
 
-// The rules the owner decided on 2026-10-18 (BD-68). Each test names the
-// wrong behaviour it catches.
+// The screen's own reading of the server's resolution (BD-68). The rules
+// (what a line matches, how spend nets off) are tested in
+// server/core/launch/launch_test.go; these catch the screen misreading them.
 
-const today = new Date(2026, 9, 12); // 12 October, 31-day month, 20 days left
-
-const campaigns: LaunchCampaign[] = [
-  {
-    id: "m1",
-    name: "Wadi | Leads | UAE AR",
-    platform: "meta",
-    type: "Leads, instant form",
-    projectId: 1,
-    spentThisMonthMinor: 50_000_00,
-  },
-  {
-    id: "m2",
-    name: "Wadi | Leads | UAE EN",
-    platform: "meta",
-    type: "Leads, instant form",
-    projectId: 1,
-    spentThisMonthMinor: 30_000_00,
-  },
-  {
-    id: "g1",
+function campaign(over: Partial<ProjectCampaign>): ProjectCampaign {
+  return {
+    id: 1,
+    accountId: 2,
+    platform: "google_ads",
+    externalId: "g-1",
     name: "Search | Wadi | Brand",
-    platform: "google",
-    type: "Search",
+    type: "SEARCH",
+    status: "ENABLED",
+    running: true,
     projectId: 1,
-    spentThisMonthMinor: 40_000_00,
-  },
-  {
-    id: "v1",
-    name: "Verdana | Leads",
-    platform: "google",
-    type: "Search",
-    projectId: 2,
-    spentThisMonthMinor: 90_000_00,
-  },
-];
+    currency: "AED",
+    dailyBudgetMinor: 150000,
+    spentMinor: 2400000,
+    spendDays: 20,
+    ...over,
+  };
+}
 
-describe("resolveLaunch", () => {
-  // Catches ADX updating both matches without asking.
-  it("asks when a line matches more than one campaign", () => {
-    const [r] = resolveLaunch([{ platform: "meta", budgetMinor: 200_000_00 }], campaigns, 1, today);
-    expect(r?.kind).toBe("pick");
-    if (r?.kind === "pick") expect(r.candidates.map((c) => c.id)).toEqual(["m1", "m2"]);
-  });
-
-  // Catches spend to date being ignored, or another project's campaign
-  // counting as a match.
-  it("updates a single match and nets off this month's spend", () => {
-    const [r] = resolveLaunch(
-      [{ platform: "google", budgetMinor: 152_000_00 }],
-      campaigns,
-      1,
-      today,
-    );
-    expect(r).toMatchObject({
-      kind: "update",
-      campaign: { id: "g1" },
-      spentMinor: 40_000_00,
-      remainingMinor: 112_000_00,
-      dailyMinor: 5_600_00,
-    });
-  });
-
-  // Catches a line being matched to a campaign of another type.
-  it("matches the campaign type when the line names one", () => {
-    const [r] = resolveLaunch(
-      [{ platform: "google", type: "Performance Max", budgetMinor: 10_000_00 }],
-      campaigns,
-      1,
-      today,
-    );
-    expect(r?.kind).toBe("create");
-  });
-
-  // Catches a created campaign getting the whole month's budget per day.
-  it("creates when nothing matches, spreading the budget over the days left", () => {
-    const [r] = resolveLaunch(
-      [{ platform: "snapchat", budgetMinor: 20_000_00 }],
-      campaigns,
-      1,
-      today,
-    );
-    expect(r).toMatchObject({
-      kind: "create",
+function line(
+  over: Partial<LineResolution> & { index?: number; platform?: string },
+): LineResolution {
+  const { index = 0, platform = "google_ads", ...rest } = over;
+  return {
+    kind: "create",
+    line: {
+      index,
+      channel: platform === "meta" ? "meta_lead_form" : "google_search",
+      platform,
+      campaignType: platform === "meta" ? "OUTCOME_LEADS" : "SEARCH",
+      projectId: 1,
+      budgetMinor: 30000000,
+      currency: "AED",
+      objective: "leads",
+      geography: "AE",
+    },
+    campaign: null,
+    candidates: [],
+    budget: {
       spentMinor: 0,
-      remainingMinor: 20_000_00,
-      dailyMinor: 1_000_00,
-    });
+      spendKnown: true,
+      remainingMinor: 30000000,
+      dailyMinor: 2727273,
+      daysLeft: 11,
+    },
+    pick: null,
+    paused: [],
+    note: "",
+    ...rest,
+  };
+}
+
+describe("lineFigures", () => {
+  // Catches: a campaign with no figures read this month shown as AED 0 spent.
+  it("says Not available when the spend is unknown", () => {
+    const f = lineFigures(
+      line({
+        kind: "update",
+        campaign: campaign({ spentMinor: null, spendDays: 0 }),
+        budget: {
+          spentMinor: 0,
+          spendKnown: false,
+          remainingMinor: 30000000,
+          dailyMinor: 2727273,
+          daysLeft: 11,
+        },
+      }),
+    );
+    expect(f?.spent).toBe("Not available");
+    expect(f?.left).toBe("AED 300K");
+    expect(f?.daily).toBe("AED 27.3K");
+  });
+
+  // Catches: figures invented for a line the server could not budget.
+  it("has no figures for a pick or an unsupported line", () => {
+    expect(lineFigures(line({ kind: "pick", budget: null }))).toBeNull();
+    expect(lineFigures(line({ kind: "unsupported", budget: null }))).toBeNull();
   });
 });
 
-describe("monthBudget", () => {
-  // Catches a negative budget when the campaign has already spent past the plan.
-  it("never goes below zero", () => {
-    expect(monthBudget({ platform: "meta", budgetMinor: 30_000_00 }, 45_000_00, today)).toEqual({
-      spentMinor: 45_000_00,
-      remainingMinor: 0,
-      dailyMinor: 0,
-    });
-  });
-
-  it("counts today among the days left", () => {
-    expect(daysLeftInMonth(new Date(2026, 9, 31))).toBe(1);
-    expect(daysLeftInMonth(new Date(2026, 1, 1))).toBe(28);
-  });
-});
-
-describe("pickCampaign", () => {
-  const [r] = resolveLaunch([{ platform: "meta", budgetMinor: 200_000_00 }], campaigns, 1, today);
-
-  it("turns the person's choice into an update of that campaign only", () => {
-    if (r?.kind !== "pick") throw new Error("expected a pick");
-    expect(pickCampaign(r, "m2", today)).toMatchObject({
-      kind: "update",
-      campaign: { id: "m2" },
-      remainingMinor: 170_000_00,
-    });
-  });
-
-  // Catches a choice outside the candidates slipping through.
-  it("refuses a campaign that was not a candidate", () => {
-    if (r?.kind !== "pick") throw new Error("expected a pick");
-    expect(pickCampaign(r, "g1", today)).toBeNull();
-  });
-});
-
-describe("spentThisMonth", () => {
-  // Catches last month's spend netting off this month's plan.
-  it("sums only this month's days", () => {
-    const daily = [
-      { date: "2026-09-30", spendMinor: 5_000_00 },
-      { date: "2026-10-01", spendMinor: 1_000_00 },
-      { date: "2026-10-12", spendMinor: 2_000_00 },
+describe("submitBlocker", () => {
+  // Catches: Submit enabled while a line still waits on a person's choice.
+  it("names the lines still waiting on a pick", () => {
+    const lines = [
+      line({ kind: "pick", budget: null, candidates: [campaign({}), campaign({ id: 2 })] }),
+      line({
+        index: 1,
+        platform: "meta",
+        kind: "resume",
+        campaign: campaign({ id: 3, platform: "meta" }),
+      }),
     ];
-    expect(spentThisMonth(daily, today)).toBe(3_000_00);
+    expect(submitBlocker(lines, (c) => (c === "google_search" ? "Google Search" : c))).toBe(
+      "Line 1 (Google Search) still needs a pick.",
+    );
+  });
+
+  // Catches: a submission of nothing, when no line can be deployed.
+  it("blocks a version with nothing Adx can launch", () => {
+    expect(submitBlocker([line({ kind: "unsupported", budget: null })])).toBe(
+      "Nothing in this version can be launched by Adx.",
+    );
+    expect(submitBlocker([])).toBe("The version has no lines.");
+  });
+
+  it("lets a resolved version through", () => {
+    expect(
+      submitBlocker([line({}), line({ index: 1, kind: "unsupported", budget: null })]),
+    ).toBeNull();
+  });
+});
+
+describe("accountsByPlatform", () => {
+  // Catches: asking a person for an account the matched campaign already names.
+  it("takes the account from the line's campaign or candidates", () => {
+    const lines = [
+      line({ kind: "pick", budget: null, candidates: [campaign({}), campaign({ id: 2 })] }),
+      line({
+        index: 1,
+        platform: "meta",
+        kind: "resume",
+        campaign: campaign({ id: 3, platform: "meta", accountId: 3 }),
+      }),
+    ];
+    expect(accountsByPlatform(lines, [])).toEqual({ google_ads: 2, meta: 3 });
+  });
+
+  // Catches: Adx guessing between two connected accounts for a create.
+  it("uses the only connected account for a create, and none when there are two", () => {
+    const create = [line({})];
+    expect(accountsByPlatform(create, [{ id: 7, provider: "google_ads" }])).toEqual({
+      google_ads: 7,
+    });
+    const two = accountsByPlatform(create, [
+      { id: 7, provider: "google_ads" },
+      { id: 8, provider: "google_ads" },
+    ]);
+    expect(two).toEqual({});
+    expect(platformsWithoutAccount(create, two)).toEqual(["google_ads"]);
+  });
+
+  // Catches: an unsupported line demanding an account it will never use.
+  it("ignores unsupported lines", () => {
+    const lines = [line({ kind: "unsupported", budget: null, platform: "meta" })];
+    expect(platformsWithoutAccount(lines, accountsByPlatform(lines, []))).toEqual([]);
   });
 });
