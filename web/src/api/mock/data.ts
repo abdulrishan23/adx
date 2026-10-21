@@ -82,6 +82,9 @@ function series(dailySpend: number, cpl: number, qualRate: number): DailyPoint[]
 type CampaignSeed = {
   name: string;
   platform: Platform;
+  // Platform ids, as the seeded dev database carries them, so the real
+  // coverage read attaches to these rows on a dev server.
+  externalId: string;
   type: string;
   projectId: number;
   dailySpend: number;
@@ -95,6 +98,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Wadi | Leads | UAE AR",
     platform: "meta",
+    externalId: "120330000000101",
     type: "Leads, instant form",
     projectId: 1,
     dailySpend: 2600,
@@ -105,6 +109,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Wadi | Leads | UAE EN",
     platform: "meta",
+    externalId: "120330000000102",
     type: "Leads, instant form",
     projectId: 1,
     dailySpend: 2100,
@@ -115,6 +120,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Wadi | Leads | GCC",
     platform: "meta",
+    externalId: "120330000000103",
     type: "Leads, instant form",
     projectId: 1,
     dailySpend: 1200,
@@ -125,6 +131,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Verdana | Leads | Offer 30%",
     platform: "meta",
+    externalId: "120330000000104",
     type: "Leads, instant form",
     projectId: 2,
     dailySpend: 1800,
@@ -135,6 +142,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Oceana | Leads | GCC only",
     platform: "meta",
+    externalId: "120330000000105",
     type: "Leads, instant form",
     projectId: 3,
     dailySpend: 900,
@@ -145,6 +153,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Sila | Leads | Villas",
     platform: "meta",
+    externalId: "120330000000106",
     type: "Leads, instant form",
     projectId: 4,
     dailySpend: 1100,
@@ -156,6 +165,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Selina Bay | Retargeting",
     platform: "meta",
+    externalId: "120330000000107",
     type: "Leads, instant form",
     projectId: 6,
     dailySpend: 400,
@@ -166,6 +176,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Search | Wadi | Brand",
     platform: "google",
+    externalId: "20100000008",
     type: "Search",
     projectId: 1,
     dailySpend: 700,
@@ -176,6 +187,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Search | Generic | Abu Dhabi off-plan",
     platform: "google",
+    externalId: "20100000009",
     type: "Search",
     projectId: 1,
     dailySpend: 1500,
@@ -186,6 +198,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "PMax | Verdana",
     platform: "google",
+    externalId: "20100000010",
     type: "Performance Max",
     projectId: 2,
     dailySpend: 1300,
@@ -196,6 +209,7 @@ const SEEDS: CampaignSeed[] = [
   {
     name: "Demand Gen | Sensi",
     platform: "google",
+    externalId: "20100000011",
     type: "Demand Gen",
     projectId: 5,
     dailySpend: 600,
@@ -219,6 +233,7 @@ export const CAMPAIGNS: Campaign[] = SEEDS.map((s, i) => {
     id: `c${i + 1}`,
     name: s.name,
     platform: s.platform,
+    externalId: s.externalId,
     type: s.type,
     projectId: s.projectId,
     status: s.status ?? "active",

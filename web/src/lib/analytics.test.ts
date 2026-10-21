@@ -30,6 +30,7 @@ function campaign(
     id,
     projectId,
     platform,
+    externalId: id,
     name: id,
     type: "Leads",
     status: "active",
