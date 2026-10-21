@@ -160,13 +160,13 @@ type PolicyRequest struct {
 	// "write.budget". It must be verified for the account.
 	WriteCapability string
 	// Unplanned says the target is a campaign with no accepted plan behind
-	// it (BD-60 rule 3). Such a campaign allows only the safety actions in
+	// it (BD-68 rule 3). Such a campaign allows only the safety actions in
 	// AllowedUnplanned, whatever the checklist says, until a plan adopts it.
 	Unplanned bool
 }
 
 // AllowedUnplanned lists what may change on a campaign that is not under a
-// plan: a marketer may pause it or lower its budget (BD-60 rule 4). Nothing
+// plan: a marketer may pause it or lower its budget (BD-68 rule 4). Nothing
 // else, not even a resume, until a plan adopts it.
 func AllowedUnplanned(a WriteAction) bool {
 	return a == CampaignPause || a == BudgetLower
@@ -424,7 +424,7 @@ func SuggestedDefaults() PolicyDocument {
 			AudiencesUpsert: allowed, ConversionsUpload: allowed, ExclusionsUpdate: allowed, LeadFieldsSet: allowed,
 			AdPause: allowed, BudgetLower: allowed, CampaignCreatePaus: allowed,
 			// Resuming a paused campaign is a proposal a marketer applies
-			// alone, logged and reversible, without the CMO (BD-60 rule 5).
+			// alone, logged and reversible, without the CMO (BD-68 rule 5).
 			CampaignResume: allowed,
 			AdSetPause:     approval, CampaignPause: approval, BudgetRaise: approval, BidsChange: approval,
 			Launch: approval, TargetingChange: approval,

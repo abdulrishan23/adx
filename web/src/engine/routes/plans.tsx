@@ -7,6 +7,7 @@ import type {
   PlanVersion,
   TemplateGate,
 } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBrand, useBrands } from "@/engine/api/brands";
@@ -163,6 +164,7 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
       {
         brandId,
         projectId: form.projectId,
+        campaignId: 0,
         title: form.title,
         note: "",
         document: {
@@ -178,7 +180,7 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
     );
   }
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New plan</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -249,7 +251,7 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
         Create (version 1)
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 

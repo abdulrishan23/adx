@@ -17,7 +17,15 @@ export default defineConfig({
     // The Go server runs on 8080. Proxying keeps the browser on one origin,
     // which is how production works too. changeOrigin stays false so Go sees
     // the browser's Host, which its cross-origin check compares with Origin.
-    proxy: { "/api": { target: "http://localhost:8080", changeOrigin: false } },
+    // Everything the Go server owns: the API, public landing pages and the
+    // forms they post, and provider webhooks.
+    proxy: Object.fromEntries(
+      // "^/p/" is a pattern so /projects stays with the app.
+      ["/api", "^/p/", "/webhooks"].map((path) => [
+        path,
+        { target: "http://localhost:8080", changeOrigin: false },
+      ]),
+    ),
   },
   test: {
     environment: "node",

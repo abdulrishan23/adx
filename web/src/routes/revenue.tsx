@@ -1,5 +1,5 @@
 import { lazy, Suspense, useState } from "react";
-import { useBrief, useFunnel, useRevenue } from "@/api/adx";
+import { useFunnel, useMarkets, useRevenue } from "@/api/adx";
 import type { Funnel, FunnelStage, MarketRow, Revenue } from "@/api/models";
 import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
 import { Meter } from "@/components/charts";
@@ -194,9 +194,9 @@ const LeadsMap = lazy(() =>
 );
 
 function MarketsSection() {
-  const brief = useBrief();
-  if (!brief.data) return null;
-  return <MarketsPanel rows={brief.data.markets} />;
+  const markets = useMarkets();
+  if (!markets.data) return null;
+  return <MarketsPanel rows={markets.data} />;
 }
 
 function MarketsPanel({ rows }: { rows: MarketRow[] }) {
@@ -206,7 +206,7 @@ function MarketsPanel({ rows }: { rows: MarketRow[] }) {
   const best = Math.max(...rows.map((r) => (r.leads ? r.qualified / r.leads : 0)), 0.01);
   return (
     <Panel
-      title="Where leads live · 7 days"
+      title="Where leads live"
       description="From the phone country code, not nationality"
       bodyClassName="grid p-0 lg:grid-cols-[3fr_2fr]"
     >

@@ -33,6 +33,15 @@ export function formatMoneyShort(minor: number | null | undefined, currency = "A
   return `${currency} ${value}`;
 }
 
+// formatMoneyWhole is for budgets and prices: whole units, no cents, since
+// nobody plans a campaign to the fil.
+export function formatMoneyWhole(minor: number | null | undefined, currency = "AED"): string {
+  if (minor === null || minor === undefined) {
+    return NOT_AVAILABLE;
+  }
+  return `${currency} ${new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(minor / 100)}`;
+}
+
 export function formatNumber(n: number | null | undefined): string {
   if (n === null || n === undefined) {
     return NOT_AVAILABLE;
@@ -92,4 +101,10 @@ export function formatDate(
   opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" },
 ): string {
   return new Intl.DateTimeFormat("en-GB", { timeZone: TIME_ZONE, ...opts }).format(new Date(iso));
+}
+
+// Date and time in Dubai, for when a day isn't enough: a deployment, a
+// submission.
+export function formatDateTime(iso: string): string {
+  return formatDate(iso, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 }

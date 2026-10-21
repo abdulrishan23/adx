@@ -1,8 +1,9 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
-// Plain table parts with the Adx spacing. Numeric columns take `numeric` so
-// figures line up on the right in mono.
+// Plain table parts with the Adx spacing. Rows breathe: generous height and
+// gutters, so a dense list still reads one line at a time. Numeric columns
+// take `numeric` so figures line up on the right in mono.
 
 export function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -32,7 +33,7 @@ export function TH({
   return (
     <th
       className={cn(
-        "h-9 px-3 text-left font-mono text-[0.65rem] font-medium tracking-widest whitespace-nowrap text-muted-foreground uppercase first:pl-5 last:pr-5",
+        "h-11 px-4 text-left align-middle font-mono text-[0.65rem] font-medium tracking-widest whitespace-nowrap text-muted-foreground uppercase first:pl-6 last:pr-6",
         numeric && "text-right",
         className,
       )}
@@ -49,7 +50,7 @@ export function TD({
   return (
     <td
       className={cn(
-        "h-11 px-3 align-middle first:pl-5 last:pr-5",
+        "h-14 px-4 py-3 align-middle first:pl-6 last:pr-6",
         numeric && "text-right font-mono tabular-nums whitespace-nowrap",
         className,
       )}

@@ -337,7 +337,7 @@ func TestReadOnlyAssistantCannotInvokeTheExecutor(t *testing.T) {
 // Catches: a change other than pause or lower budget going through on a
 // campaign no accepted plan stands behind, a server with no coverage source
 // treating campaigns as planned, and a campaign being created with no
-// envelope, so no plan, behind it (BD-60 rules 3 and 4).
+// envelope, so no plan, behind it (BD-68 rules 3 and 4).
 func TestUnplannedCampaignTakesOnlySafetyActions(t *testing.T) {
 	e := setup(t)
 	ctx := t.Context()

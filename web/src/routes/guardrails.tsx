@@ -2,6 +2,7 @@ import { type FormEvent, useId, useState } from "react";
 import { useGuardrails, useUpdateGuardrails } from "@/api/adx";
 import type { AccountGuard, Guardrails } from "@/api/models";
 import { Meter } from "@/components/charts";
+import { Form } from "@/components/form";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformTag } from "@/components/platform";
 import { Button } from "@/components/ui/button";
@@ -160,7 +161,7 @@ function LimitPanel({
   }
   return (
     <Panel title={title} description={description}>
-      <form onSubmit={onSubmit} className="flex items-center gap-2">
+      <Form onSubmit={onSubmit} className="flex items-center gap-2">
         <label htmlFor={id} className="sr-only">
           {title}
         </label>
@@ -185,7 +186,7 @@ function LimitPanel({
             Save
           </Button>
         )}
-      </form>
+      </Form>
       {update.error && (
         <div className="mt-3">
           <ErrorNote error={update.error} />
@@ -222,7 +223,7 @@ function AccountPanel({ account: a }: { account: AccountGuard }) {
         )
       }
     >
-      <form
+      <Form
         onSubmit={(e) => {
           e.preventDefault();
           update.mutate({
@@ -257,7 +258,7 @@ function AccountPanel({ account: a }: { account: AccountGuard }) {
             Save
           </Button>
         )}
-      </form>
+      </Form>
 
       <div className="mt-5 border-t pt-4">
         <p className="text-sm font-medium">Kill switch</p>

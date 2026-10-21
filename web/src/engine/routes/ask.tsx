@@ -1,6 +1,7 @@
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import type { Turn } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -141,7 +142,7 @@ export function AskPage() {
           </div>
         )}
         {current !== null && (
-          <form onSubmit={onSubmit} className="flex gap-2">
+          <Form onSubmit={onSubmit} className="flex gap-2">
             <Input
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -158,7 +159,7 @@ export function AskPage() {
                 preview.mutate(t);
               }}
             />
-          </form>
+          </Form>
         )}
       </div>
     </section>

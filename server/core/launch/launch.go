@@ -1,5 +1,5 @@
 // Package launch is where an accepted plan version's money is pointed at
-// campaigns before anything is submitted (BD-60, decided 2026-10-18 and
+// campaigns before anything is submitted (BD-68, decided 2026-10-18 and
 // 2026-10-19). Create owns the first launch: each plan line is resolved
 // against the project's campaigns by project, platform and campaign type.
 // One running match is updated; more than one and a person picks, never
@@ -181,7 +181,7 @@ func (s *Service) Pick(ctx context.Context, actor core.Actor, planID, version in
 // Coverage says whether a campaign of an account, by the platform's id, has
 // an accepted plan behind it today: a plan of its project whose period
 // covers today and whose lines resolve to updating it, by a sole match or a
-// recorded pick (BD-60 rule 3). A campaign ADX has not read, or that has no
+// recorded pick (BD-68 rule 3). A campaign ADX has not read, or that has no
 // project, is not under a plan.
 func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, externalID string) (PlanCoverage, error) {
 	row, err := s.db.Reader().GetAdCampaignByExternalID(ctx, store.GetAdCampaignByExternalIDParams{AccountID: accountID, ExternalID: externalID})

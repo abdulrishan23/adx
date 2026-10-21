@@ -15,6 +15,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
@@ -71,6 +72,7 @@ type Deps struct {
 	Assistant   *assistant.Assistant
 	Creative    *creative.Service
 	Studio      *studio.Studio
+	Campaigns   *campaigns.Campaigns
 	Brands      *brands.Brands
 	Research    *research.Research
 	Plans       *plans.Plans
@@ -78,7 +80,7 @@ type Deps struct {
 	Measurement *measurement.Measurement
 	Proposals   *proposals.Proposals
 	Execution   *execution.Dispatcher
-	// Launch serves the plan-line resolution and picks (BD-60). Nil leaves
+	// Launch serves the plan-line resolution and picks (BD-68). Nil leaves
 	// the routes out.
 	Launch        *launch.Service
 	CRM           *crm.CRM
@@ -117,6 +119,7 @@ type handlers struct {
 	assistant     *assistant.Assistant
 	creative      *creative.Service
 	studio        *studio.Studio
+	campaigns     *campaigns.Campaigns
 	brands        *brands.Brands
 	research      *research.Research
 	plans         *plans.Plans
@@ -144,7 +147,7 @@ type handlers struct {
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, studio: d.Studio, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -284,11 +287,14 @@ func NewRouter(d Deps) http.Handler {
 			r.Put("/api/creative/projects/{id}/brand-kit", project(h.saveBrandKit))
 			r.Post("/api/creative/projects/{id}/renders", project(h.addRenders))
 			r.Post("/api/creative/projects/{id}/concepts", project(h.createConcept))
+			r.Post("/api/creative/projects/{id}/concepts/generate", project(h.generateConcepts))
 			r.Post("/api/creative/projects/{id}/uploads", project(h.addUploads))
 			r.Get("/api/creative/projects/{id}/download", project(h.downloadCreatives))
 			r.Patch("/api/creative/renders/{id}", h.studioRoute("id", "render", h.updateRender))
 			r.Put("/api/creative/concepts/{id}", h.studioRoute("id", "concept", h.saveConcept))
 			r.Post("/api/creative/concepts/{id}/ads", h.studioRoute("id", "concept", h.saveGenerated))
+			r.Post("/api/creative/concepts/{id}/imagery", h.studioRoute("id", "concept", h.generateImagery))
+			r.Post("/api/creative/concepts/{id}/video", h.studioRoute("id", "concept", h.startVideo))
 			ad := func(fn func(w http.ResponseWriter, r *http.Request, id int64)) http.HandlerFunc {
 				return h.studioRoute("id", "ad", fn)
 			}
@@ -327,6 +333,11 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/brands/{id}/facts", h.addFact)
 			r.Get("/api/brands/{id}/claims", h.claims)
 			r.Get("/api/projects/{projectID}/offers", h.projectOffers)
+			r.Get("/api/projects/{projectID}/campaigns", h.projectCampaigns)
+			r.Get("/api/campaigns", h.listCampaigns)
+			r.Post("/api/campaigns", h.createCampaign)
+			r.Get("/api/campaigns/{campaignID}", h.getCampaign)
+			r.Put("/api/campaigns/{campaignID}", h.updateCampaign)
 			r.Get("/api/offers/{id}", h.getOffer)
 			r.Post("/api/offers/{id}/versions", h.reviseOffer)
 			r.Post("/api/offers/{id}/state", h.setOfferState)
@@ -367,6 +378,7 @@ func NewRouter(d Deps) http.Handler {
 		if h.pages != nil {
 			r.Get("/api/pages", h.listPages)
 			r.Post("/api/pages", h.createPage)
+			r.Post("/api/pages/draft", h.draftPage)
 			r.Get("/api/pages/{id}", h.getPage)
 			r.Post("/api/pages/{id}/versions", h.savePageVersion)
 			r.Get("/api/pages/{id}/versions/{version}/preview", h.previewPage)

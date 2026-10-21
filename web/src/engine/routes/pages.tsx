@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import type { FormField, PageDetail, PageDocument, Section } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useBrand, useBrands } from "@/engine/api/brands";
@@ -24,8 +25,28 @@ const emptyDoc: PageDocument = {
   headline: "",
   subheadline: "",
   sections: [
-    { kind: "text", text: "", items: [], imageKey: "", alt: "" },
-    { kind: "form", text: "", items: [], imageKey: "", alt: "" },
+    {
+      kind: "text",
+      text: "",
+      items: [],
+      imageKey: "",
+      alt: "",
+      pictures: [],
+      stats: [],
+      table: [],
+      link: "",
+    },
+    {
+      kind: "form",
+      text: "",
+      items: [],
+      imageKey: "",
+      alt: "",
+      pictures: [],
+      stats: [],
+      table: [],
+      link: "",
+    },
   ],
   offerId: null,
   offerVersion: null,
@@ -40,6 +61,7 @@ const emptyDoc: PageDocument = {
     successMessage: "Thank you. We will be in touch.",
   },
   footer: "",
+  twinSlug: "",
 };
 
 // Landing pages: structured, versioned, server-rendered with no script.
@@ -125,6 +147,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
         projectId: form.projectId,
         planId: 0,
         planVersion: 0,
+        campaignId: 0,
         slug: form.slug,
         name: form.name,
         language: form.language,
@@ -134,7 +157,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
     );
   }
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New page</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -198,7 +221,7 @@ function NewPage({ onCreated }: { onCreated: (id: number) => void }) {
         Create (version 1)
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -506,7 +529,17 @@ function Editor({
                 ...doc,
                 sections: [
                   ...sections,
-                  { kind: "text", text: "", items: [], imageKey: "", alt: "" },
+                  {
+                    kind: "text",
+                    text: "",
+                    items: [],
+                    imageKey: "",
+                    alt: "",
+                    pictures: [],
+                    stats: [],
+                    table: [],
+                    link: "",
+                  },
                 ],
               });
             }}

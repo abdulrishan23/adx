@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { Plus, X } from "lucide-react";
+import { Plus, Sparkles, X } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import {
   publishAd,
   saveGenerated,
   upload,
   useCreativeProject,
+  useGenerateImagery,
   useRefreshCreative,
   useSaveConcept,
+  useStartVideo,
 } from "@/api/creative";
 import type { Concept, CreativeProject } from "@/api/types.gen";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
@@ -25,6 +27,7 @@ import { layoutDoc } from "@/creative/layout";
 import { FMT_ORDER, type Fmt, type Lang, slugFromCode, slugFromName } from "@/creative/naming";
 import { loadGoogleFonts, registerFonts, renderDoc } from "@/creative/render";
 import { Field, Progress, textareaClass } from "@/creative/ui";
+import { useRun } from "@/engine/api/runs";
 import { cn } from "@/lib/utils";
 
 export function CreativeConceptPage({
@@ -81,13 +84,23 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
 
   return (
     <section>
-      <Link
-        to="/creative/$projectId"
-        params={{ projectId: String(projectId) }}
-        className="text-sm text-muted-foreground hover:text-foreground"
-      >
-        ← {project.settings.projectName}
-      </Link>
+      {concept.campaignId !== null ? (
+        <Link
+          to="/projects/$projectId/campaigns/$campaignId"
+          params={{ projectId: String(projectId), campaignId: String(concept.campaignId) }}
+          search={{ stage: "ads" }}
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Campaign
+        </Link>
+      ) : (
+        <Link
+          to="/creative/concepts"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Concepts
+        </Link>
+      )}
       <PageHeader
         className="mt-2"
         title={
@@ -133,6 +146,8 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
             >
               <Input id="why" value={f.why} onChange={(e) => set({ why: e.target.value })} />
             </Field>
+            <PictureIt concept={concept} />
+            <MakeVideo concept={concept} project={project} />
             <div className="space-y-2 md:col-span-2">
               <p className="text-sm font-medium">Render behind generated ads</p>
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -231,6 +246,154 @@ function ConceptEditor({ project, concept }: { project: CreativeProject; concept
         <Generate project={project} concept={concept} slug={slug} copy={f.copy} dirty={dirty} />
       </div>
     </section>
+  );
+}
+
+// Adx pictures the concept from its imagery prompt; the pictures join the
+// project's renders, so the choice below fills up as they arrive.
+function PictureIt({ concept }: { concept: Concept }) {
+  const [prompt, setPrompt] = useState(concept.imagery);
+  const [count, setCount] = useState(2);
+  const [useRenders, setUseRenders] = useState(true);
+  const generate = useGenerateImagery(concept.id);
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <Field
+        label="Picture"
+        htmlFor="imagery"
+        hint="What the picture shows: scene, light, mood. Copy is laid over it, so leave the words out."
+      >
+        <textarea
+          id="imagery"
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          rows={2}
+          className={textareaClass}
+          placeholder="Golden hour over the lagoon villas, calm water in the foreground"
+        />
+      </Field>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
+          size="sm"
+          disabled={generate.isPending || prompt.trim() === ""}
+          onClick={() => generate.mutate({ count, prompt, aspectRatio: "9:16", useRenders })}
+        >
+          <Sparkles />
+          {generate.isPending ? "Picturing" : "Picture it"}
+        </Button>
+        <Input
+          aria-label="How many pictures"
+          type="number"
+          min={1}
+          max={4}
+          value={count}
+          onChange={(e) => setCount(Number(e.target.value))}
+          className="w-16"
+        />
+        <label className="flex items-center gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={useRenders}
+            onChange={(e) => setUseRenders(e.target.checked)}
+          />
+          Take the cue from the project's renders
+        </label>
+        {generate.data && (
+          <span className="text-sm text-muted-foreground">
+            {generate.data.renders.length} added as{" "}
+            {generate.data.renders.map((r) => r.code).join(", ")}.
+          </span>
+        )}
+      </div>
+      {generate.error && <p className="text-sm text-destructive">{generate.error.message}</p>}
+      {generate.data?.notes.map((n) => (
+        <p key={n} className="text-sm text-muted-foreground">
+          {n}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// A video ad per language: motion moves the chosen renders and ends on the
+// finished story ad; the video model grows a clip from the first render and
+// the concept's picture prompt. Either is made in the background and lands
+// on the project page as an ad to review.
+function MakeVideo({ concept, project }: { concept: Concept; project: CreativeProject }) {
+  const [mode, setMode] = useState<"motion" | "model">("motion");
+  const [lang, setLang] = useState<Lang>("en");
+  const [picked, setPicked] = useState<string[]>([]);
+  const start = useStartVideo(concept.id);
+  const refresh = useRefreshCreative();
+  const run = useRun(start.data?.run.id ?? "");
+  const state = run.data?.state;
+  useEffect(() => {
+    if (state === "succeeded" || state === "failed") refresh();
+  }, [state, refresh]);
+  const renders = project.renders.filter((r) => !r.hidden);
+  const toggle = (code: string) =>
+    setPicked((xs) => (xs.includes(code) ? xs.filter((x) => x !== code) : [...xs, code]));
+  return (
+    <div className="space-y-2 md:col-span-2">
+      <p className="text-sm font-medium">Video</p>
+      <div className="flex flex-wrap items-center gap-3">
+        <Segmented
+          label="How"
+          value={mode}
+          onChange={setMode}
+          options={[
+            { value: "motion", label: "Motion from renders" },
+            { value: "model", label: "Veo clip" },
+          ]}
+        />
+        <Segmented
+          label="Language"
+          value={lang}
+          onChange={setLang}
+          options={[
+            { value: "en", label: "English" },
+            { value: "ar", label: "Arabic" },
+          ]}
+        />
+        <Button
+          size="sm"
+          disabled={start.isPending || state === "queued" || state === "running"}
+          onClick={() => start.mutate({ mode, lang, renderCodes: picked, prompt: "", slug: "" })}
+        >
+          <Sparkles />
+          {state === "queued" || state === "running" ? "Making" : "Make video"}
+        </Button>
+      </div>
+      {mode === "motion" && renders.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {renders.map((r) => (
+            <RenderChoice
+              key={r.code}
+              selected={picked.includes(r.code)}
+              onClick={() => toggle(r.code)}
+              title={`${r.code} ${r.label}`}
+            >
+              <img src={fileUrl(r.preview)} alt={r.code} className="size-full object-cover" />
+            </RenderChoice>
+          ))}
+        </div>
+      )}
+      <p className="text-xs text-muted-foreground">
+        {mode === "motion"
+          ? "Pick the renders to move, in order, or leave them for Adx to choose. The finished story ad in that language closes the video."
+          : "Veo grows an eight-second clip from the first render and the picture prompt above."}
+      </p>
+      {start.error && <p className="text-sm text-destructive">{start.error.message}</p>}
+      {run.data && (
+        <p className="text-sm text-muted-foreground">
+          {state === "succeeded"
+            ? "Done. The video is on the project page, waiting for review."
+            : state === "failed"
+              ? `Failed: ${run.data.error ?? "unknown"}`
+              : `${state}…`}
+        </p>
+      )}
+    </div>
   );
 }
 

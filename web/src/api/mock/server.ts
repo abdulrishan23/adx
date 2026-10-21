@@ -11,9 +11,11 @@ import type {
   Lead,
   LeadFilter,
   LeadsSummary,
+  MarketRow,
   Proposal,
   Scope,
 } from "../models";
+import { markets as splitMarkets } from "./brief";
 import { ALERTS, CAMPAIGNS, CONNECTIONS, DAY, LEADS, now, PROJECTS, PROPOSALS } from "./data";
 import { source } from "./sources";
 
@@ -53,6 +55,15 @@ const STAGES: { key: string; label: string }[] = [
   { key: "offer", label: "Offer" },
   { key: "deal", label: "Done-Deal" },
 ];
+
+// Where leads live for the scope: the scope's leads split by phone country.
+export function markets(scope: Scope): MarketRow[] {
+  const cs = campaigns(scope);
+  return splitMarkets(
+    cs.reduce((a, c) => a + c.leads, 0),
+    cs.reduce((a, c) => a + c.qualified, 0),
+  );
+}
 
 export function funnel(scope: Scope): Funnel {
   const rows: FunnelRow[] = PROJECTS.map((p) => {

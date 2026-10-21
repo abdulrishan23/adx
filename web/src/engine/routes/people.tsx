@@ -1,4 +1,5 @@
 import { type FormEvent, useState } from "react";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -117,7 +118,7 @@ function NewPerson({ onCreated }: { onCreated: (id: number) => void }) {
     create.mutate(form, { onSuccess: (d) => onCreated(d.person.id) });
   }
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3">
       <h2 className="font-semibold">Add a person by hand</h2>
       <Input
         placeholder="Name"
@@ -138,7 +139,7 @@ function NewPerson({ onCreated }: { onCreated: (id: number) => void }) {
         Add
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 

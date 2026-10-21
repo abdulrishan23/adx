@@ -1,4 +1,5 @@
 import type { FormEvent } from "react";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCreateProject, useProjects } from "@/engine/api/projects";
@@ -18,12 +19,12 @@ export function ProjectsPage() {
     <section className="space-y-6">
       <h1 className="text-3xl font-semibold tracking-tight">Projects</h1>
 
-      <form onSubmit={onSubmit} className="flex max-w-md gap-2">
+      <Form onSubmit={onSubmit} className="flex max-w-md gap-2">
         <Input name="name" placeholder="Project name" aria-label="Project name" />
         <Button type="submit" disabled={create.isPending}>
           Add
         </Button>
-      </form>
+      </Form>
       {create.error && <p className="text-sm text-destructive">{create.error.message}</p>}
 
       {projects.isPending && <p className="text-muted-foreground">Loading…</p>}

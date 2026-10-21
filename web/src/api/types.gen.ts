@@ -64,6 +64,7 @@ export interface ActionPreview {
 export interface Ad {
     id: number;
     code: string;
+    kind: string;
     fileName: string;
     fmt: Fmt;
     lang: Lang;
@@ -100,6 +101,14 @@ export interface AdHocReportInput {
     params: ReportParams;
 }
 
+// From campaigns/campaigns.go
+export interface AdTally {
+    total: number;
+    approved: number;
+    revise: number;
+    waiting: number;
+}
+
 // From studio/studio.go
 export interface AdVersion {
     id: number;
@@ -107,6 +116,7 @@ export interface AdVersion {
     file: FileRef;
     preview: FileRef;
     source: string;
+    method: string;
     createdAt: string;
 }
 
@@ -276,6 +286,15 @@ export interface Asset {
     provenance: string;
     uploadedBy: number | null;
     createdAt: string;
+}
+
+// From campaigns/needs.go
+export interface AssetNeed {
+    kind: string;
+    fmt: string;
+    label: string;
+    have: Record<string, number> | null;
+    want: number;
 }
 
 // From plans/plans.go
@@ -690,6 +709,71 @@ export interface CallsResponse {
     calls: Call[];
 }
 
+// From campaigns/campaigns.go
+export interface Campaign {
+    id: number;
+    projectId: number;
+    name: string;
+    goal: string;
+    audience: string;
+    avoid: string;
+    offerId: number | null;
+    startsOn: string;
+    endsOn: string;
+    budgetMinor: number | null;
+    currency: string;
+    channels: string[];
+    markets: string[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From campaigns/campaigns.go
+export interface CampaignDetail extends CampaignSummary {
+    offer: Offer | null;
+    concepts: Concept[];
+    pages: PageSummary[];
+    plan: PlanSummary | null;
+    launch: LaunchStatus | null;
+    ads: AdTally;
+    needs: ChannelNeed[];
+}
+
+// From campaigns/campaigns.go
+export interface CampaignInput {
+    projectId: number;
+    name: string;
+    goal: string;
+    audience: string;
+    avoid: string;
+    offerId: number;
+    startsOn: string;
+    endsOn: string;
+    budgetMinor: number | null;
+    currency: string;
+    channels: string[];
+    markets: string[];
+}
+
+// From campaigns/campaigns.go
+export interface CampaignStage {
+    id: string;
+    status: string;
+    note: string;
+}
+
+// From campaigns/campaigns.go
+export interface CampaignSummary extends Campaign {
+    projectName: string;
+    stages: CampaignStage[];
+    state: string;
+}
+
+// From api/campaigns.go
+export interface CampaignsResponse {
+    campaigns: CampaignSummary[];
+}
+
 // From api/proposals.go
 export interface CancelInput {
     reason: string;
@@ -761,6 +845,17 @@ export interface ChannelInfo {
 
 // From outreach/outreach.go
 export type ChannelMode = "approved" | "automatic" | "off";
+
+// From campaigns/needs.go
+export interface ChannelNeed {
+    channel: string;
+    label: string;
+    platform: string;
+    supported: boolean;
+    assets: AssetNeed[];
+    page: boolean;
+    note: string;
+}
 
 // From alerts/alerts.go
 export const CheckCostSpike = "cost_spike";
@@ -902,6 +997,8 @@ export interface Concept {
     description: string;
     cta: string;
     copy: unknown;
+    imagery: string;
+    campaignId: number | null;
     ads: Ad[];
 }
 
@@ -1202,6 +1299,9 @@ export interface DraftInput {
     channel: string;
     body: string;
 }
+
+// From pages/draft.go
+export const DraftTool = "propose_page";
 
 // From api/outreach.go
 export interface DraftsResponse {
@@ -1618,6 +1718,21 @@ export interface FunnelState {
     unmapped: string[];
 }
 
+// From studio/generate.go
+export interface GenerateConceptsInput {
+    count: number;
+    instructions: string;
+    campaignId: number;
+}
+
+// From studio/imagery.go
+export interface GenerateImageryInput {
+    count: number;
+    prompt: string;
+    aspectRatio: string;
+    useRenders: boolean;
+}
+
 // From plans/generate.go
 export interface GenerateInput {
     briefIds: number[];
@@ -1650,6 +1765,20 @@ export interface GeneratedAd {
     slug: string;
     renderCode: string;
     design: unknown;
+}
+
+// From studio/generate.go
+export interface GeneratedConcepts {
+    concepts: Concept[];
+    notes: string[];
+    model: string;
+    usage: Usage;
+}
+
+// From studio/imagery.go
+export interface GeneratedImagery {
+    renders: Render[];
+    notes: string[];
 }
 
 // From plans/generate.go
@@ -2529,6 +2658,7 @@ export const MulawCodec = "mulaw_8000";
 export interface NewConcept {
     code: string;
     name: string;
+    campaignId: number;
 }
 
 // From studio/ads.go
@@ -2745,6 +2875,7 @@ export interface Page {
     projectId: number | null;
     planId: number | null;
     planVersion: number | null;
+    campaignId: number | null;
     slug: string;
     name: string;
     language: string;
@@ -2787,6 +2918,33 @@ export interface PageDocument {
     offerVersion: number | null;
     form: FormConfig | null;
     footer: string;
+    twinSlug: string;
+}
+
+// From pages/draft.go
+export interface PageDraft {
+    page: Page;
+    version: PageVersion;
+    notes: string[];
+}
+
+// From pages/draft.go
+export interface PageDraftInput {
+    projectId: number;
+    language: string;
+    slug: string;
+    name: string;
+    offerId: number;
+    instructions: string;
+    campaignId: number;
+    pageId: number;
+}
+
+// From pages/draft.go
+export interface PageDrafts {
+    pages: PageDraft[];
+    model: string;
+    usage: Usage;
 }
 
 // From pages/pages.go
@@ -2795,6 +2953,7 @@ export interface PageInput {
     projectId: number;
     planId: number;
     planVersion: number;
+    campaignId: number;
     slug: string;
     name: string;
     language: string;
@@ -2829,6 +2988,15 @@ export interface PageRequirement {
 }
 
 // From pages/pages.go
+export interface PageSummary extends Page {
+    brandName: string;
+    projectName: string;
+    latestVersion: number;
+    publishedVersion: number | null;
+    publicUrl: string;
+}
+
+// From pages/pages.go
 export interface PageVersion {
     id: number;
     pageId: number;
@@ -2847,7 +3015,7 @@ export interface PageVersionInput {
 
 // From api/pages.go
 export interface PagesResponse {
-    pages: Page[];
+    pages: PageSummary[];
     publishing: PublishingGate;
 }
 
@@ -2941,6 +3109,7 @@ export interface Plan {
     id: number;
     brandId: number;
     projectId: number | null;
+    campaignId: number | null;
     title: string;
     createdBy: number | null;
     createdAt: string;
@@ -3008,6 +3177,7 @@ export interface PlanEvidenceRef {
 export interface PlanInput {
     brandId: number;
     projectId: number;
+    campaignId: number;
     title: string;
     document: PlanDocument;
     note: string;
@@ -3177,6 +3347,7 @@ export interface PriorHypothesis {
 export interface Project {
     id: number;
     name: string;
+    brandId: number | null;
     createdAt: string;
 }
 
@@ -3216,6 +3387,7 @@ export interface ProjectSummary {
     revise: number;
     waiting: number;
     unpublished: number;
+    logo: string | null;
     updatedAt: string;
 }
 
@@ -4088,6 +4260,10 @@ export interface Section {
     items: string[];
     imageKey: string;
     alt: string;
+    pictures: string[];
+    stats: Stat[];
+    table: string[][];
+    link: string;
 }
 
 // From voice/voice.go
@@ -4298,6 +4474,19 @@ export interface StartResult {
 export interface StartRunResponse {
     run: Run;
     created: boolean;
+}
+
+// From studio/video.go
+export interface StartedVideo {
+    ad: Ad;
+    run: Run;
+    started: boolean;
+}
+
+// From pages/pages.go
+export interface Stat {
+    label: string;
+    value: string;
 }
 
 // From runs/runs.go
@@ -4587,6 +4776,24 @@ export interface VersionInput {
 
 // From core/core.go
 export type Via = "assistant" | "job" | "mcp" | "startup" | "web";
+
+// From studio/video.go
+export interface VideoInput {
+    lang: Lang;
+    mode: string;
+    renderCodes: string[];
+    prompt: string;
+    slug: string;
+}
+
+// From studio/video.go
+export const VideoModel = "model";
+
+// From studio/video.go
+export const VideoMotion = "motion";
+
+// From studio/video.go
+export const VideoRunKind = "studio_video";
 
 // From api/evaluation.go
 export interface VoiceInput {

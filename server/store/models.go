@@ -294,6 +294,26 @@ type CallSession struct {
 	UpdatedAt            time.Time
 }
 
+type Campaign struct {
+	ID          int64
+	WorkspaceID int64
+	ProjectID   int64
+	Name        string
+	Goal        string
+	Audience    string
+	Avoid       string
+	OfferID     sql.NullInt64
+	StartsOn    sql.NullTime
+	EndsOn      sql.NullTime
+	BudgetMinor sql.NullInt64
+	Currency    string
+	Channels    string
+	Markets     string
+	CreatedBy   sql.NullInt64
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type CampaignDailyMetric struct {
 	ID                    int64
 	WorkspaceID           int64
@@ -380,6 +400,7 @@ type CreativeAd struct {
 	Draft      sql.NullString
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	Kind       string
 }
 
 type CreativeAdVersion struct {
@@ -392,6 +413,7 @@ type CreativeAdVersion struct {
 	Source        string
 	CreatedBy     sql.NullInt64
 	CreatedAt     time.Time
+	Method        string
 }
 
 type CreativeComment struct {
@@ -422,6 +444,8 @@ type CreativeConcept struct {
 	Copy        string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	Imagery     string
+	CampaignID  sql.NullInt64
 }
 
 type CreativeDecision struct {
@@ -1088,6 +1112,7 @@ type Page struct {
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	CampaignID  sql.NullInt64
 }
 
 type PageDeployment struct {
@@ -1187,6 +1212,7 @@ type Plan struct {
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	CampaignID  sql.NullInt64
 }
 
 type PlanVersion struct {

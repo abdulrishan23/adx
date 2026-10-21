@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Report, ReportSchedule } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -87,7 +88,7 @@ export function ReportsPage() {
         )}
         {generate.error && <p className="text-sm text-destructive">{generate.error.message}</p>}
         {isAdmin && (
-          <form
+          <Form
             className="flex flex-wrap items-end gap-2 text-sm"
             onSubmit={(e) => {
               e.preventDefault();
@@ -138,7 +139,7 @@ export function ReportsPage() {
               Add schedule
             </Button>
             {create.error && <span className="text-destructive">{create.error.message}</span>}
-          </form>
+          </Form>
         )}
       </div>
 

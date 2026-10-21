@@ -15,7 +15,11 @@ import type {
   ConceptInput,
   CreativeProject,
   FileRef,
+  GenerateConceptsInput,
   GeneratedAd,
+  GeneratedConcepts,
+  GeneratedImagery,
+  GenerateImageryInput,
   GenerateResult,
   NewConcept,
   NewRender,
@@ -27,9 +31,11 @@ import type {
   RendersResponse,
   Settings,
   SettingsInput,
+  StartedVideo,
   UploadedAd,
   UploadResult,
   VariationInput,
+  VideoInput,
 } from "./types.gen";
 
 const KEY = ["creative"] as const;
@@ -101,6 +107,27 @@ export const useUpdateRender = () =>
 export const useCreateConcept = (projectId: number) =>
   useCreativeMutation((input: NewConcept) =>
     postJSON<Concept>(`/api/creative/projects/${projectId}/concepts`, input),
+  );
+
+// Adx writes concepts from the brand's approved facts and offers; figures
+// the facts don't support are dropped and said in the notes.
+export const useGenerateConcepts = (projectId: number) =>
+  useCreativeMutation((input: GenerateConceptsInput) =>
+    postJSON<GeneratedConcepts>(`/api/creative/projects/${projectId}/concepts/generate`, input),
+  );
+
+// Adx pictures a concept: each picture becomes a render of the project,
+// labelled with the concept's code, for the generator and the editor.
+export const useGenerateImagery = (conceptId: number) =>
+  useCreativeMutation((input: GenerateImageryInput) =>
+    postJSON<GeneratedImagery>(`/api/creative/concepts/${conceptId}/imagery`, input),
+  );
+
+// A video ad is made in the background: motion from the project's renders
+// ending on the finished story ad, or a clip from the video model.
+export const useStartVideo = (conceptId: number) =>
+  useCreativeMutation((input: VideoInput) =>
+    postJSON<StartedVideo>(`/api/creative/concepts/${conceptId}/video`, input),
   );
 
 export const useSaveConcept = (conceptId: number) =>

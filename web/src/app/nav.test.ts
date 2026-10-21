@@ -24,10 +24,14 @@ describe("nav", () => {
   // Catches a screen under a door that leaves the sidebar closed, or Settings
   // opening a door by accident.
   it("knows which door a path belongs to", () => {
-    expect(doorOf("/creative")?.label).toBe("Create");
-    expect(doorOf("/brands/3")?.label).toBe("Create");
+    expect(doorOf("/projects/1")?.label).toBe("Projects");
+    expect(doorOf("/projects/1/campaigns/2")?.label).toBe("Projects");
+    expect(doorOf("/studio/launch")?.label).toBe("Projects");
+    expect(doorOf("/brands/3")?.label).toBe("Projects");
+    expect(doorOf("/creative/producer")?.label).toBe("Creative");
+    expect(doorOf("/creative/1/concepts/2")?.label).toBe("Creative");
     expect(doorOf("/leads/1001")?.label).toBe("Convert");
-    expect(doorOf("/perform/projects")?.label).toBe("Perform");
+    expect(doorOf("/campaigns")?.label).toBe("Perform");
     expect(doorOf("/settings/people")).toBeUndefined();
     expect(doorOf("/")).toBeUndefined();
   });
@@ -52,25 +56,5 @@ describe("nav", () => {
     for (const group of navFor("viewer")) {
       expect(group.items.length).toBeGreaterThan(0);
     }
-  });
-});
-
-// The door from Perform › Campaigns into Create › Launch (BD-60). Catches the
-// project being dropped on the way, or a junk value opening some brand.
-describe("launch door", () => {
-  const parse = router.routesByPath["/create/launch"].options.validateSearch as (
-    s: Record<string, unknown>,
-  ) => { project?: number };
-
-  it("carries the project across", () => {
-    expect(parse({ project: "3" })).toEqual({ project: 3 });
-    expect(parse({ project: 3 })).toEqual({ project: 3 });
-  });
-
-  it("ignores anything that is not a brand id", () => {
-    expect(parse({})).toEqual({});
-    expect(parse({ project: "all" })).toEqual({});
-    expect(parse({ project: "0" })).toEqual({});
-    expect(parse({ project: "1.5" })).toEqual({});
   });
 });

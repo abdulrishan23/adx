@@ -1,6 +1,7 @@
 import { Popover } from "@base-ui/react/popover";
 import { CalendarDays, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import { Form } from "@/components/form";
 import {
   type AnalyticsSearch,
   analyticsPeriodLabel,
@@ -120,7 +121,7 @@ export function AnalyticsDatePicker({
       <Popover.Portal>
         <Popover.Positioner align="end" sideOffset={8} collisionPadding={12} className="z-50">
           <Popover.Popup className="max-h-(--available-height) w-[420px] max-w-[calc(100vw-24px)] overflow-y-auto border bg-popover text-popover-foreground shadow-xl outline-none">
-            <form
+            <Form
               onSubmit={(e) => {
                 e.preventDefault();
                 setSubmitted(true);
@@ -232,7 +233,7 @@ export function AnalyticsDatePicker({
                 </Button>
                 <Button type="submit">Apply</Button>
               </div>
-            </form>
+            </Form>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

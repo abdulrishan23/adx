@@ -88,7 +88,7 @@ func (q *Queries) CountPicks(ctx context.Context, arg CountPicksParams) (CountPi
 }
 
 const getAd = `-- name: GetAd :one
-SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at FROM creative_ads WHERE id = ?
+SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind FROM creative_ads WHERE id = ?
 `
 
 func (q *Queries) GetAd(ctx context.Context, id int64) (CreativeAd, error) {
@@ -108,12 +108,13 @@ func (q *Queries) GetAd(ctx context.Context, id int64) (CreativeAd, error) {
 		&i.Draft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
 
 const getAdByCode = `-- name: GetAdByCode :one
-SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at FROM creative_ads WHERE project_id = ? AND code = ?
+SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind FROM creative_ads WHERE project_id = ? AND code = ?
 `
 
 type GetAdByCodeParams struct {
@@ -138,6 +139,7 @@ func (q *Queries) GetAdByCode(ctx context.Context, arg GetAdByCodeParams) (Creat
 		&i.Draft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -166,7 +168,7 @@ func (q *Queries) GetComment(ctx context.Context, id int64) (CreativeComment, er
 }
 
 const getConcept = `-- name: GetConcept :one
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE id = ?
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery, campaign_id FROM creative_concepts WHERE id = ?
 `
 
 func (q *Queries) GetConcept(ctx context.Context, id int64) (CreativeConcept, error) {
@@ -186,12 +188,14 @@ func (q *Queries) GetConcept(ctx context.Context, id int64) (CreativeConcept, er
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
+		&i.CampaignID,
 	)
 	return i, err
 }
 
 const getConceptByCode = `-- name: GetConceptByCode :one
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE project_id = ? AND code = ?
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery, campaign_id FROM creative_concepts WHERE project_id = ? AND code = ?
 `
 
 type GetConceptByCodeParams struct {
@@ -216,6 +220,8 @@ func (q *Queries) GetConceptByCode(ctx context.Context, arg GetConceptByCodePara
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -384,9 +390,9 @@ func (q *Queries) GetRenderByCode(ctx context.Context, arg GetRenderByCodeParams
 }
 
 const insertAd = `-- name: InsertAd :one
-INSERT INTO creative_ads (project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at
+INSERT INTO creative_ads (project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, kind, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind
 `
 
 type InsertAdParams struct {
@@ -400,6 +406,7 @@ type InsertAdParams struct {
 	HasCta     int64
 	RenderCode string
 	Draft      sql.NullString
+	Kind       string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -416,6 +423,7 @@ func (q *Queries) InsertAd(ctx context.Context, arg InsertAdParams) (CreativeAd,
 		arg.HasCta,
 		arg.RenderCode,
 		arg.Draft,
+		arg.Kind,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)
@@ -434,6 +442,7 @@ func (q *Queries) InsertAd(ctx context.Context, arg InsertAdParams) (CreativeAd,
 		&i.Draft,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Kind,
 	)
 	return i, err
 }
@@ -484,18 +493,19 @@ func (q *Queries) InsertComment(ctx context.Context, arg InsertCommentParams) (C
 }
 
 const insertConcept = `-- name: InsertConcept :one
-INSERT INTO creative_concepts (project_id, code, pos, name, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
-RETURNING id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at
+INSERT INTO creative_concepts (project_id, code, pos, name, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+RETURNING id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery, campaign_id
 `
 
 type InsertConceptParams struct {
-	ProjectID int64
-	Code      string
-	Pos       int64
-	Name      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ProjectID  int64
+	Code       string
+	Pos        int64
+	Name       string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	CampaignID sql.NullInt64
 }
 
 func (q *Queries) InsertConcept(ctx context.Context, arg InsertConceptParams) (CreativeConcept, error) {
@@ -506,6 +516,7 @@ func (q *Queries) InsertConcept(ctx context.Context, arg InsertConceptParams) (C
 		arg.Name,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.CampaignID,
 	)
 	var i CreativeConcept
 	err := row.Scan(
@@ -522,6 +533,8 @@ func (q *Queries) InsertConcept(ctx context.Context, arg InsertConceptParams) (C
 		&i.Copy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Imagery,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -680,9 +693,9 @@ func (q *Queries) InsertRender(ctx context.Context, arg InsertRenderParams) (Cre
 }
 
 const insertVersion = `-- name: InsertVersion :one
-INSERT INTO creative_ad_versions (ad_id, version, file_id, preview_file_id, design, source, created_by, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-RETURNING id, ad_id, version, file_id, preview_file_id, design, source, created_by, created_at
+INSERT INTO creative_ad_versions (ad_id, version, file_id, preview_file_id, design, source, method, created_by, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, ad_id, version, file_id, preview_file_id, design, source, created_by, created_at, method
 `
 
 type InsertVersionParams struct {
@@ -692,6 +705,7 @@ type InsertVersionParams struct {
 	PreviewFileID int64
 	Design        sql.NullString
 	Source        string
+	Method        string
 	CreatedBy     sql.NullInt64
 	CreatedAt     time.Time
 }
@@ -704,6 +718,7 @@ func (q *Queries) InsertVersion(ctx context.Context, arg InsertVersionParams) (C
 		arg.PreviewFileID,
 		arg.Design,
 		arg.Source,
+		arg.Method,
 		arg.CreatedBy,
 		arg.CreatedAt,
 	)
@@ -718,12 +733,13 @@ func (q *Queries) InsertVersion(ctx context.Context, arg InsertVersionParams) (C
 		&i.Source,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.Method,
 	)
 	return i, err
 }
 
 const latestVersion = `-- name: LatestVersion :one
-SELECT id, ad_id, version, file_id, preview_file_id, design, source, created_by, created_at FROM creative_ad_versions WHERE ad_id = ? ORDER BY version DESC LIMIT 1
+SELECT id, ad_id, version, file_id, preview_file_id, design, source, created_by, created_at, method FROM creative_ad_versions WHERE ad_id = ? ORDER BY version DESC LIMIT 1
 `
 
 func (q *Queries) LatestVersion(ctx context.Context, adID int64) (CreativeAdVersion, error) {
@@ -739,12 +755,13 @@ func (q *Queries) LatestVersion(ctx context.Context, adID int64) (CreativeAdVers
 		&i.Source,
 		&i.CreatedBy,
 		&i.CreatedAt,
+		&i.Method,
 	)
 	return i, err
 }
 
 const listAds = `-- name: ListAds :many
-SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at FROM creative_ads WHERE project_id = ? ORDER BY pos, code
+SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind FROM creative_ads WHERE project_id = ? ORDER BY pos, code
 `
 
 func (q *Queries) ListAds(ctx context.Context, projectID int64) ([]CreativeAd, error) {
@@ -770,6 +787,7 @@ func (q *Queries) ListAds(ctx context.Context, projectID int64) ([]CreativeAd, e
 			&i.Draft,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -844,7 +862,7 @@ func (q *Queries) ListComments(ctx context.Context, projectID int64) ([]ListComm
 }
 
 const listConceptAds = `-- name: ListConceptAds :many
-SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at FROM creative_ads WHERE concept_id = ? ORDER BY pos, code
+SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind FROM creative_ads WHERE concept_id = ? ORDER BY pos, code
 `
 
 func (q *Queries) ListConceptAds(ctx context.Context, conceptID int64) ([]CreativeAd, error) {
@@ -870,6 +888,7 @@ func (q *Queries) ListConceptAds(ctx context.Context, conceptID int64) ([]Creati
 			&i.Draft,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -885,7 +904,7 @@ func (q *Queries) ListConceptAds(ctx context.Context, conceptID int64) ([]Creati
 }
 
 const listConcepts = `-- name: ListConcepts :many
-SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at FROM creative_concepts WHERE project_id = ? ORDER BY pos, code
+SELECT id, project_id, code, pos, name, why, primary_text, headline, description, cta, copy, created_at, updated_at, imagery, campaign_id FROM creative_concepts WHERE project_id = ? ORDER BY pos, code
 `
 
 func (q *Queries) ListConcepts(ctx context.Context, projectID int64) ([]CreativeConcept, error) {
@@ -911,6 +930,8 @@ func (q *Queries) ListConcepts(ctx context.Context, projectID int64) ([]Creative
 			&i.Copy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Imagery,
+			&i.CampaignID,
 		); err != nil {
 			return nil, err
 		}
@@ -930,7 +951,7 @@ SELECT p.id AS project_id, p.name, c.prefix, c.review_active,
        (SELECT COUNT(*) FROM creative_concepts k WHERE k.project_id = c.project_id) AS concepts,
        (SELECT COUNT(*) FROM creative_ads a WHERE a.project_id = c.project_id) AS ads,
        (SELECT COUNT(*) FROM creative_renders r WHERE r.project_id = c.project_id AND r.hidden = 0) AS renders,
-       c.updated_at
+       c.brand_kit, c.updated_at
 FROM creative_projects c
 JOIN projects p ON p.id = c.project_id
 WHERE p.workspace_id = ?
@@ -945,6 +966,7 @@ type ListCreativeProjectsRow struct {
 	Concepts     int64
 	Ads          int64
 	Renders      int64
+	BrandKit     string
 	UpdatedAt    time.Time
 }
 
@@ -965,6 +987,7 @@ func (q *Queries) ListCreativeProjects(ctx context.Context, workspaceID int64) (
 			&i.Concepts,
 			&i.Ads,
 			&i.Renders,
+			&i.BrandKit,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -1077,7 +1100,7 @@ func (q *Queries) ListLatestPicks(ctx context.Context, projectID int64) ([]ListL
 }
 
 const listLatestVersions = `-- name: ListLatestVersions :many
-SELECT v.id, v.ad_id, v.version, v.file_id, v.preview_file_id, v.design, v.source, v.created_by, v.created_at FROM creative_ad_versions v
+SELECT v.id, v.ad_id, v.version, v.file_id, v.preview_file_id, v.design, v.source, v.created_by, v.created_at, v.method FROM creative_ad_versions v
 JOIN creative_ads a ON a.id = v.ad_id
 WHERE a.project_id = ?
   AND v.version = (SELECT MAX(x.version) FROM creative_ad_versions x WHERE x.ad_id = v.ad_id)
@@ -1102,6 +1125,7 @@ func (q *Queries) ListLatestVersions(ctx context.Context, projectID int64) ([]Cr
 			&i.Source,
 			&i.CreatedBy,
 			&i.CreatedAt,
+			&i.Method,
 		); err != nil {
 			return nil, err
 		}
@@ -1154,7 +1178,7 @@ func (q *Queries) ListRenders(ctx context.Context, projectID int64) ([]CreativeR
 }
 
 const listSiblingAds = `-- name: ListSiblingAds :many
-SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at FROM creative_ads
+SELECT id, project_id, concept_id, code, file_name, pos, fmt, lang, has_cta, render_code, draft, created_at, updated_at, kind FROM creative_ads
 WHERE concept_id = ? AND lang = ? AND has_cta = ? AND id != ?
 ORDER BY pos
 `
@@ -1194,6 +1218,7 @@ func (q *Queries) ListSiblingAds(ctx context.Context, arg ListSiblingAdsParams) 
 			&i.Draft,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -1266,6 +1291,27 @@ func (q *Queries) SaveBrandKit(ctx context.Context, arg SaveBrandKitParams) erro
 	return err
 }
 
+const setAdKind = `-- name: SetAdKind :exec
+UPDATE creative_ads SET kind = ?, file_name = ?, updated_at = ? WHERE id = ?
+`
+
+type SetAdKindParams struct {
+	Kind      string
+	FileName  string
+	UpdatedAt time.Time
+	ID        int64
+}
+
+func (q *Queries) SetAdKind(ctx context.Context, arg SetAdKindParams) error {
+	_, err := q.db.ExecContext(ctx, setAdKind,
+		arg.Kind,
+		arg.FileName,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
 const setCommentResolved = `-- name: SetCommentResolved :exec
 UPDATE creative_comments SET resolved_at = ?, resolved_by = ? WHERE id = ?
 `
@@ -1278,6 +1324,21 @@ type SetCommentResolvedParams struct {
 
 func (q *Queries) SetCommentResolved(ctx context.Context, arg SetCommentResolvedParams) error {
 	_, err := q.db.ExecContext(ctx, setCommentResolved, arg.ResolvedAt, arg.ResolvedBy, arg.ID)
+	return err
+}
+
+const setConceptImagery = `-- name: SetConceptImagery :exec
+UPDATE creative_concepts SET imagery = ?, updated_at = ? WHERE id = ?
+`
+
+type SetConceptImageryParams struct {
+	Imagery   string
+	UpdatedAt time.Time
+	ID        int64
+}
+
+func (q *Queries) SetConceptImagery(ctx context.Context, arg SetConceptImageryParams) error {
+	_, err := q.db.ExecContext(ctx, setConceptImagery, arg.Imagery, arg.UpdatedAt, arg.ID)
 	return err
 }
 

@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { useDecideProposal, useProposal } from "@/api/adx";
 import type { Proposal } from "@/api/models";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows } from "@/components/page";
 import { PlatformTag } from "@/components/platform";
 import { Button } from "@/components/ui/button";
@@ -108,7 +109,7 @@ function Decision({ proposal: p }: { proposal: Proposal }) {
         ) : expired ? (
           <p className="text-sm text-muted-foreground">Expired.</p>
         ) : rejecting ? (
-          <form
+          <Form
             className="space-y-3"
             onSubmit={(e) => {
               e.preventDefault();
@@ -139,7 +140,7 @@ function Decision({ proposal: p }: { proposal: Proposal }) {
                 Back
               </Button>
             </div>
-          </form>
+          </Form>
         ) : (
           <div className="space-y-2">
             <div className="flex gap-2">

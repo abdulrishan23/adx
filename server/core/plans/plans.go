@@ -41,7 +41,7 @@ type ChannelInfo struct {
 	Supported bool   `json:"supported"`
 	// CampaignType is the platform's own type for a campaign of this
 	// channel: Google's advertising channel type or Meta's objective. A plan
-	// line matches campaigns by project, platform and this type (BD-60,
+	// line matches campaigns by project, platform and this type (BD-68,
 	// confirmed by the owner 2026-10-19). Empty for channels ADX cannot
 	// deploy. One row is still pending: whoever runs Reportage's Meta
 	// account has to say whether click-to-WhatsApp campaigns run under
@@ -58,7 +58,7 @@ var Channels = []ChannelInfo{
 	{"meta_lead_form", "meta", "Meta lead form", true, "OUTCOME_LEADS"},
 	{"meta_traffic", "meta", "Meta traffic to landing page", true, "OUTCOME_TRAFFIC"},
 	{"meta_awareness", "meta", "Meta awareness", true, "OUTCOME_AWARENESS"},
-	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true, "OUTCOME_ENGAGEMENT"}, // pending the Meta account owner's check (decisions.md BD-60)
+	{"meta_whatsapp", "meta", "Meta click to WhatsApp", true, "OUTCOME_ENGAGEMENT"}, // pending the Meta account owner's check (decisions.md BD-68)
 	{"tiktok", "tiktok", "TikTok", false, ""},
 	{"snapchat", "snapchat", "Snapchat", false, ""},
 	{"linkedin", "linkedin", "LinkedIn", false, ""},
@@ -69,6 +69,13 @@ var Channels = []ChannelInfo{
 
 // Channel looks a channel up by key.
 func Channel(key string) (ChannelInfo, bool) {
+	c, ok := channelByKey[key]
+	return c, ok
+}
+
+// ChannelByKey looks a channel up by its key, for the domains that plan
+// around channels without owning the list.
+func ChannelByKey(key string) (ChannelInfo, bool) {
 	c, ok := channelByKey[key]
 	return c, ok
 }
@@ -226,13 +233,15 @@ type PlanAcceptance struct {
 func (PlanAcceptance) GrantsSpend() bool { return false }
 
 type Plan struct {
-	ID        int64     `json:"id"`
-	BrandID   int64     `json:"brandId"`
-	ProjectID *int64    `json:"projectId"`
-	Title     string    `json:"title"`
-	CreatedBy *int64    `json:"createdBy"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID        int64  `json:"id"`
+	BrandID   int64  `json:"brandId"`
+	ProjectID *int64 `json:"projectId"`
+	// CampaignID is the campaign the plan was made for, or nil.
+	CampaignID *int64    `json:"campaignId"`
+	Title      string    `json:"title"`
+	CreatedBy  *int64    `json:"createdBy"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type PlanSummary struct {
@@ -248,11 +257,12 @@ type PlanDetail struct {
 }
 
 type PlanInput struct {
-	BrandID   int64        `json:"brandId"`
-	ProjectID int64        `json:"projectId"`
-	Title     string       `json:"title"`
-	Document  PlanDocument `json:"document"`
-	Note      string       `json:"note"`
+	BrandID    int64        `json:"brandId"`
+	ProjectID  int64        `json:"projectId"`
+	CampaignID int64        `json:"campaignId"`
+	Title      string       `json:"title"`
+	Document   PlanDocument `json:"document"`
+	Note       string       `json:"note"`
 }
 
 type VersionInput struct {
@@ -386,7 +396,7 @@ func (p *Plans) Create(ctx context.Context, actor core.Actor, in PlanInput) (Pla
 	var prow store.Plan
 	err := p.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		var err error
-		prow, err = q.CreatePlan(ctx, store.CreatePlanParams{WorkspaceID: actor.WorkspaceID, BrandID: in.BrandID, ProjectID: optionalID(in.ProjectID), Title: in.Title, CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
+		prow, err = q.CreatePlan(ctx, store.CreatePlanParams{WorkspaceID: actor.WorkspaceID, BrandID: in.BrandID, ProjectID: optionalID(in.ProjectID), CampaignID: optionalID(in.CampaignID), Title: in.Title, CreatedBy: optionalID(actor.UserID), CreatedAt: now, UpdatedAt: now})
 		if err != nil {
 			return err
 		}
@@ -808,7 +818,7 @@ func (p *Plans) plan(ctx context.Context, workspaceID, id int64) (store.Plan, er
 }
 
 func planFromRow(r store.Plan) Plan {
-	return Plan{ID: r.ID, BrandID: r.BrandID, ProjectID: idPtr(r.ProjectID), Title: r.Title, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
+	return Plan{ID: r.ID, BrandID: r.BrandID, ProjectID: idPtr(r.ProjectID), CampaignID: idPtr(r.CampaignID), Title: r.Title, CreatedBy: idPtr(r.CreatedBy), CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
 }
 
 // VersionFromRow reads a stored version. Other domains that join

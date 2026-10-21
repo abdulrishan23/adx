@@ -1,6 +1,7 @@
 import { ArrowLeft, Mail } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
 import { AdxMark } from "@/components/brand";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -40,7 +41,7 @@ export function SignInPage() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={onSubmit} className="space-y-4">
+          <Form onSubmit={onSubmit} className="space-y-4">
             <h1 className="text-2xl font-semibold tracking-tight">Sign in to Adx</h1>
             <div className="space-y-1.5">
               <label htmlFor={id} className="text-sm">
@@ -63,7 +64,7 @@ export function SignInPage() {
             <Button type="submit" className="h-10 w-full">
               Email me a sign-in link
             </Button>
-          </form>
+          </Form>
         )}
       </div>
     </div>

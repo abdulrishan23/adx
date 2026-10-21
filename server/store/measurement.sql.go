@@ -336,7 +336,7 @@ func (q *Queries) ListMeasurementEvents(ctx context.Context, arg ListMeasurement
 }
 
 const listPagesByPlan = `-- name: ListPagesByPlan :many
-SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at FROM pages WHERE workspace_id = ? AND plan_id = ? ORDER BY id
+SELECT id, workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id FROM pages WHERE workspace_id = ? AND plan_id = ? ORDER BY id
 `
 
 type ListPagesByPlanParams struct {
@@ -367,6 +367,7 @@ func (q *Queries) ListPagesByPlan(ctx context.Context, arg ListPagesByPlanParams
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CampaignID,
 		); err != nil {
 			return nil, err
 		}

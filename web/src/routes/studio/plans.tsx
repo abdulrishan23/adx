@@ -1,14 +1,12 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { useBrands } from "@/api/brands";
 import { useAcceptPlanVersion, useGeneratePlan, usePlan, usePlans } from "@/api/plans";
 import { useBriefs } from "@/api/research";
 import type {
   ChannelInfo,
   PlanDocument,
   PlanState,
-  PlanSummary,
   PlanVersion,
   ValidationIssue,
 } from "@/api/types.gen";
@@ -26,7 +24,7 @@ import { formatDate, formatMoneyShort, formatRelative } from "@/lib/format";
 const money = (minor: number, currency: string) =>
   `${currency} ${Math.round(minor / 100).toLocaleString("en")}`;
 
-const route = getRouteApi("/app/create/plans/$planId");
+const route = getRouteApi("/app/studio/plans/$planId");
 
 // "Ready" is ready for acceptance; accepted is content only and authorizes
 // no spend. That stays separate on purpose (handover B2.4).
@@ -40,88 +38,6 @@ const STATE: Record<PlanState, { status: Status; label: string }> = {
 };
 
 const shortDate = (d: string) => formatDate(`${d}T00:00:00Z`, { day: "numeric", month: "short" });
-
-// A media plan is the bible for a campaign: where the money goes by channel,
-// what has to exist before it runs, what it will test, and what it merely
-// assumes. Adx drafts a version from research; code validates it; a person
-// accepts one. Acceptance is of the content and grants nothing in any ad
-// account.
-export function PlansPage() {
-  const plans = usePlans();
-  const brands = useBrands();
-  const brandName = (id: number) => brands.data?.brands.find((b) => b.id === id)?.name ?? "";
-  const list = plans.data?.plans ?? [];
-  return (
-    <>
-      <PageHeader
-        title="Media plans"
-        subtitle="Adx drafts a plan from a brand's research. Code checks it; you accept one. Nothing spends until a launch is authorized."
-        actions={
-          <Link to="/engine/plans" className={buttonVariants({ variant: "outline", size: "sm" })}>
-            New plan
-          </Link>
-        }
-      />
-      {plans.isPending && <LoadingRows rows={5} />}
-      {plans.error && <ErrorNote error={plans.error} />}
-      {plans.data && list.length === 0 && (
-        <Panel>
-          <EmptyState title="No plans yet">
-            Open a plan on the{" "}
-            <Link to="/engine/plans" className="underline underline-offset-4">
-              engine's plans screen
-            </Link>{" "}
-            with a brand, a budget and dates, then draft a version here from its research.
-          </EmptyState>
-        </Panel>
-      )}
-      {list.length > 0 && (
-        <Panel bodyClassName="p-0">
-          <Table>
-            <THead>
-              <TR>
-                <TH>Plan</TH>
-                <TH>Brand</TH>
-                <TH>State</TH>
-                <TH numeric>Version</TH>
-                <TH>Changed</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {list.map((p: PlanSummary) => (
-                <TR key={p.id}>
-                  <TD>
-                    <Link
-                      to="/create/plans/$planId"
-                      params={{ planId: String(p.id) }}
-                      className="font-medium hover:underline"
-                    >
-                      {p.title}
-                    </Link>
-                  </TD>
-                  <TD>{brandName(p.brandId)}</TD>
-                  <TD>
-                    <StatusChip status={STATE[p.latestState].status}>
-                      {STATE[p.latestState].label}
-                    </StatusChip>
-                  </TD>
-                  <TD numeric>v{p.latestVersion}</TD>
-                  <TD>{formatRelative(p.updatedAt)}</TD>
-                </TR>
-              ))}
-            </TBody>
-          </Table>
-        </Panel>
-      )}
-      {plans.data && !plans.data.templates.exact.available && (
-        <p className="mt-4 text-xs text-muted-foreground">
-          Exports are generic ({plans.data.templates.generic.join(", ")}) until Reportage's Excel
-          media-plan template is supplied.
-        </p>
-      )}
-    </>
-  );
-}
 
 export function PlanPage() {
   const { planId } = route.useParams();
@@ -138,12 +54,23 @@ export function PlanPage() {
   const v = versions.find((x) => x.version === picked) ?? latest;
   return (
     <>
-      <Link
-        to="/create/plans"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Media plans
-      </Link>
+      {d.plan.campaignId !== null && d.plan.projectId !== null ? (
+        <Link
+          to="/projects/$projectId/campaigns/$campaignId"
+          params={{ projectId: String(d.plan.projectId), campaignId: String(d.plan.campaignId) }}
+          search={{ stage: "plan" }}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Campaign
+        </Link>
+      ) : (
+        <Link
+          to="/projects"
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Projects
+        </Link>
+      )}
       <PageHeader
         title={d.plan.title}
         subtitle={
@@ -235,7 +162,7 @@ function VersionView({
               </Button>
             )}
             {v.state === "accepted" && (
-              <Link to="/create/launch" className={buttonVariants()}>
+              <Link to="/studio/launch" className={buttonVariants()}>
                 Go to launch
               </Link>
             )}

@@ -133,7 +133,7 @@ type ProposalInput struct {
 }
 
 // PlanCoverage says whether a campaign, by its account and the platform's
-// id, has an accepted plan behind it (BD-60 rule 3). core/launch implements
+// id, has an accepted plan behind it (BD-68 rule 3). core/launch implements
 // it; cmd/adx passes it in.
 type PlanCoverage interface {
 	UnderPlan(ctx context.Context, workspaceID, accountID int64, campaignRef string) (bool, string, error)

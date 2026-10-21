@@ -11,27 +11,23 @@ import { AppShell } from "@/app/app-shell";
 import { findNavItem } from "@/app/nav";
 import { AdxWordmark } from "@/components/brand";
 import { ENGINE_PAGES as E } from "@/engine/routes";
-import { type AnalyticsSearch, analyticsSearch } from "@/lib/analytics";
+import { analyticsSearch } from "@/lib/analytics";
 import { released } from "@/lib/release";
 import { AnalyticsPage } from "@/routes/analytics";
 import { ApprovePage } from "@/routes/approve";
 import { AskPage } from "@/routes/ask";
 import { AudiencesPage } from "@/routes/audiences";
 import { BrandPage } from "@/routes/brand";
-import { BrandsPage } from "@/routes/brands";
+import { CampaignPage, type CampaignStageId, STAGE_IDS } from "@/routes/campaign";
 import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
-import { LaunchPage } from "@/routes/create/launch";
-import { PagesPage } from "@/routes/create/pages";
-import { PlanPage, PlansPage } from "@/routes/create/plans";
-import { ResearchPage } from "@/routes/create/research";
-import { StartBrandPage } from "@/routes/create/start";
-import { CreativePage } from "@/routes/creative";
+import { CreativeConceptsPage } from "@/routes/creative/concepts";
+import { CreativeLibraryPage, type LibrarySection } from "@/routes/creative/library";
+import { CreativeProducerPage } from "@/routes/creative/producer";
 import { CreativeConceptPage } from "@/routes/creative-concept";
 import { CreativeEditorPage } from "@/routes/creative-editor";
-import { CreativeProjectPage, creativeTabSearch } from "@/routes/creative-project";
 import { CreativeUploadPage } from "@/routes/creative-upload";
 import { DataQualityPage } from "@/routes/data-quality";
 import { EnginePage } from "@/routes/engine";
@@ -42,14 +38,14 @@ import { InboxPage } from "@/routes/inbox";
 import { LeadDetailPage } from "@/routes/lead-detail";
 import { LeadsPage } from "@/routes/leads";
 import { ListsPage } from "@/routes/lists";
-import { MarketersPage } from "@/routes/marketers";
 import { OrganicPage } from "@/routes/organic";
 import { OutcomesPage } from "@/routes/outcomes";
 import { PeoplePage } from "@/routes/people";
 import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
-import { ProjectsOverviewPage } from "@/routes/projects-overview";
+import { ProjectPage, projectTabSearch } from "@/routes/project";
+import { ProjectsPage } from "@/routes/projects";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
 import { RevenuePage } from "@/routes/revenue";
@@ -57,6 +53,11 @@ import { ReviewPage } from "@/routes/review";
 import { ScoringPage } from "@/routes/scoring";
 import { SignInPage } from "@/routes/sign-in";
 import { SourcePage } from "@/routes/source";
+import { LaunchPage } from "@/routes/studio/launch";
+import { PagePage } from "@/routes/studio/pages";
+import { PlanPage } from "@/routes/studio/plans";
+import { StartBrandPage } from "@/routes/studio/start";
+import { NewCampaignPage } from "@/routes/studio-campaigns";
 import { WebsitePage } from "@/routes/website";
 
 // Routes are declared in code instead of generated from files, so the whole
@@ -163,12 +164,12 @@ const oldFunnelRoute = createRoute({
   },
 });
 
-// Projects became Brands under Create. The old paths still open the brand.
+// Projects lived under Settings once; they lead Studio now.
 const oldProjectsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings/projects",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
 // Alerts are cards in the Inbox now.
@@ -184,21 +185,187 @@ const oldBrandKnowledgeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/create/brand",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
-const oldProjectsListRoute = createRoute({
+// Create became Studio. Old links land on the same screen.
+const oldCreateRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/projects",
+  path: "/create/$",
+  beforeLoad: ({ params }) => {
+    throw redirect({ href: `/studio/${params._splat ?? ""}` });
+  },
+});
+// Our side has one developer, so Studio opens on its projects; Brands and
+// the Creatives and Landing pages lists became tabs of a project (BD-63).
+const oldBrandsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands",
   beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+    throw redirect({ to: "/projects" });
   },
 });
-const oldProjectRoute = createRoute({
+const oldStartRoute = createRoute({
   getParentRoute: () => rootRoute,
+  path: "/brands/new",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects/new" });
+  },
+});
+const oldBrandProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/brands/$brandId/projects/$projectId",
+  beforeLoad: ({ params }) => {
+    throw redirect({ to: "/projects/$projectId", params: { projectId: params.projectId } });
+  },
+});
+const oldCreativeListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/creative",
+  beforeLoad: () => {
+    throw redirect({ to: "/creative/concepts" });
+  },
+});
+
+// Creative is its own door, after Smartly's Creative suite: Concepts, Library
+// and Producer. Campaigns stay under Projects and draw on it (BD-66).
+const creativeConceptsRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/concepts",
+  component: CreativeConceptsPage,
+});
+
+const creativeLibraryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/library",
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { project?: number; section?: LibrarySection } => ({
+    ...(typeof search.project === "number" && search.project > 0
+      ? { project: search.project }
+      : {}),
+    ...(search.section === "brand" || search.section === "settings"
+      ? { section: search.section }
+      : {}),
+  }),
+  component: function Library() {
+    const { project, section } = creativeLibraryRoute.useSearch();
+    return <CreativeLibraryPage projectId={project} section={section} />;
+  },
+});
+
+const creativeProducerRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/creative/producer",
+  component: CreativeProducerPage,
+});
+const oldCreativeProjectRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/creative/$projectId",
+  validateSearch: projectTabSearch,
+  beforeLoad: ({ params, search }) => {
+    throw redirect({
+      to: "/projects/$projectId",
+      params: { projectId: params.projectId },
+      search: search.tab ? { tab: search.tab } : {},
+    });
+  },
+});
+const oldPagesListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/pages",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+// Research moved into the project (its Research tab); plans and launch are
+// stages of a campaign. The old lists redirect to where the work now starts.
+// Competitors live in a project's Research tab; campaigns live in their
+// project.
+const oldCompetitorsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/competitors",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const oldCampaignsListRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/campaigns",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+// By marketer was results split by source owner; People covers who's who.
+const oldMarketersRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/marketers",
+  beforeLoad: () => {
+    throw redirect({ to: "/analytics", search: analyticsSearch({}) });
+  },
+});
+
+const oldPlansRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/plans",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const oldResearchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/studio/research",
+  beforeLoad: () => {
+    throw redirect({ to: "/projects" });
+  },
+});
+
+const projectRoute = createRoute({
+  getParentRoute: () => appRoute,
   path: "/projects/$projectId",
-  beforeLoad: () => {
-    throw redirect({ to: "/brands" });
+  validateSearch: projectTabSearch,
+  // Pictures, Brand, Settings and loose concepts moved to Creative (BD-66).
+  beforeLoad: ({ params, search }) => {
+    if (search.tab === "renders" || search.tab === "brand" || search.tab === "settings") {
+      throw redirect({
+        to: "/creative/library",
+        search: {
+          project: Number(params.projectId),
+          ...(search.tab === "renders" ? {} : { section: search.tab }),
+        },
+      });
+    }
+    if (search.tab === "concepts") {
+      throw redirect({ to: "/creative/concepts" });
+    }
+  },
+  component: function Project() {
+    const { projectId } = projectRoute.useParams();
+    const { tab } = projectRoute.useSearch();
+    return <ProjectPage projectId={Number(projectId)} tab={tab} />;
+  },
+});
+
+const campaignRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects/$projectId/campaigns/$campaignId",
+  // ?stage= picks the stage that fills the view; the brief is the default.
+  validateSearch: (search: Record<string, unknown>): { stage?: CampaignStageId } =>
+    typeof search.stage === "string" &&
+    (STAGE_IDS as string[]).includes(search.stage) &&
+    search.stage !== "brief"
+      ? { stage: search.stage as CampaignStageId }
+      : {},
+  component: function Campaign() {
+    const { projectId, campaignId } = campaignRoute.useParams();
+    const { stage } = campaignRoute.useSearch();
+    return (
+      <CampaignPage projectId={Number(projectId)} campaignId={Number(campaignId)} stage={stage} />
+    );
   },
 });
 
@@ -219,16 +386,16 @@ const proposalsRoute = createRoute({
   component: ProposalsPage,
 });
 
-// ?project= is the door from Perform › Campaigns: Launch opens on that brand
-// (BD-60). Create owns the first launch; Perform owns a running campaign.
-const launchRoute = createRoute({
+const newCampaignRoute = createRoute({
   getParentRoute: () => appRoute,
-  path: "/create/launch",
-  validateSearch: (search: Record<string, unknown>): { project?: number } => {
-    const n = Number(search.project);
-    return Number.isInteger(n) && n > 0 ? { project: n } : {};
+  path: "/campaigns/new",
+  // ?project= fixes the project when the link came from one.
+  validateSearch: (search: Record<string, unknown>): { project?: number } =>
+    typeof search.project === "number" && search.project > 0 ? { project: search.project } : {},
+  component: function NewCampaign() {
+    const { project } = newCampaignRoute.useSearch();
+    return <NewCampaignPage projectId={project} />;
   },
-  component: LaunchPage,
 });
 
 const campaignsRoute = createRoute({
@@ -265,16 +432,14 @@ const approveRoute = createRoute({
   head: () => ({ meta: [{ title: "Approve a change | Adx" }] }),
 });
 
+// By project folded into Campaigns: each project's row carries its totals
+// and the month's budget pacing (BD-67).
 const projectsOverviewRoute = createRoute({
-  getParentRoute: () => appRoute,
+  getParentRoute: () => rootRoute,
   path: "/perform/projects",
-  validateSearch: (
-    raw: Record<string, unknown>,
-  ): Pick<AnalyticsSearch, "from" | "to" | "compare" | "comparisonFrom" | "comparisonTo"> => {
-    const { from, to, compare, comparisonFrom, comparisonTo } = analyticsSearch(raw);
-    return { from, to, compare, comparisonFrom, comparisonTo };
+  beforeLoad: () => {
+    throw redirect({ to: "/campaigns" });
   },
-  component: ProjectsOverviewPage,
 });
 
 const analyticsRoute = createRoute({
@@ -296,16 +461,6 @@ const reviewRoute = createRoute({
   head: () => ({
     meta: [{ title: "Creative review | Adx" }, { name: "robots", content: "noindex" }],
   }),
-});
-
-const creativeProjectRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: "/creative/$projectId",
-  validateSearch: creativeTabSearch,
-  component: function CreativeProject() {
-    const { projectId } = creativeProjectRoute.useParams();
-    return <CreativeProjectPage projectId={Number(projectId)} />;
-  },
 });
 
 const creativeUploadRoute = createRoute({
@@ -356,10 +511,15 @@ const routeTree = rootRoute.addChildren([
   signInRoute,
   oldFunnelRoute,
   oldProjectsRoute,
-  oldProjectsListRoute,
+  oldBrandsRoute,
+  oldStartRoute,
+  oldBrandProjectRoute,
+  oldCreativeListRoute,
+  oldCreativeProjectRoute,
+  oldPagesListRoute,
   oldBrandKnowledgeRoute,
+  oldCreateRoute,
   oldAlertsRoute,
-  oldProjectRoute,
   presentRoute,
   oldFocusRoute,
   briefRedirect,
@@ -367,11 +527,12 @@ const routeTree = rootRoute.addChildren([
   publicRoute.addChildren([privacyRoute, approveRoute]),
   appRoute.addChildren([
     indexRoute,
-    page("/create/research", ResearchPage),
-    page("/create/plans", PlansPage),
-    page("/create/plans/$planId", PlanPage),
-    page("/create/pages", PagesPage),
-    launchRoute,
+    oldCampaignsListRoute,
+    oldResearchRoute,
+    oldPlansRoute,
+    page("/studio/plans/$planId", PlanPage),
+    page("/studio/pages/$pageId", PagePage),
+    page("/studio/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
     page("/convert/inbox", ComingSoonPage),
     page("/convert/crm", ComingSoonPage),
@@ -379,18 +540,20 @@ const routeTree = rootRoute.addChildren([
     analyticsRoute,
     askRoute,
     proposalsRoute,
+    newCampaignRoute,
     campaignsRoute,
     page("/revenue", RevenuePage),
     projectsOverviewRoute,
     page("/leads", LeadsPage),
     page("/leads/$leadId", LeadDetailPage),
-    page("/creative", CreativePage),
-    creativeProjectRoute,
+    creativeConceptsRoute,
+    creativeLibraryRoute,
+    creativeProducerRoute,
     creativeUploadRoute,
     creativeConceptRoute,
     creativeEditorRoute,
     page("/enrichment", EnrichmentPage),
-    page("/marketers", MarketersPage),
+    oldMarketersRoute,
     page("/portals", PortalsPage),
     page("/data-quality", DataQualityPage),
     page("/reports", ReportsPage),
@@ -406,8 +569,11 @@ const routeTree = rootRoute.addChildren([
     page("/settings/guardrails", GuardrailsPage),
     page("/settings/scoring", ScoringPage),
     page("/inbox", InboxPage),
-    page("/brands", BrandsPage),
-    page("/brands/new", StartBrandPage),
+    page("/projects", ProjectsPage),
+    page("/projects/new", StartBrandPage),
+    projectRoute,
+    campaignRoute,
+    oldCompetitorsRoute,
     page("/brands/$brandId", BrandPage),
     page("/engine", EnginePage),
     page("/engine/home", E.home),

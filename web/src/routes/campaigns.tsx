@@ -1,11 +1,20 @@
 import { getRouteApi, Link } from "@tanstack/react-router";
-import { ArrowDown, ArrowUp, Rocket } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, Plus } from "lucide-react";
 import { useId, useMemo, useState } from "react";
-import { useAds, useCampaigns, useDailyBudget, useProposeChange } from "@/api/adx";
+import {
+  useAds,
+  useCampaigns,
+  useDailyBudget,
+  useProjectsOverview,
+  useProposeChange,
+} from "@/api/adx";
 import { projectOf } from "@/api/mock/data";
 import type { AdRow, Campaign, Proposal } from "@/api/models";
-import { PERIOD_LABEL, ScopeBar, useScope } from "@/app/scope";
+import { ScopeBar } from "@/app/scope";
+import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
+import { Form } from "@/components/form";
+import { PacingCell } from "@/components/pacing";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { PlatformMark, platformLabel } from "@/components/platform";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -13,11 +22,14 @@ import { Input } from "@/components/ui/input";
 import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { analyticsSearch } from "@/lib/analytics";
 import { formatMoneyShort, formatNumber, formatPercent, NOT_AVAILABLE } from "@/lib/format";
 import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
 
 type SortKey = "spend" | "leads" | "cpl" | "qualified" | "cpq" | "deals";
+
+const FOLD_KEY = "adx-campaigns-folded";
 
 const per = (minor: number, n: number) => (n > 0 ? Math.round(minor / n) : null);
 const roas = (c: Campaign) =>
@@ -45,7 +57,34 @@ const route = getRouteApi("/app/campaigns");
 
 export function CampaignsPage() {
   const campaigns = useCampaigns();
-  const scope = useScope();
+  const session = useSession();
+  // The month's budget pacing per project, which By project used to show.
+  const overview = useProjectsOverview(analyticsSearch({}));
+  // Which projects are folded away. Remembered per browser, as a view
+  // preference; storage can be blocked, so it falls back to all open.
+  const [closed, setClosed] = useState<Set<number>>(() => {
+    try {
+      return new Set(JSON.parse(localStorage.getItem(FOLD_KEY) ?? "[]") as number[]);
+    } catch {
+      return new Set();
+    }
+  });
+  const remember = (next: Set<number>) => {
+    setClosed(next);
+    try {
+      localStorage.setItem(FOLD_KEY, JSON.stringify([...next]));
+    } catch {
+      // Not remembered; the fold still works for this visit.
+    }
+  };
+  const toggle = (id: number) => {
+    const next = new Set(closed);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    remember(next);
+  };
+  const pacingOf = (projectId: number) =>
+    overview.data?.find((p) => p.projectId === projectId)?.pacing ?? null;
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "spend",
     dir: "desc",
@@ -108,22 +147,16 @@ export function CampaignsPage() {
     <>
       <PageHeader
         title="Campaigns"
-        subtitle={`${rows.length} campaigns · ${PERIOD_LABEL[scope.days]}`}
+        className="items-center"
         actions={
-          <span className="flex flex-wrap items-center gap-2">
+          <>
             <ScopeBar />
-            {/* A new campaign starts from a plan, so this is a door into Create's
-                Launch (BD-60), not a second launch flow. Phase 3 with Launch. */}
-            {released(3) && (
-              <Link
-                to="/create/launch"
-                search={scope.projectId === "all" ? {} : { project: scope.projectId }}
-                className={buttonVariants({ variant: "outline", size: "sm" })}
-              >
-                <Rocket /> Launch a campaign
+            {session.role !== "viewer" && (
+              <Link to="/campaigns/new" className={buttonVariants()}>
+                <Plus /> New campaign
               </Link>
             )}
-          </span>
+          </>
         }
       />
       {campaigns.isPending && <LoadingRows rows={10} />}
@@ -140,7 +173,24 @@ export function CampaignsPage() {
           <Table>
             <THead>
               <TR>
-                <TH>Campaign</TH>
+                <TH>
+                  <span className="flex items-center gap-3">
+                    Campaign
+                    <button
+                      type="button"
+                      onClick={() =>
+                        remember(
+                          closed.size === groups.length
+                            ? new Set()
+                            : new Set(groups.map((g) => g.projectId)),
+                        )
+                      }
+                      className="font-sans text-xs tracking-normal text-muted-foreground normal-case hover:text-foreground"
+                    >
+                      {closed.size === groups.length ? "Expand all" : "Collapse all"}
+                    </button>
+                  </span>
+                </TH>
                 <SortHead k="spend">Spend</SortHead>
                 <SortHead k="leads">Leads</SortHead>
                 <SortHead k="qualified">Qualified</SortHead>
@@ -151,48 +201,76 @@ export function CampaignsPage() {
             </THead>
             {groups.map((g) => (
               <TBody key={g.projectId}>
-                <TR className="bg-muted/60">
-                  <TD
-                    className="font-heading font-semibold"
-                    colSpan={g.campaigns.length > 1 ? 1 : 7}
-                  >
-                    {projectOf(g.projectId)}
+                <TR className="border-t bg-muted/60">
+                  <TD className="py-4 align-top">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggle(g.projectId)}
+                        aria-expanded={!closed.has(g.projectId)}
+                        aria-label={`${closed.has(g.projectId) ? "Show" : "Hide"} ${projectOf(g.projectId)}'s campaigns`}
+                        className="-ml-1 grid size-6 place-items-center text-muted-foreground hover:text-foreground"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition-transform",
+                            !closed.has(g.projectId) && "rotate-90",
+                          )}
+                        />
+                      </button>
+                      <Link
+                        to="/projects/$projectId"
+                        params={{ projectId: String(g.projectId) }}
+                        className="font-heading text-base font-semibold hover:underline"
+                      >
+                        {projectOf(g.projectId)}
+                      </Link>
+                      {closed.has(g.projectId) && (
+                        <span className="text-xs text-muted-foreground">
+                          {g.campaigns.length} {g.campaigns.length === 1 ? "campaign" : "campaigns"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 w-80 max-w-full pl-7">
+                      <PacingCell pacing={pacingOf(g.projectId)} />
+                    </div>
                   </TD>
-                  {/* A lone campaign's figures are the project's, so show them once. */}
-                  {g.campaigns.length > 1 && <Figures c={g.total} />}
+                  <Figures c={g.total} />
                 </TR>
-                {g.campaigns.map((c) => (
-                  <TR
-                    key={c.id}
-                    className="cursor-pointer hover:bg-muted/40"
-                    onClick={() => setOpenId(c.id)}
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
-                  >
-                    <TD className="pl-8">
-                      <div className="flex items-center gap-2">
-                        <PlatformMark platform={c.platform} />
-                        <span className="truncate font-medium">{c.name}</span>
-                      </div>
-                      <p className="mt-0.5 flex items-center gap-1.5 pl-[1.125rem] text-xs text-muted-foreground">
-                        {platformLabel(c.platform)} · {c.type}
-                        {c.status !== "active" && (
-                          <>
-                            <span aria-hidden="true">·</span>
-                            <StatusMark status={STATUS_MARK[c.status]} />
-                            <span className="text-foreground">{STATUS_LABEL[c.status]}</span>
-                          </>
-                        )}
-                      </p>
-                    </TD>
-                    <Figures c={c} muted />
-                  </TR>
-                ))}
+                {!closed.has(g.projectId) &&
+                  g.campaigns.map((c) => (
+                    <TR
+                      key={c.id}
+                      className="cursor-pointer hover:bg-muted/40"
+                      onClick={() => setOpenId(c.id)}
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === "Enter" && setOpenId(c.id)}
+                    >
+                      <TD className="pl-[3.25rem] first:pl-[3.25rem]">
+                        <div
+                          className="flex items-center gap-3"
+                          title={`${platformLabel(c.platform)} · ${c.type}`}
+                        >
+                          <PlatformMark platform={c.platform} className="size-6" />
+                          <span className="truncate font-medium">{c.name}</span>
+                          {c.status !== "active" && (
+                            <span className="flex shrink-0 items-center gap-1.5 text-xs">
+                              <StatusMark status={STATUS_MARK[c.status]} />
+                              {STATUS_LABEL[c.status]}
+                            </span>
+                          )}
+                        </div>
+                      </TD>
+                      <Figures c={c} muted />
+                    </TR>
+                  ))}
               </TBody>
             ))}
             <TBody>
               <TR className="border-t-2 border-t-foreground/20 font-medium">
-                <TD>All campaigns</TD>
+                <TD>
+                  {rows.length} {rows.length === 1 ? "campaign" : "campaigns"}
+                </TD>
                 <Figures c={totals} />
               </TR>
             </TBody>
@@ -430,7 +508,7 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
   if (!budget.data) return null;
   const next = Math.round(Number(value) * 100);
   return (
-    <form
+    <Form
       className="space-y-2 rounded-lg border p-4"
       onSubmit={(e) => {
         e.preventDefault();
@@ -438,7 +516,7 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
       }}
     >
       <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
+        <div className="flex flex-col gap-1.5">
           <label htmlFor={id} className="text-xs text-muted-foreground">
             Daily budget, now {formatMoneyShort(budget.data)}
           </label>
@@ -451,16 +529,20 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
               propose.reset();
               setValue(e.target.value.replace(/[^\d.]/g, ""));
             }}
-            className="h-9 w-36 font-mono"
+            className="w-36 font-mono"
           />
         </div>
-        <Button type="submit" size="sm" disabled={!value || propose.isPending}>
-          {next > budget.data ? "Propose raise" : "Lower budget"}
+        <Button type="submit" disabled={!value || next === budget.data || propose.isPending}>
+          {!value || next === budget.data
+            ? "Change budget"
+            : next > budget.data
+              ? "Propose raise"
+              : "Lower budget"}
         </Button>
       </div>
       {propose.error && <ErrorNote error={propose.error} />}
       {propose.data && <ProposalResult proposal={propose.data} />}
-    </form>
+    </Form>
   );
 }
 

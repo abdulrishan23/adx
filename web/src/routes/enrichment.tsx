@@ -9,6 +9,7 @@ import {
 } from "@/api/adx";
 import type { CandidateFilter, EnrichmentJob } from "@/api/models";
 import { Meter } from "@/components/charts";
+import { Form } from "@/components/form";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { StatTile } from "@/components/stat-tile";
 import { Button } from "@/components/ui/button";
@@ -162,7 +163,7 @@ function PickLeads({ left }: { left: number }) {
 
   return (
     <Panel title="New batch">
-      <form onSubmit={onSubmit} className="space-y-4">
+      <Form onSubmit={onSubmit} className="space-y-4">
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Temperature">
             <Select
@@ -256,7 +257,7 @@ function PickLeads({ left }: { left: number }) {
             Queued "{start.data.label}". It appears under Jobs below.
           </p>
         )}
-      </form>
+      </Form>
     </Panel>
   );
 }

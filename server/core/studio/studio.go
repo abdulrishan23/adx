@@ -40,6 +40,7 @@ type Studio struct {
 	db    *store.DB
 	blobs *blobs.Store
 	now   func() time.Time
+	gen   Generation
 }
 
 func New(db *store.DB, files *blobs.Store) *Studio {
@@ -82,6 +83,7 @@ type AdVersion struct {
 	File      FileRef   `json:"file"`
 	Preview   FileRef   `json:"preview"`
 	Source    string    `json:"source"`
+	Method    string    `json:"method"` // "", motion or model
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -105,6 +107,7 @@ type Decision struct {
 type Ad struct {
 	ID         int64        `json:"id"`
 	Code       string       `json:"code"`
+	Kind       string       `json:"kind"` // static or video
 	FileName   string       `json:"fileName"`
 	Fmt        Fmt          `json:"fmt"`
 	Lang       Lang         `json:"lang"`
@@ -127,7 +130,10 @@ type Concept struct {
 	Description string          `json:"description"`
 	CTA         string          `json:"cta"`
 	Copy        json.RawMessage `json:"copy"`
-	Ads         []Ad            `json:"ads"`
+	Imagery     string          `json:"imagery"` // what to ask an image model for
+	// CampaignID is the campaign the concept was made for, or nil.
+	CampaignID *int64 `json:"campaignId"`
+	Ads        []Ad   `json:"ads"`
 }
 
 type Pick struct {
@@ -159,18 +165,21 @@ type CreativeProject struct {
 }
 
 type ProjectSummary struct {
-	ProjectID    int64     `json:"projectId"`
-	Name         string    `json:"name"`
-	Prefix       string    `json:"prefix"`
-	ReviewActive bool      `json:"reviewActive"`
-	Concepts     int64     `json:"concepts"`
-	Ads          int64     `json:"ads"`
-	Renders      int64     `json:"renders"`
-	Approved     int       `json:"approved"`
-	Revise       int       `json:"revise"`
-	Waiting      int       `json:"waiting"`
-	Unpublished  int       `json:"unpublished"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	ProjectID    int64  `json:"projectId"`
+	Name         string `json:"name"`
+	Prefix       string `json:"prefix"`
+	ReviewActive bool   `json:"reviewActive"`
+	Concepts     int64  `json:"concepts"`
+	Ads          int64  `json:"ads"`
+	Renders      int64  `json:"renders"`
+	Approved     int    `json:"approved"`
+	Revise       int    `json:"revise"`
+	Waiting      int    `json:"waiting"`
+	Unpublished  int    `json:"unpublished"`
+	// Logo is the SHA-256 of the brand kit's logo on light, or on dark when
+	// that's all it has. Nil when the kit has no logo.
+	Logo      *string   `json:"logo"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type NotSetUp struct {
@@ -204,6 +213,7 @@ func (c *Studio) Overview(ctx context.Context, actor core.Actor) (Overview, erro
 		s := ProjectSummary{
 			ProjectID: r.ProjectID, Name: r.Name, Prefix: r.Prefix, ReviewActive: r.ReviewActive == 1,
 			Concepts: r.Concepts, Ads: r.Ads, Renders: r.Renders, UpdatedAt: r.UpdatedAt,
+			Logo: kitLogo(r.BrandKit),
 		}
 		ads, err := c.ads(ctx, q, r.ProjectID)
 		if err != nil {
@@ -229,6 +239,24 @@ func (c *Studio) Overview(ctx context.Context, actor core.Actor) (Overview, erro
 		}
 	}
 	return out, nil
+}
+
+// kitLogo picks the logo a light screen shows from a stored brand kit.
+func kitLogo(kit string) *string {
+	var k struct {
+		Logos map[string]struct {
+			SHA256 string `json:"sha256"`
+		} `json:"logos"`
+	}
+	if json.Unmarshal([]byte(kit), &k) != nil {
+		return nil
+	}
+	for _, role := range []string{"onLight", "onDark"} {
+		if l, ok := k.Logos[role]; ok && l.SHA256 != "" {
+			return &l.SHA256
+		}
+	}
+	return nil
 }
 
 type SetupInput struct {
@@ -455,7 +483,7 @@ func (c *Studio) ads(ctx context.Context, q *store.Queries, projectID int64) ([]
 	out := make([]adRow, 0, len(rows))
 	for _, r := range rows {
 		a := adRow{conceptID: r.ConceptID, Ad: Ad{
-			ID: r.ID, Code: r.Code, FileName: r.FileName, Fmt: Fmt(r.Fmt), Lang: Lang(r.Lang),
+			ID: r.ID, Code: r.Code, Kind: r.Kind, FileName: r.FileName, Fmt: Fmt(r.Fmt), Lang: Lang(r.Lang),
 			HasCTA: r.HasCta == 1, RenderCode: r.RenderCode, HasDraft: r.Draft.Valid,
 			Decisions: []Decision{}, Comments: commentCount[r.ID], Status: StatusUnpublished,
 		}}
@@ -574,10 +602,34 @@ func (c *Studio) comments(ctx context.Context, q *store.Queries, projectID int64
 }
 
 func conceptFrom(k store.CreativeConcept) Concept {
-	return Concept{
+	out := Concept{
 		ID: k.ID, Code: k.Code, Name: k.Name, Why: k.Why, PrimaryText: k.PrimaryText,
-		Headline: k.Headline, Description: k.Description, CTA: k.Cta, Copy: json.RawMessage(k.Copy), Ads: []Ad{},
+		Headline: k.Headline, Description: k.Description, CTA: k.Cta, Copy: json.RawMessage(k.Copy), Imagery: k.Imagery, Ads: []Ad{},
 	}
+	if k.CampaignID.Valid {
+		id := k.CampaignID.Int64
+		out.CampaignID = &id
+	}
+	return out
+}
+
+// campaignFor checks that a campaign is one of the project's and returns it
+// as the column value; zero means none.
+func (c *Studio) campaignFor(ctx context.Context, actor core.Actor, projectID, campaignID int64) (sql.NullInt64, error) {
+	if campaignID == 0 {
+		return sql.NullInt64{}, nil
+	}
+	row, err := c.db.Reader().GetCampaign(ctx, store.GetCampaignParams{ID: campaignID, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return sql.NullInt64{}, core.NotFound("campaign not found")
+	}
+	if err != nil {
+		return sql.NullInt64{}, err
+	}
+	if row.ProjectID != projectID {
+		return sql.NullInt64{}, core.Invalid("that campaign belongs to another project")
+	}
+	return sql.NullInt64{Int64: row.ID, Valid: true}, nil
 }
 
 // fileCache resolves file ids to refs, reading each file row once.
@@ -611,7 +663,7 @@ func (f *fileCache) version(ctx context.Context, v store.CreativeAdVersion) (AdV
 	if err != nil {
 		return AdVersion{}, err
 	}
-	return AdVersion{ID: v.ID, Version: v.Version, File: file, Preview: preview, Source: v.Source, CreatedAt: v.CreatedAt}, nil
+	return AdVersion{ID: v.ID, Version: v.Version, File: file, Preview: preview, Source: v.Source, Method: v.Method, CreatedAt: v.CreatedAt}, nil
 }
 
 func fileRef(f store.File) FileRef {
@@ -661,7 +713,7 @@ func (c *Studio) Upload(ctx context.Context, actor core.Actor, r io.Reader) (Fil
 	}
 	f.Close()
 	if contentType == "" {
-		return FileRef{}, core.Invalid("upload a JPG, PNG, WebP or SVG picture, or a TTF, OTF, WOFF or WOFF2 font")
+		return FileRef{}, core.Invalid("upload a JPG, PNG, WebP or SVG picture, an MP4 video, or a TTF, OTF, WOFF or WOFF2 font")
 	}
 	row, err := c.db.Writer().InsertFile(ctx, store.InsertFileParams{
 		Sha256: sum, ContentType: contentType, Bytes: size, Width: width, Height: height,
@@ -706,6 +758,9 @@ func sniff(head []byte) string {
 		return "font/otf"
 	case bytes.HasPrefix(head, []byte{0, 1, 0, 0}), bytes.HasPrefix(head, []byte("true")):
 		return "font/ttf"
+	}
+	if len(head) >= 12 && bytes.Equal(head[4:8], []byte("ftyp")) {
+		return "video/mp4"
 	}
 	switch ct := http.DetectContentType(head); ct {
 	case "image/jpeg", "image/png", "image/webp":

@@ -118,3 +118,24 @@ func slugFrom(name string) string {
 	}
 	return s
 }
+
+// slugFromName turns a concept name into an ad's slug: "10% payment plan"
+// becomes PAYMENT_PLAN, kept to 30 characters.
+func slugFromName(name string) string {
+	var parts []string
+	for _, w := range strings.FieldsFunc(strings.ToUpper(name), func(r rune) bool {
+		return (r < 'A' || r > 'Z') && (r < '0' || r > '9')
+	}) {
+		if w != "" {
+			parts = append(parts, w)
+		}
+	}
+	s := strings.Join(parts, "_")
+	if len(s) > 30 {
+		s = strings.TrimSuffix(s[:30], "_")
+	}
+	if s == "" {
+		return "AD"
+	}
+	return s
+}

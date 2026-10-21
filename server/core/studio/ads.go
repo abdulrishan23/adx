@@ -16,6 +16,8 @@ import (
 type NewConcept struct {
 	Code string `json:"code"`
 	Name string `json:"name"`
+	// CampaignID puts the concept under one of the project's campaigns.
+	CampaignID int64 `json:"campaignId"`
 }
 
 // CreateConcept adds a concept, such as C1 Cash offer, to a project.
@@ -37,15 +39,19 @@ func (c *Studio) CreateConcept(ctx context.Context, actor core.Actor, projectID 
 	if _, err := c.settings(ctx, c.db.Reader(), projectID); err != nil {
 		return Concept{}, err
 	}
+	campaign, err := c.campaignFor(ctx, actor, projectID, in.CampaignID)
+	if err != nil {
+		return Concept{}, err
+	}
 	var out store.CreativeConcept
-	err := c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+	err = c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
 		pos, err := q.MaxConceptPos(ctx, projectID)
 		if err != nil {
 			return err
 		}
 		now := c.now()
 		out, err = q.InsertConcept(ctx, store.InsertConceptParams{
-			ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now,
+			ProjectID: projectID, Code: code, Pos: pos + 1, Name: name, CreatedAt: now, UpdatedAt: now, CampaignID: campaign,
 		})
 		return err
 	})
@@ -315,7 +321,7 @@ func (c *Studio) AddUploads(ctx context.Context, actor core.Actor, projectID int
 			if created {
 				res.Ads++
 			}
-			if _, err := c.addVersion(ctx, q, actor, ad.ID, it.file.ID, it.preview.ID, sql.NullString{}, "upload"); err != nil {
+			if _, err := c.addVersion(ctx, q, actor, ad.ID, it.file.ID, it.preview.ID, sql.NullString{}, "upload", ""); err != nil {
 				return err
 			}
 			res.Versions++
@@ -521,7 +527,7 @@ func (c *Studio) Publish(ctx context.Context, actor core.Actor, adID int64, in P
 		if err := q.SaveAdDraft(ctx, store.SaveAdDraftParams{Draft: design, RenderCode: in.RenderCode, UpdatedAt: c.now(), ID: row.ID}); err != nil {
 			return err
 		}
-		if _, err := c.addVersion(ctx, q, actor, row.ID, file.ID, preview.ID, design, in.Source); err != nil {
+		if _, err := c.addVersion(ctx, q, actor, row.ID, file.ID, preview.ID, design, in.Source, ""); err != nil {
 			return err
 		}
 		return q.TouchCreativeProject(ctx, store.TouchCreativeProjectParams{UpdatedAt: c.now(), ProjectID: row.ProjectID})
@@ -717,12 +723,12 @@ func (c *Studio) upsertAd(ctx context.Context, q *store.Queries, projectID, conc
 	ad, err := q.InsertAd(ctx, store.InsertAdParams{
 		ProjectID: projectID, ConceptID: conceptID, Code: spec.code(), FileName: spec.fileName(prefix),
 		Pos: pos + 1, Fmt: string(spec.fmt), Lang: string(spec.lang), HasCta: boolInt(spec.cta),
-		RenderCode: render, Draft: draft, CreatedAt: now, UpdatedAt: now,
+		RenderCode: render, Draft: draft, Kind: "static", CreatedAt: now, UpdatedAt: now,
 	})
 	return ad, true, err
 }
 
-func (c *Studio) addVersion(ctx context.Context, q *store.Queries, actor core.Actor, adID, fileID, previewID int64, design sql.NullString, source string) (store.CreativeAdVersion, error) {
+func (c *Studio) addVersion(ctx context.Context, q *store.Queries, actor core.Actor, adID, fileID, previewID int64, design sql.NullString, source, method string) (store.CreativeAdVersion, error) {
 	next := int64(1)
 	if v, err := q.LatestVersion(ctx, adID); err == nil {
 		next = v.Version + 1
@@ -731,7 +737,7 @@ func (c *Studio) addVersion(ctx context.Context, q *store.Queries, actor core.Ac
 	}
 	return q.InsertVersion(ctx, store.InsertVersionParams{
 		AdID: adID, Version: next, FileID: fileID, PreviewFileID: previewID, Design: design,
-		Source: source, CreatedBy: userID(actor), CreatedAt: c.now(),
+		Source: source, Method: method, CreatedBy: userID(actor), CreatedAt: c.now(),
 	})
 }
 

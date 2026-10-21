@@ -145,6 +145,33 @@ func (h *handlers) createConcept(w http.ResponseWriter, r *http.Request, id int6
 	respond(h, w, r, http.StatusCreated, out, err)
 }
 
+func (h *handlers) generateConcepts(w http.ResponseWriter, r *http.Request, id int64) {
+	var in studio.GenerateConceptsInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	out, err := h.studio.GenerateConcepts(r.Context(), actorFrom(r), id, in)
+	respond(h, w, r, http.StatusCreated, out, err)
+}
+
+func (h *handlers) generateImagery(w http.ResponseWriter, r *http.Request, id int64) {
+	var in studio.GenerateImageryInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	out, err := h.studio.GenerateImagery(r.Context(), actorFrom(r), id, in)
+	respond(h, w, r, http.StatusCreated, out, err)
+}
+
+func (h *handlers) startVideo(w http.ResponseWriter, r *http.Request, id int64) {
+	var in studio.VideoInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	out, err := h.studio.StartVideo(r.Context(), actorFrom(r), h.runs, id, in)
+	respond(h, w, r, http.StatusAccepted, out, err)
+}
+
 func (h *handlers) saveConcept(w http.ResponseWriter, r *http.Request, id int64) {
 	var in studio.ConceptInput
 	if !readJSON(w, r, &in) {

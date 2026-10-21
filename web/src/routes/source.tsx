@@ -10,6 +10,7 @@ import {
   useSyncSource,
 } from "@/api/adx";
 import type { SourceDetail } from "@/api/models";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -236,7 +237,7 @@ function KeyPanel({ s }: { s: SourceDetail }) {
           <span className="ml-2 font-mono text-xs text-muted-foreground">{a.id}</span>
         </p>
       ))}
-      <form
+      <Form
         className="space-y-3"
         onSubmit={(e) => {
           e.preventDefault();
@@ -263,7 +264,7 @@ function KeyPanel({ s }: { s: SourceDetail }) {
           Save key
         </Button>
         {save.error && <ErrorNote error={save.error} />}
-      </form>
+      </Form>
     </Panel>
   );
 }

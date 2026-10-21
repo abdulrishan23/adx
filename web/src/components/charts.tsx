@@ -1,4 +1,5 @@
 import { useId } from "react";
+import type { Status } from "@/components/ui/status-chip";
 import { cn } from "@/lib/utils";
 
 // Hand-drawn SVG charts in the monochrome palette. Small on purpose: sparklines,
@@ -187,15 +188,26 @@ export function ProportionBar({
   );
 }
 
+// FILL colours a meter by status, for meters whose fill is a judgement (a
+// budget on or off pace) rather than just an amount.
+const FILL: Record<Status, string> = {
+  ready: "bg-status-ready",
+  caution: "bg-status-caution",
+  error: "bg-status-error",
+  pending: "bg-foreground",
+};
+
 export function Meter({
   value,
   max,
   marker,
+  status,
   className,
 }: {
   value: number;
   max: number;
   marker?: number;
+  status?: Status;
   className?: string;
 }) {
   const pct = Math.min(100, (value / (max || 1)) * 100);
@@ -203,7 +215,10 @@ export function Meter({
   return (
     <div className={cn("relative h-2 w-full rounded-none bg-muted", className)}>
       <div
-        className={cn("h-full rounded-none", over ? "bg-status-caution" : "bg-foreground")}
+        className={cn(
+          "h-full rounded-none",
+          status ? FILL[status] : over ? "bg-status-caution" : "bg-foreground",
+        )}
         style={{ width: `${pct}%` }}
       />
       {marker !== undefined && (

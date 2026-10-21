@@ -27,9 +27,9 @@ func (q *Queries) AcceptPlanVersion(ctx context.Context, arg AcceptPlanVersionPa
 }
 
 const createPlan = `-- name: CreatePlan :one
-INSERT INTO plans (workspace_id, brand_id, project_id, title, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
-RETURNING id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at
+INSERT INTO plans (workspace_id, brand_id, project_id, title, created_by, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+RETURNING id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at, campaign_id
 `
 
 type CreatePlanParams struct {
@@ -40,6 +40,7 @@ type CreatePlanParams struct {
 	CreatedBy   sql.NullInt64
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+	CampaignID  sql.NullInt64
 }
 
 func (q *Queries) CreatePlan(ctx context.Context, arg CreatePlanParams) (Plan, error) {
@@ -51,6 +52,7 @@ func (q *Queries) CreatePlan(ctx context.Context, arg CreatePlanParams) (Plan, e
 		arg.CreatedBy,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.CampaignID,
 	)
 	var i Plan
 	err := row.Scan(
@@ -62,6 +64,7 @@ func (q *Queries) CreatePlan(ctx context.Context, arg CreatePlanParams) (Plan, e
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -139,7 +142,7 @@ func (q *Queries) GetLatestPlanVersion(ctx context.Context, planID int64) (PlanV
 }
 
 const getPlan = `-- name: GetPlan :one
-SELECT id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at FROM plans WHERE id = ? AND workspace_id = ?
+SELECT id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at, campaign_id FROM plans WHERE id = ? AND workspace_id = ?
 `
 
 type GetPlanParams struct {
@@ -159,6 +162,7 @@ func (q *Queries) GetPlan(ctx context.Context, arg GetPlanParams) (Plan, error) 
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.CampaignID,
 	)
 	return i, err
 }
@@ -233,7 +237,7 @@ func (q *Queries) ListPlanVersions(ctx context.Context, planID int64) ([]PlanVer
 }
 
 const listPlans = `-- name: ListPlans :many
-SELECT id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at FROM plans WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC LIMIT ?
+SELECT id, workspace_id, brand_id, project_id, title, created_by, created_at, updated_at, campaign_id FROM plans WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC LIMIT ?
 `
 
 type ListPlansParams struct {
@@ -259,6 +263,7 @@ func (q *Queries) ListPlans(ctx context.Context, arg ListPlansParams) ([]Plan, e
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.CampaignID,
 		); err != nil {
 			return nil, err
 		}

@@ -37,8 +37,8 @@ import { ErrorNote, LoadingRows } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Composer } from "./ask";
-import { SampleChip } from "./create/shared";
 import { inboxOrder } from "./inbox";
+import { SampleChip } from "./studio/shared";
 
 // Home is a desk: a greeting, the cards that deserve attention today (any
 // door, any shape, each with a question ready to ask about it), the chat bar,
@@ -263,7 +263,7 @@ function TemplateGlyph({ icon, className }: { icon: TemplateIcon; className?: st
 const GROUPS = [
   { door: "perform", label: "Perform", icon: Activity },
   { door: "convert", label: "Convert", icon: Filter },
-  { door: "create", label: "Create", icon: PenTool },
+  { door: "studio", label: "Create", icon: PenTool },
   { door: "any", label: "Reports", icon: FileText },
 ] as const;
 

@@ -20,6 +20,7 @@ import type {
   Offer,
 } from "@/api/types.gen";
 import { useSession } from "@/app/session";
+import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,7 @@ import { cn } from "@/lib/utils";
 
 const route = getRouteApi("/app/brands/$brandId");
 
-const CLASS: Record<FactClass, { status: Status; label: string }> = {
+export const CLASS: Record<FactClass, { status: Status; label: string }> = {
   approved: { status: "ready", label: "Approved" },
   needs_review: { status: "caution", label: "Needs review" },
   inferred: { status: "pending", label: "Inferred" },
@@ -46,14 +47,16 @@ const SOURCE: Record<FactSource, string> = {
 // Keys read as sentences in the brand page. Anything else shows as typed.
 const KEY_LABEL: Record<string, string> = {
   "price.from": "Prices from",
+  "discount.max": "Max discount",
   handover: "Handover",
   location: "Location",
   units: "Units",
+  unit_types: "Units",
   payment_plan: "Payment plan",
   usp: "USPs",
   audience: "Audience",
 };
-const keyLabel = (k: string) => KEY_LABEL[k] ?? k.replace(/[._]/g, " ");
+export const keyLabel = (k: string) => KEY_LABEL[k] ?? k.replace(/[._]/g, " ");
 
 // A brand is where Create starts: the projects it markets, the facts Adx is
 // allowed to state about them, the offers running, and the research that
@@ -66,10 +69,11 @@ export function BrandPage() {
   return (
     <>
       <Link
-        to="/brands"
+        to="/projects"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Brands
+        <ArrowLeft className="size-4" />{" "}
+        {brand.data?.brand.kind === "competitor" ? "Competitors" : "Projects"}
       </Link>
       {brand.isPending && <LoadingRows rows={8} />}
       {brand.error && <ErrorNote error={brand.error} />}
@@ -145,7 +149,7 @@ function Body({ id, d }: { id: number; d: NonNullable<ReturnType<typeof useBrand
           <div className="space-y-6">
             <Projects brandId={id} projects={d.projects} canEdit={admin} />
             <Offers offers={d.offers} projects={d.projects} />
-            <ResearchPanel briefs={mine} loading={briefs.isPending} brandId={id} />
+            <ResearchPanel briefs={mine} loading={briefs.isPending} />
           </div>
         </div>
       </div>
@@ -238,13 +242,20 @@ function FactRow({
   );
 }
 
-function factValue(f: Fact) {
+export function factValue(f: Fact) {
   if (f.kind === "money" && f.currency) {
-    const n = Number(f.value);
-    // Prices are whole dirhams on a brand page; cents would be noise.
+    // Stored in minor units; shown in whole dirhams, cents would be noise.
+    const n = Number(f.value) / 100;
     return Number.isFinite(n) ? `${f.currency} ${Math.round(n).toLocaleString("en")}` : f.value;
   }
   if (f.kind === "percent") return `${f.value}%`;
+  if (f.kind === "date" && /^\d{4}-\d{2}-\d{2}$/.test(f.value)) {
+    return new Date(`${f.value}T00:00:00Z`).toLocaleDateString("en-GB", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
   return f.value;
 }
 
@@ -310,7 +321,7 @@ function RecordFact({
       title="Record a fact"
       description="Arrives as needs review. An admin's approval makes it a claim."
     >
-      <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+      <Form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
         <Select
           aria-label="Scope"
           value={projectId}
@@ -353,7 +364,7 @@ function RecordFact({
           </Button>
         </div>
         {add.error && <p className="text-xs text-destructive sm:col-span-2">{add.error.message}</p>}
-      </form>
+      </Form>
     </Panel>
   );
 }
@@ -376,10 +387,17 @@ function Projects({
       <ul className="divide-y">
         {projects.map((p) => (
           <li key={p.id} className="flex items-center justify-between gap-3 px-5 py-2.5 text-sm">
-            <span className="font-medium">{p.name}</span>
             <Link
-              to="/creative/$projectId"
+              to="/projects/$projectId"
               params={{ projectId: String(p.id) }}
+              className="font-medium hover:underline"
+            >
+              {p.name}
+            </Link>
+            <Link
+              to="/projects/$projectId"
+              params={{ projectId: String(p.id) }}
+              search={{ tab: "concepts" }}
               className="text-xs text-muted-foreground hover:text-foreground"
             >
               Creatives
@@ -462,15 +480,7 @@ function Offers({
   );
 }
 
-function ResearchPanel({
-  briefs,
-  loading,
-  brandId,
-}: {
-  briefs: Brief[];
-  loading: boolean;
-  brandId: number;
-}) {
+function ResearchPanel({ briefs, loading }: { briefs: Brief[]; loading: boolean }) {
   return (
     <Panel
       title="Research"
@@ -489,7 +499,7 @@ function ResearchPanel({
       )}
       {!loading && briefs.length === 0 && (
         <EmptyState title="No research yet">
-          Start a brand with a website and Adx opens the first brief. Brand {brandId} has none.
+          Start a project with a website and Adx opens the first brief.
         </EmptyState>
       )}
       <ul className="divide-y">

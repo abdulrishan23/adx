@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import type { BriefDetail, ComparativeReport, Finding, Hypothesis, Item } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccounts } from "@/engine/api/accounts";
@@ -166,7 +167,7 @@ function NewBrief({ onCreated }: { onCreated: (id: number) => void }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New brief</h2>
       <select
         className="w-full rounded-md border bg-background px-2 py-1"
@@ -265,7 +266,7 @@ function NewBrief({ onCreated }: { onCreated: (id: number) => void }) {
         Create brief
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -475,7 +476,7 @@ function MarketEvents({ canEdit }: { canEdit: boolean }) {
         )}
       </ul>
       {canEdit && (
-        <form
+        <Form
           className="space-y-1"
           onSubmit={(e) => {
             e.preventDefault();
@@ -522,7 +523,7 @@ function MarketEvents({ canEdit }: { canEdit: boolean }) {
             Record
           </Button>
           {record.error && <p className="text-destructive">{record.error.message}</p>}
-        </form>
+        </Form>
       )}
     </div>
   );

@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Deployment,
   PageDetail,
+  PageDraftInput,
+  PageDrafts,
   PageInput,
   PageReadiness,
   PagesResponse,
@@ -55,6 +57,16 @@ export function useCreatePage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: PageInput) => postJSON<PageDetail>("/api/pages", input),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["pages"] }),
+  });
+}
+
+// Adx drafts a page (or both languages as twins) from the brand's approved
+// facts, the offer and the studio's pictures; a person edits and publishes.
+export function useDraftPage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: PageDraftInput) => postJSON<PageDrafts>("/api/pages/draft", input),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["pages"] }),
   });
 }

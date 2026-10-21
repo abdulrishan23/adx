@@ -182,7 +182,7 @@ function SidebarNav({
                 active={open?.label === g.label}
               />
             )}
-            {!collapsed && open?.label === g.label && (
+            {!collapsed && open?.label === g.label && g.items.length > 1 && (
               <ul className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
                 {g.items.map((item) => (
                   <li key={item.to}>
@@ -271,7 +271,7 @@ function NavLink({
 
 function SidebarFooter({ collapsed, inDrawer }: { collapsed: boolean; inDrawer?: boolean }) {
   return (
-    <div className={cn("border-t border-sidebar-border p-1.5", collapsed && "flex justify-center")}>
+    <div className={cn("border-t border-sidebar-border", collapsed && "flex justify-center p-1.5")}>
       <AccountMenu placement={inDrawer ? "drawer" : collapsed ? "rail" : "sidebar"} />
     </div>
   );

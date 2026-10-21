@@ -71,8 +71,8 @@ export function ResearchPage() {
       {briefs.data && list.length === 0 && (
         <Panel>
           <EmptyState title="No research yet">
-            <Link to="/brands/new" className="underline underline-offset-4">
-              Start a brand
+            <Link to="/projects/new" className="underline underline-offset-4">
+              Start a project
             </Link>{" "}
             and Adx opens its first brief. Anything else can be set up on the{" "}
             <Link to="/engine/research" className="underline underline-offset-4">
@@ -87,7 +87,7 @@ export function ResearchPage() {
   );
 }
 
-function BriefView({ id }: { id: number }) {
+export function BriefView({ id }: { id: number }) {
   const brief = useBrief(id);
   const start = useStartResearchRun(id);
   const d = brief.data;

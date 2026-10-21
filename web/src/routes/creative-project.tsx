@@ -1,119 +1,24 @@
-import { Link, useNavigate, useSearch } from "@tanstack/react-router";
-import { Download, ExternalLink, Link2, Pencil, Plus, Upload } from "lucide-react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ExternalLink, Link2, Pencil, Plus, Sparkles } from "lucide-react";
 import { useState } from "react";
-import { useCreateConcept, useCreativeProject, useResolveComment } from "@/api/creative";
+import { useCreateConcept, useGenerateConcepts, useResolveComment } from "@/api/creative";
 import type { Ad, Comment, Concept, CreativeProject } from "@/api/types.gen";
-import { useSession } from "@/app/session";
-import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
+import { FieldError, Form } from "@/components/form";
+import { EmptyState, Eyebrow, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { BrandKitForm } from "@/creative/brand-kit-form";
 import { fileUrl } from "@/creative/files";
 import { FORMATS } from "@/creative/naming";
-import { RendersTab } from "@/creative/renders-tab";
-import { SettingsTab } from "@/creative/settings-tab";
-import { ReviewState, ReviewTally } from "@/creative/ui";
+import { ReviewState } from "@/creative/ui";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-export type CreativeTab = "concepts" | "renders" | "brand" | "settings";
-
-export function creativeTabSearch(raw: Record<string, unknown>): { tab?: CreativeTab } {
-  const t = raw.tab;
-  return t === "renders" || t === "brand" || t === "settings" ? { tab: t } : {};
-}
 
 export function reviewLink(key: string) {
   return `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/review/${key}`;
 }
 
-export function CreativeProjectPage({ projectId }: { projectId: number }) {
-  const project = useCreativeProject(projectId);
-  const { tab = "concepts" } = useSearch({ strict: false }) as { tab?: CreativeTab };
-  const navigate = useNavigate();
-  const session = useSession();
-  const canEdit = session.role !== "viewer";
-
-  if (project.isPending) return <LoadingRows rows={8} />;
-  if (project.error) return <ErrorNote error={project.error} />;
-  const p = project.data;
-  const ads = p.concepts.flatMap((c) => c.ads);
-  const count = (s: Ad["status"]) => ads.filter((a) => a.status === s).length;
-
-  return (
-    <section>
-      <Link to="/creative" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Creatives
-      </Link>
-      <PageHeader
-        className="mt-2"
-        title={p.settings.projectName}
-        subtitle={
-          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
-            <span>
-              Prefix <span className="font-mono">{p.settings.prefix}</span> · {p.concepts.length}{" "}
-              {p.concepts.length === 1 ? "concept" : "concepts"} · {ads.length}{" "}
-              {ads.length === 1 ? "ad" : "ads"}
-            </span>
-            <ReviewTally
-              approved={count("approved")}
-              revise={count("revise")}
-              waiting={count("waiting")}
-            />
-          </span>
-        }
-        actions={
-          <>
-            <ReviewLinkButtons settings={p.settings} />
-            <a
-              href={`/api/creative/projects/${projectId}/download?set=approved`}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Download />
-              Approved
-            </a>
-            {canEdit && (
-              <Link
-                to="/creative/$projectId/upload"
-                params={{ projectId: String(projectId) }}
-                className={buttonVariants()}
-              >
-                <Upload />
-                Upload ads
-              </Link>
-            )}
-          </>
-        }
-      />
-      <Segmented
-        label="Project sections"
-        value={tab}
-        onChange={(t) =>
-          navigate({
-            to: "/creative/$projectId",
-            params: { projectId: String(projectId) },
-            search: t === "concepts" ? {} : { tab: t },
-            replace: true,
-          })
-        }
-        options={[
-          { value: "concepts", label: "Concepts", count: p.concepts.length },
-          { value: "renders", label: "Renders", count: p.renders.filter((r) => !r.hidden).length },
-          { value: "brand", label: "Brand kit" },
-          { value: "settings", label: "Settings" },
-        ]}
-        className="mb-6"
-      />
-      {tab === "concepts" && <ConceptsTab project={p} canEdit={canEdit} />}
-      {tab === "renders" && <RendersTab project={p} canEdit={canEdit} />}
-      {tab === "brand" && <BrandKitForm settings={p.settings} canEdit={canEdit} />}
-      {tab === "settings" && <SettingsTab settings={p.settings} canEdit={canEdit} />}
-    </section>
-  );
-}
-
-function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"] }) {
+export function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"] }) {
   const [copied, setCopied] = useState(false);
   const link = reviewLink(settings.reviewKey);
   if (!settings.reviewActive) {
@@ -150,11 +55,16 @@ function ReviewLinkButtons({ settings }: { settings: CreativeProject["settings"]
   );
 }
 
-function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
+export function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
   const projectId = project.settings.projectId;
   return (
     <div className="space-y-8">
-      {canEdit && <NewConceptForm projectId={projectId} />}
+      {canEdit && (
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+          <NewConceptForm projectId={projectId} />
+          <AskForConcepts projectId={projectId} />
+        </div>
+      )}
       {project.concepts.length === 0 ? (
         <Panel>
           <EmptyState title="No concepts yet">
@@ -173,18 +83,24 @@ function ConceptsTab({ project, canEdit }: { project: CreativeProject; canEdit: 
   );
 }
 
-function NewConceptForm({ projectId }: { projectId: number }) {
+export function NewConceptForm({
+  projectId,
+  campaignId = 0,
+}: {
+  projectId: number;
+  campaignId?: number;
+}) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const create = useCreateConcept(projectId);
   const navigate = useNavigate();
   return (
-    <form
+    <Form
       className="flex flex-wrap items-end gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         create.mutate(
-          { code, name },
+          { code, name, campaignId },
           {
             onSuccess: (c) =>
               navigate({
@@ -206,7 +122,9 @@ function NewConceptForm({ projectId }: { projectId: number }) {
           placeholder="C1"
           className="w-24 font-mono"
           required
+          data-error="Give the idea a code, like C1."
         />
+        <FieldError htmlFor="concept-code" />
       </div>
       <Input
         aria-label="Concept name"
@@ -215,16 +133,80 @@ function NewConceptForm({ projectId }: { projectId: number }) {
         placeholder="Cash offer"
         className="w-56"
       />
-      <Button type="submit" variant="outline" disabled={create.isPending || !code}>
+      <Button type="submit" variant="outline" disabled={create.isPending}>
         <Plus />
         Add
       </Button>
       {create.error && <p className="w-full text-sm text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
-function ConceptSection({
+// Adx proposes concepts from the brand's approved facts and current
+// offers. They land as ordinary concepts, to edit or delete like any other.
+export function AskForConcepts({
+  projectId,
+  campaignId = 0,
+}: {
+  projectId: number;
+  campaignId?: number;
+}) {
+  const [instructions, setInstructions] = useState("");
+  const [count, setCount] = useState(3);
+  const generate = useGenerateConcepts(projectId);
+  return (
+    <Form
+      className="flex flex-wrap items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        generate.mutate({ count, instructions, campaignId });
+      }}
+    >
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="concept-ask" className="text-sm font-medium">
+          Ask Adx for concepts
+        </label>
+        <Input
+          id="concept-ask"
+          value={instructions}
+          onChange={(e) => setInstructions(e.target.value)}
+          placeholder="Angle, audience, anything to avoid"
+          className="w-72"
+        />
+      </div>
+      <Input
+        aria-label="How many"
+        type="number"
+        min={1}
+        max={6}
+        value={count}
+        onChange={(e) => setCount(Number(e.target.value))}
+        className="w-16"
+      />
+      <Button type="submit" disabled={generate.isPending}>
+        <Sparkles />
+        {generate.isPending ? "Writing" : "Write"}
+      </Button>
+      {generate.error && (
+        <p className="w-full text-sm text-destructive">{generate.error.message}</p>
+      )}
+      {generate.data && (
+        <div className="w-full text-sm text-muted-foreground">
+          <p>
+            {generate.data.concepts.length === 0
+              ? "Nothing worth saving came back."
+              : `${generate.data.concepts.length} ${generate.data.concepts.length === 1 ? "concept" : "concepts"} added from the approved facts.`}
+          </p>
+          {generate.data.notes.map((n) => (
+            <p key={n}>{n}</p>
+          ))}
+        </div>
+      )}
+    </Form>
+  );
+}
+
+export function ConceptSection({
   concept,
   projectId,
   canEdit,
@@ -268,12 +250,32 @@ function ConceptSection({
   );
 }
 
-function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit: boolean }) {
+export function AdTile({
+  ad,
+  projectId,
+  canEdit,
+}: {
+  ad: Ad;
+  projectId: number;
+  canEdit: boolean;
+}) {
   const f = FORMATS[ad.fmt];
+  const video = ad.kind === "video";
   return (
     <li className="min-w-0 space-y-1.5">
       <div className="relative grid h-56 place-items-center border bg-muted p-2">
-        {ad.current ? (
+        {ad.current && video ? (
+          <video
+            src={fileUrl(ad.current.file)}
+            poster={fileUrl(ad.current.preview)}
+            controls
+            muted
+            playsInline
+            preload="none"
+            className="max-h-52 max-w-full"
+            style={{ aspectRatio: `${f.width} / ${f.height}` }}
+          />
+        ) : ad.current ? (
           <a href={fileUrl(ad.current.file)} target="_blank" rel="noreferrer">
             <img
               src={fileUrl(ad.current.preview)}
@@ -285,13 +287,13 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
           </a>
         ) : (
           <span className="absolute inset-0 grid place-items-center p-2 text-center text-xs text-muted-foreground">
-            Not published yet
+            {video ? "Being made" : "Not published yet"}
           </span>
         )}
       </div>
       <div className="flex items-center justify-between gap-2">
         <ReviewState status={ad.status} />
-        {canEdit && (
+        {canEdit && !video && (
           <Link
             to="/creative/$projectId/ads/$adId/edit"
             params={{ projectId: String(projectId), adId: String(ad.id) }}
@@ -303,7 +305,14 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
         )}
       </div>
       <p className="text-xs text-muted-foreground">
-        {ad.fmt} · {ad.hasCta ? "With CTA" : "No CTA"}
+        {video ? "Video" : ad.fmt} ·{" "}
+        {video
+          ? ad.current?.method === "model"
+            ? "Veo"
+            : "Motion"
+          : ad.hasCta
+            ? "With CTA"
+            : "No CTA"}
         {ad.lang === "ar" && " · Arabic"}
         {ad.current && ad.current.version > 1 && ` · v${ad.current.version}`}
         {ad.comments > 0 && ` · ${ad.comments} ${ad.comments === 1 ? "comment" : "comments"}`}
@@ -317,7 +326,13 @@ function AdTile({ ad, projectId, canEdit }: { ad: Ad; projectId: number; canEdit
 
 // Every comment from the review board, newest first, so the team can work
 // through them and mark each one done.
-function CommentsPanel({ project, canEdit }: { project: CreativeProject; canEdit: boolean }) {
+export function CommentsPanel({
+  project,
+  canEdit,
+}: {
+  project: CreativeProject;
+  canEdit: boolean;
+}) {
   const [show, setShow] = useState<"open" | "all">("open");
   const resolve = useResolveComment();
   const comments = [...project.comments].reverse();

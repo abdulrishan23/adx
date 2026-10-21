@@ -1,6 +1,6 @@
 -- name: CreatePage :one
-INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO pages (workspace_id, brand_id, project_id, plan_id, plan_version, slug, name, language, test_token, created_by, created_at, updated_at, campaign_id)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 RETURNING *;
 
 -- name: GetPage :one
@@ -11,6 +11,17 @@ SELECT * FROM pages WHERE slug = ?;
 
 -- name: ListPages :many
 SELECT * FROM pages WHERE workspace_id = ? ORDER BY updated_at DESC, id DESC;
+
+-- name: ListPageSummaries :many
+SELECT p.*, b.name AS brand_name, pr.name AS project_name,
+       CAST(COALESCE((SELECT MAX(v.version) FROM page_versions v WHERE v.page_id = p.id), 0) AS INTEGER) AS latest_version,
+       CAST(COALESCE((SELECT v.version FROM page_deployments d JOIN page_versions v ON v.id = d.version_id
+         WHERE d.page_id = p.id AND d.state = 'published' ORDER BY d.deployed_at DESC, d.id DESC LIMIT 1), 0) AS INTEGER) AS published_version
+FROM pages p
+JOIN brands b ON b.id = p.brand_id
+LEFT JOIN projects pr ON pr.id = p.project_id
+WHERE p.workspace_id = ?
+ORDER BY p.updated_at DESC, p.id DESC;
 
 -- name: TouchPage :exec
 UPDATE pages SET updated_at = ? WHERE id = ?;

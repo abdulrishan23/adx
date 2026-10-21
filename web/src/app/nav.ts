@@ -2,9 +2,8 @@ import type { RegisteredRouter } from "@tanstack/react-router";
 import {
   Activity,
   Bot,
-  Building2,
-  CalendarRange,
   ChartNoAxesCombined,
+  Clapperboard,
   ClipboardCheck,
   Cog,
   Coins,
@@ -12,27 +11,20 @@ import {
   Filter,
   FolderKanban,
   Gauge,
-  Globe,
+  Images,
   Inbox,
   Inbox as InboxIcon,
+  Lightbulb,
   ListChecks,
   type LucideIcon,
   Megaphone,
   MessageSquareText,
   Palette,
-  PanelsTopLeft,
-  PenTool,
   PhoneCall,
   Plug,
   RefreshCw,
-  Rocket,
-  Send,
-  Share2,
   ShieldAlert,
-  ShieldCheck,
-  Telescope,
   UserCog,
-  UserRound,
   UserSearch,
   Users,
   UsersRound,
@@ -66,6 +58,9 @@ export type NavGroup = {
   label: string;
   items: readonly NavItem[];
   door?: { to: RoutePath; phase: Phase; icon: LucideIcon };
+  // under lists path prefixes the group owns beyond its items, such as the
+  // Projects screens reached from a campaign (plans, pages, launch).
+  under?: readonly string[];
 };
 
 export const HOME: NavItem = {
@@ -88,66 +83,59 @@ export const INBOX: NavItem = {
 
 export const NAV: readonly NavGroup[] = [
   {
-    label: "Create",
-    door: { to: "/brands", phase: 1, icon: PenTool },
+    label: "Projects",
+    door: { to: "/projects", phase: 1, icon: FolderKanban },
+    under: ["/studio/", "/brands/", "/competitors"],
     items: [
       {
-        label: "Brands",
-        to: "/brands",
+        label: "Projects",
+        to: "/projects",
         icon: FolderKanban,
         phase: 1,
         status: "live",
         summary:
-          "Each brand Reportage markets, such as The Wadi, and where it is on the way from brand knowledge to live campaign. Setting one up is how Create starts.",
+          "Each development Adx markets, such as The Wadi, and its campaigns: the brief, the ads Adx writes, the page, the plan and the launch for each push.",
       },
+    ],
+  },
+  {
+    label: "Creative",
+    door: { to: "/creative/concepts", phase: 1, icon: Palette },
+    // A concept's page, the ad editor and uploads live under a project's path.
+    under: ["/creative/"],
+    items: [
       {
-        label: "Research",
-        to: "/create/research",
-        icon: Telescope,
-        phase: 2,
+        label: "Concepts",
+        to: "/creative/concepts",
+        icon: Lightbulb,
+        phase: 1,
         status: "live",
-        summary: "Competitors, keywords and audiences for each project, refreshed on a schedule.",
+        summary: "Every idea across projects and campaigns, and the ads built from it.",
       },
       {
-        label: "Media plans",
-        to: "/create/plans",
-        icon: CalendarRange,
-        phase: 2,
-        status: "live",
-        summary:
-          "Budget split by channel and week, with the assumptions behind it and the approval that lets it launch.",
-      },
-      {
-        label: "Creatives",
-        to: "/creative",
-        icon: Palette,
+        label: "Library",
+        to: "/creative/library",
+        icon: Images,
         phase: 1,
         status: "live",
         summary:
-          "Each project's ads in four sizes, built from copy or uploaded, edited on a canvas and reviewed on a shared link.",
+          "Each project's pictures, logos, fonts and colours, for every campaign to draw on.",
       },
       {
-        label: "Landing pages",
-        to: "/create/pages",
-        icon: Globe,
-        phase: 3,
-        status: "live",
-        summary: "Pages built from approved facts, with their forms wired to GoHighLevel.",
-      },
-      {
-        label: "Launch",
-        to: "/create/launch",
-        icon: Rocket,
-        phase: 3,
+        label: "Producer",
+        to: "/creative/producer",
+        icon: Clapperboard,
+        phase: 1,
         status: "live",
         summary:
-          "Readiness checks, then campaigns submitted to Meta and Google, with every rejection and what fixes it.",
+          "Every ad across campaigns: what needs changes, what's awaiting review, what's approved.",
       },
     ],
   },
   {
     label: "Perform",
     door: { to: "/analytics", phase: 1, icon: Activity },
+    under: ["/data-quality", "/outcomes", "/website", "/organic"],
     items: [
       {
         label: "Analytics",
@@ -168,38 +156,12 @@ export const NAV: readonly NavGroup[] = [
           "Campaign, ad set and ad views with spend, leads, qualified leads, deals and the temperature mix.",
       },
       {
-        label: "By project",
-        to: "/perform/projects",
-        icon: PanelsTopLeft,
-        phase: 1,
-        status: "live",
-        summary:
-          "Each project's week: cost per qualified lead, meetings, budget pacing and its funnel.",
-      },
-      {
         label: "Revenue",
         to: "/revenue",
         icon: Coins,
         phase: 1,
         status: "live",
         summary: "Spend against Done-Deal revenue by month and by channel, and where leads live.",
-      },
-      {
-        label: "Portals",
-        to: "/portals",
-        icon: Building2,
-        phase: 1,
-        status: "live",
-        summary:
-          "Leads, qualified leads, deals and cost per lead for each property portal, with spend typed in each month.",
-      },
-      {
-        label: "Marketers",
-        to: "/marketers",
-        icon: UserRound,
-        phase: 1,
-        status: "live",
-        summary: "Results split by source owner.",
       },
       {
         label: "Reports",
@@ -210,57 +172,12 @@ export const NAV: readonly NavGroup[] = [
         summary: "Monthly and weekly reports for the CMO and CEO.",
       },
       {
-        label: "Data quality",
-        to: "/data-quality",
-        icon: ShieldCheck,
-        phase: 1,
-        status: "live",
-        summary:
-          "Platform leads against GoHighLevel leads per form, status coverage and attribution coverage.",
-      },
-      {
-        label: "Proposals",
-        to: "/proposals",
-        icon: ClipboardCheck,
-        phase: 3,
-        status: "live",
-        summary:
-          "Changes to Google, Meta and GoHighLevel waiting for approval, and the log of every change Adx made.",
-      },
-      {
         label: "Audiences",
         to: "/audiences",
         icon: UsersRound,
         phase: 3,
         status: "live",
         summary: "Meta custom audiences and Google Customer Match built from leads that went cold.",
-      },
-      {
-        label: "Outcome sync",
-        to: "/outcomes",
-        icon: Send,
-        phase: 3,
-        status: "live",
-        summary:
-          "Qualified leads and Done-Deals sent back to Google and Meta, with match rates, failures and an audit of the current setup.",
-      },
-      {
-        label: "Website",
-        to: "/website",
-        icon: Globe,
-        phase: 6,
-        status: "live",
-        summary:
-          "GA4 traffic and landing page performance, with flags for broken or password-gated pages.",
-      },
-      {
-        label: "Organic",
-        to: "/organic",
-        icon: Share2,
-        phase: 6,
-        status: "live",
-        summary:
-          "Reach, engagement, follower growth and top posts on Instagram, Facebook and LinkedIn, plus Search Console.",
       },
     ],
   },
@@ -379,6 +296,16 @@ export const NAV: readonly NavGroup[] = [
         roles: ["admin"],
       },
       {
+        label: "Change log",
+        to: "/proposals",
+        icon: ClipboardCheck,
+        phase: 3,
+        status: "live",
+        roles: ["admin", "marketer"],
+        summary:
+          "Every change Adx made to Google, Meta and GoHighLevel, and the ones still waiting for approval. Approvals themselves arrive in the Inbox.",
+      },
+      {
         label: "Scoring",
         to: "/settings/scoring",
         icon: Gauge,
@@ -423,6 +350,9 @@ export function findNavItem(path: string): NavItem | undefined {
 // open. A screen outside every door, such as Settings, returns undefined.
 export function doorOf(path: string): NavGroup | undefined {
   return NAV.find(
-    (g) => g.door && g.items.some((i) => path === i.to || path.startsWith(`${i.to}/`)),
+    (g) =>
+      g.door &&
+      (g.items.some((i) => path === i.to || path.startsWith(`${i.to}/`)) ||
+        (g.under ?? []).some((u) => path.startsWith(u))),
   );
 }

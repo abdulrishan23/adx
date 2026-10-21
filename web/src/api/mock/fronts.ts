@@ -213,7 +213,7 @@ const TEMPLATES: Template[] = [
   ),
   t(
     "t13",
-    "create",
+    "studio",
     "launch",
     "What's blocking a launch?",
     "Every brand with a plan approved and campaigns not yet delivering, and why.",
@@ -221,21 +221,21 @@ const TEMPLATES: Template[] = [
   ),
   t(
     "t14",
-    "create",
+    "studio",
     "fatigue",
     "Which ads are fatigued?",
     "Ads shown too often with click rate falling, and what to swap in.",
   ),
   t(
     "t15",
-    "create",
+    "studio",
     "review",
     "Which creatives are waiting on review?",
     "Ads with no decision on the review board, oldest first.",
   ),
   t(
     "t16",
-    "create",
+    "studio",
     "plan",
     "Draft a media plan for a brand",
     "Budget by channel and week from the brand's facts and research.",
@@ -275,13 +275,13 @@ const WORKING: WorkItem[] = [
     id: "verdana-plan",
     title: "Drafting Verdana plan v2",
     detail: "From the September audit and this week's research.",
-    to: "/create/plans",
+    to: "/studio/plans",
   },
   {
     id: "sila-research",
     title: "Refreshing Sila research",
     detail: "Monthly competitor and keyword pass.",
-    to: "/create/research",
+    to: "/studio/research",
   },
 ];
 
@@ -290,7 +290,7 @@ const ALERT_DOOR: Record<string, Card["door"]> = {
   "Creative fatigue": "perform",
   Pacing: "perform",
   Delivery: "perform",
-  "Landing page": "create",
+  "Landing page": "studio",
   "Status coverage": "convert",
 };
 
@@ -370,7 +370,7 @@ export function desk(): HomeDesk {
       : []),
     {
       id: "rejected",
-      door: "create",
+      door: "studio",
       status: "error",
       title: "The Wadi launch is blocked",
       why: "Meta rejected two ads: a missing housing category and too much text on the Arabic story.",
@@ -383,7 +383,7 @@ export function desk(): HomeDesk {
         ],
       },
       question: "What's blocking The Wadi launch?",
-      action: { label: "Fix", to: "/create/launch" },
+      action: { label: "Fix", to: "/studio/launch" },
     },
     {
       id: "hot",
@@ -409,7 +409,7 @@ export function desk(): HomeDesk {
     },
     {
       id: "plan",
-      door: "create",
+      door: "studio",
       status: "caution",
       title: "Plan v3 for Sila is waiting on you",
       why: "AED 450K over six weeks, two assumptions not confirmed. Approving it starts the launch.",
@@ -422,7 +422,7 @@ export function desk(): HomeDesk {
         ],
       },
       question: "Walk me through plan v3 for Sila and what I'm being asked to assume.",
-      action: { label: "Review", to: "/create/plans", primary: true },
+      action: { label: "Review", to: "/studio/plans", primary: true },
     },
     {
       id: "channels",
@@ -455,6 +455,16 @@ export function desk(): HomeDesk {
         ]
       : []),
     {
+      id: "outcomes",
+      door: "perform",
+      status: "caution",
+      title: "Deals aren't reaching Google",
+      why: "The last three Done-Deals from GoHighLevel matched no Google click: the gclid is missing on the form. Meta is matching 91%.",
+      figure: { value: "3", count: 3, unit: "deals unmatched" },
+      question: "Why are deals not matching on Google, and what does Meta do differently?",
+      action: { label: "Outcome sync", to: "/outcomes" },
+    },
+    {
       id: "drafts",
       door: "convert",
       status: "caution",
@@ -466,13 +476,13 @@ export function desk(): HomeDesk {
     },
     {
       id: "research",
-      door: "create",
+      door: "studio",
       status: "ready",
       title: "The Wadi research refreshed",
       why: "Bloom Living started bidding on 'wadi abu dhabi' on 11 Oct. Two terms added to the plan's watch list.",
       figure: { value: "3", count: 3, unit: "competitor moves" },
       question: "What changed in The Wadi's research, and does the plan need to move?",
-      action: { label: "Research", to: "/create/research" },
+      action: { label: "Research", to: "/studio/research" },
     },
   ];
   const ARRIVED: Record<string, number> = {};

@@ -1,4 +1,4 @@
-// Where a plan's money goes when it launches (BD-60, decided 2026-10-18).
+// Where a plan's money goes when it launches (BD-68, decided 2026-10-18).
 // Create owns the first launch: each plan line is resolved against the
 // project's running campaigns before anything is submitted. One match is
 // updated; more than one and a person picks, never both unasked; none and a

@@ -19,7 +19,7 @@ import (
 	"github.com/WokeWorks/adx/server/store/storetest"
 )
 
-// The rules the owner decided on 2026-10-18 (BD-60). Each test names the
+// The rules the owner decided on 2026-10-18 (BD-68). Each test names the
 // wrong behaviour it catches.
 
 type env struct {

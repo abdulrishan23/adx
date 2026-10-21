@@ -1,9 +1,10 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, FileText, Upload } from "lucide-react";
 import { type FormEvent, type ReactNode, useId, useState } from "react";
-import { useAssignProject, useCreateBrand } from "@/api/brands";
+import { useAssignProject, useBrands, useCreateBrand } from "@/api/brands";
 import type { Analyst } from "@/api/create";
 import { useCreateBrief } from "@/api/research";
+import { FieldError, Form } from "@/components/form";
 import { ErrorNote, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,10 @@ const TEXTAREA =
 // for them (B5.2's registry).
 export function StartBrandPage() {
   const navigate = useNavigate();
+  const brands = useBrands();
+  // Our side has one developer; a new project goes under it. Only the very
+  // first project also names the developer.
+  const developer = brands.data?.brands.find((b) => b.kind === "own") ?? null;
   const createBrand = useCreateBrand();
   const createProject = useCreateProject();
   const assign = useAssignProject();
@@ -79,7 +84,8 @@ export function StartBrandPage() {
     ]
       .filter(Boolean)
       .join("\n\n");
-    const brand = await createBrand.mutateAsync({ name: name.trim(), kind: "own", notes });
+    const brand =
+      developer ?? (await createBrand.mutateAsync({ name: name.trim(), kind: "own", notes }));
     const p = await createProject.mutateAsync({ name: project.trim() || name.trim() });
     await assign.mutateAsync({ projectId: p.id, brandId: brand.id });
     const website = text("website");
@@ -91,7 +97,7 @@ export function StartBrandPage() {
       brandId: brand.id,
       projectId: p.id,
       title: `${p.name}: setup research`,
-      question: `Who is ${name.trim()} selling ${p.name} to, who else is selling to them, and what will it cost to reach them?`,
+      question: `Who is ${brand.name} selling ${p.name} to, who else is selling to them, and what will it cost to reach them?${developer && notes ? `\n\n${notes}` : ""}`,
       geography: "AE",
       language: "en",
       urls: [website, ...lines("elsewhere")].filter((u) => /^https?:\/\//.test(u)),
@@ -102,46 +108,52 @@ export function StartBrandPage() {
     });
     // Start the run and move on; the brand page shows items as they're fetched.
     await postJSON(`/api/research/briefs/${brief.brief.id}/runs`, {});
-    navigate({ to: "/brands/$brandId", params: { brandId: String(brand.id) } });
+    navigate({ to: "/projects/$projectId", params: { projectId: String(p.id) } });
   }
 
   return (
     <>
       <Link
-        to="/brands"
+        to="/projects"
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
-        <ArrowLeft className="size-4" /> Brands
+        <ArrowLeft className="size-4" /> Projects
       </Link>
       <PageHeader
-        title="Start a brand"
-        subtitle="Tell Adx what the brand is and who should look at it. Adx sets up the brand and works from analysis and research to a first media plan."
+        title="New project"
+        subtitle="Tell Adx what the development is and who should look at it. Adx sets it up and works from analysis and research to a first media plan."
       />
-      <form
+      <Form
         onSubmit={onSubmit}
         className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]"
       >
         <div className="min-w-0 space-y-6">
           <Panel
-            title="The brand"
-            description="The developer or company Adx markets, and the first development it's selling."
+            title="The project"
+            description={
+              developer
+                ? `A development ${developer.name} is selling.`
+                : "The development Adx markets first, and the developer behind it."
+            }
           >
             <div className="grid gap-4">
-              <Field id={ids.name} label="Brand">
-                <Input
-                  id={ids.name}
-                  name="name"
-                  required
-                  maxLength={100}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Reportage Properties"
-                />
-              </Field>
+              {!developer && (
+                <Field id={ids.name} label="Developer">
+                  <Input
+                    id={ids.name}
+                    name="name"
+                    required
+                    maxLength={100}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Reportage Properties"
+                  />
+                </Field>
+              )}
               <Field
                 id={ids.project}
-                label="First project"
-                hint="The development to start on. More can be added on the brand page."
+                label="Project"
+                hint="The development's name, as buyers know it."
               >
                 <Input
                   id={ids.project}
@@ -336,7 +348,7 @@ export function StartBrandPage() {
             )}
           </Panel>
         </aside>
-      </form>
+      </Form>
     </>
   );
 }
@@ -361,6 +373,7 @@ function Field({
         {optional && <span className="text-xs font-normal text-muted-foreground">Optional</span>}
       </label>
       {children}
+      <FieldError htmlFor={id} />
       {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
     </div>
   );

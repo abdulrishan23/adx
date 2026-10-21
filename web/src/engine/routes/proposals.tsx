@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Envelope } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAccounts, usePolicies } from "@/engine/api/accounts";
@@ -221,7 +222,7 @@ function NewProposal({ onCreated }: { onCreated: (id: number) => void }) {
   });
   const actions = policies.data?.catalog ?? [];
   return (
-    <form
+    <Form
       className="space-y-2 rounded-lg border p-3"
       onSubmit={(e) => {
         e.preventDefault();
@@ -354,7 +355,7 @@ function NewProposal({ onCreated }: { onCreated: (id: number) => void }) {
         Propose
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 

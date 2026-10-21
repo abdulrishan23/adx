@@ -1,6 +1,7 @@
 import { type FormEvent, useId, useState } from "react";
 import { useScoring, useUpdateScoring } from "@/api/adx";
 import type { Scoring, Temperature } from "@/api/models";
+import { Form } from "@/components/form";
 import { ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { TemperatureMeter } from "@/components/temperature";
 import { Button } from "@/components/ui/button";
@@ -175,7 +176,7 @@ function Thresholds({ s }: { s: Scoring }) {
   const w = Math.min(h, Number(warm) || 0);
   return (
     <Panel title="Thresholds">
-      <form onSubmit={onSubmit} className="space-y-4">
+      <Form onSubmit={onSubmit} className="space-y-4">
         <div className="relative flex h-3 overflow-hidden rounded-none" aria-hidden="true">
           <div className="bg-muted" style={{ width: `${w}%` }} />
           <div className="bg-foreground/40" style={{ width: `${h - w}%` }} />
@@ -192,7 +193,7 @@ function Thresholds({ s }: { s: Scoring }) {
           )}
         </div>
         {update.error && <ErrorNote error={update.error} />}
-      </form>
+      </Form>
     </Panel>
   );
 }

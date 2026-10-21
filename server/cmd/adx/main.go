@@ -29,6 +29,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/assistant"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
@@ -65,7 +66,9 @@ import (
 	anthropicprovider "github.com/WokeWorks/adx/server/providers/anthropic"
 	"github.com/WokeWorks/adx/server/providers/authentik"
 	"github.com/WokeWorks/adx/server/providers/elevenlabs"
+	"github.com/WokeWorks/adx/server/providers/ffmpeg"
 	"github.com/WokeWorks/adx/server/providers/filestore"
+	"github.com/WokeWorks/adx/server/providers/google"
 	"github.com/WokeWorks/adx/server/providers/smtpmail"
 	"github.com/WokeWorks/adx/server/providers/svgrender"
 	"github.com/WokeWorks/adx/server/providers/twilio"
@@ -162,8 +165,13 @@ type config struct {
 	// Ask ADX (B1.5). The model is configuration: provider, name, key,
 	// effort, timeout, daily token budget and prices for cost accounting.
 	// Without a key the assistant answers "not configured" and invents nothing.
-	ModelProvider          string `env:"ADX_MODEL_PROVIDER" envDefault:"anthropic"`
-	ModelAPIKey            string `env:"ADX_MODEL_API_KEY"`
+	ModelProvider string `env:"ADX_MODEL_PROVIDER" envDefault:"anthropic"`
+	ModelAPIKey   string `env:"ADX_MODEL_API_KEY"`
+	// GeminiAPIKey turns on picture generation in the studio (providers/google).
+	GeminiAPIKey           string `env:"ADX_GEMINI_API_KEY"`
+	ImageModel             string `env:"ADX_IMAGE_MODEL"`
+	VideoModel             string `env:"ADX_VIDEO_MODEL"`
+	FFmpegBin              string `env:"ADX_FFMPEG"` // path to ffmpeg; found on PATH when unset
 	ModelName              string `env:"ADX_MODEL_NAME" envDefault:"claude-opus-5-5"`
 	ModelEffort            string `env:"ADX_MODEL_EFFORT" envDefault:"medium"`
 	ModelBaseURL           string `env:"ADX_MODEL_BASE_URL"`
@@ -181,6 +189,10 @@ func main() {
 	switch {
 	case len(os.Args) > 1 && os.Args[1] == "backup":
 		err = runBackup(os.Args[2:])
+	case len(os.Args) > 1 && os.Args[1] == "seed-demo":
+		err = runSeedDemo(os.Args[2:])
+	case len(os.Args) > 1 && os.Args[1] == "import-studio":
+		err = runImportStudio(os.Args[2:])
 	case len(os.Args) > 1 && os.Args[1] == "loadtest":
 		err = runLoadtest(os.Args[2:])
 	default:
@@ -358,6 +370,23 @@ func run() error {
 		return fmt.Errorf("files dir: %w", err)
 	}
 	studioService := studio.New(db, files)
+	studioGen := studio.Generation{Model: model, Brands: brandService}
+	if cfg.GeminiAPIKey != "" {
+		gc, err := google.New(google.Config{APIKey: cfg.GeminiAPIKey, ImageModel: cfg.ImageModel, VideoModel: cfg.VideoModel})
+		if err != nil {
+			return err
+		}
+		studioGen.Images = googleImages{gc}
+		studioGen.Video = googleVideo{gc}
+	} else {
+		log.Warn("picture generation is off (ADX_GEMINI_API_KEY unset); the studio takes uploaded renders only")
+	}
+	if ff, err := ffmpeg.New(cfg.FFmpegBin); err == nil {
+		studioGen.Motion = motionMaker{ff}
+	} else {
+		log.Warn("motion video is off", "error", err)
+	}
+	studioService.Generate(studioGen)
 	// Keyword Planner rides on the Google Ads connection; without one the
 	// keyword items of a brief fail as unconfigured.
 	var keywordProvider research.KeywordProvider
@@ -371,10 +400,13 @@ func run() error {
 	formSalt := make([]byte, 16)
 	_, _ = rand.Read(formSalt)
 	pageService := pages.New(db, brandService, evidenceStore, pages.Config{PublicBase: cfg.PublicURL, Salt: hex.EncodeToString(formSalt)})
+	if model != nil {
+		pageService.UseModel(model)
+	}
 	policyService := policies.New(db)
 	// Launch resolves plan lines to campaigns and says which campaigns an
 	// accepted plan stands behind; proposals ask it before letting anything
-	// but a pause or a budget cut through on a campaign (BD-60).
+	// but a pause or a budget cut through on a campaign (BD-68).
 	launchService := launch.New(db, planService, reportingService, launch.Config{})
 	proposalService := proposals.New(db, policyService, planService, proposals.Config{Coverage: launchService})
 	// Live writes are off unless ADX_LIVE_WRITES=1; without them no write
@@ -391,6 +423,7 @@ func run() error {
 		slog.Info("live ad-account writes are off (ADX_LIVE_WRITES unset); execution intents are held")
 	}
 	executionService := execution.New(db, policyService, proposalService, adTokens, writers, execution.Config{LiveWritesEnabled: cfg.LiveWrites})
+	campaignService := campaigns.New(db, campaigns.Deps{Brands: brandService, Studio: studioService, Pages: pageService, Plans: planService, Launch: executionService})
 	// No enrichment provider is wired; people are resolved from CRM leads and
 	// form submissions only.
 	crmService := crm.New(db, evidenceStore, crm.Config{})
@@ -440,7 +473,7 @@ func run() error {
 		assistant.Config{Limits: assistant.Limits{DailyTokenBudget: cfg.AssistantDailyTokens, InputPriceMicros: cfg.ModelInputPriceMicros, OutputPriceMicros: cfg.ModelOutputPriceMicros}})
 	worker, err := jobs.New(db, log, jobs.Deps{
 		Runs:      runsService,
-		Executors: runExecutors(leadsService, reportingService, researchService, creativeService),
+		Executors: runExecutors(leadsService, reportingService, researchService, creativeService, studioService),
 		Periodic: []jobs.Periodic{
 			{Kind: "ads.refresh_all", Every: 24 * time.Hour, Run: func(ctx context.Context) error {
 				started, errs := reportingService.RefreshAll(ctx, runsService, cfg.AdsRefreshTrailingDays)
@@ -612,6 +645,7 @@ func run() error {
 			Assistant:     assistantService,
 			Creative:      creativeService,
 			Studio:        studioService,
+			Campaigns:     campaignService,
 			Brands:        brandService,
 			Research:      researchService,
 			Plans:         planService,
@@ -690,8 +724,8 @@ func configuredMailer(cfg config) (reports.Mailer, error) {
 }
 
 // runExecutors maps run kinds to the code that works them.
-func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research, c *creative.Service) map[string]jobs.Executor {
-	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs, creative.RenderRunKind: c}
+func runExecutors(l *leads.Leads, r *reporting.Reporting, rs *research.Research, c *creative.Service, st *studio.Studio) map[string]jobs.Executor {
+	return map[string]jobs.Executor{leads.RunKind: l, reporting.RefreshKind: r, research.ResearchRunKind: rs, creative.RenderRunKind: c, studio.VideoRunKind: st}
 }
 
 // checkStorage makes sure the persistent directories are there. Dev creates
@@ -895,4 +929,51 @@ func candidateModels(db *store.DB, cfg config) evaluation.ModelFactory {
 		}
 		return ops.NewMeter(db, m, cfg.ModelDailyTokenCap, nil), nil
 	}
+}
+
+// googleImages adapts the Google client to what the studio asks for.
+type googleImages struct{ c *google.Client }
+
+func (g googleImages) GenerateImage(ctx context.Context, in studio.PictureRequest) (studio.Picture, error) {
+	refs := make([]google.Reference, 0, len(in.References))
+	for _, r := range in.References {
+		refs = append(refs, google.Reference{MIME: r.MIME, Data: r.Data})
+	}
+	img, err := g.c.GenerateImage(ctx, google.ImageRequest{Prompt: in.Prompt, AspectRatio: in.AspectRatio, Size: "1K", References: refs})
+	if err != nil {
+		var ge *google.Error
+		if errors.As(err, &ge) {
+			return studio.Picture{}, &studio.PictureError{Safe: ge.Safe, Retryable: ge.Retryable, Cause: err}
+		}
+		return studio.Picture{}, err
+	}
+	return studio.Picture{MIME: img.MIME, Data: img.Data}, nil
+}
+
+type googleVideo struct{ c *google.Client }
+
+func (g googleVideo) GenerateVideo(ctx context.Context, in studio.ClipRequest) (studio.Clip, error) {
+	req := google.VideoRequest{Prompt: in.Prompt, AspectRatio: in.AspectRatio, Seconds: in.Seconds, Resolution: "720p"}
+	if in.Image != nil {
+		req.Image = &google.Reference{MIME: in.Image.MIME, Data: in.Image.Data}
+	}
+	v, err := g.c.GenerateVideo(ctx, req)
+	if err != nil {
+		var ge *google.Error
+		if errors.As(err, &ge) {
+			return studio.Clip{}, &studio.PictureError{Safe: ge.Safe, Retryable: ge.Retryable, Cause: err}
+		}
+		return studio.Clip{}, err
+	}
+	return studio.Clip{MIME: v.MIME, Data: v.Data}, nil
+}
+
+type motionMaker struct{ b *ffmpeg.Builder }
+
+func (m motionMaker) Build(ctx context.Context, spec studio.MotionSpec) ([]byte, []byte, error) {
+	return m.b.Build(ctx, ffmpeg.Motion{Pictures: spec.Pictures, Card: spec.Card, Width: spec.Width, Height: spec.Height})
+}
+
+func (m motionMaker) Poster(ctx context.Context, mp4 []byte) ([]byte, error) {
+	return m.b.Poster(ctx, mp4)
 }

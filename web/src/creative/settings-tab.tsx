@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRotateReviewKey, useUpdateCreativeSettings } from "@/api/creative";
 import type { Settings } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ export function SettingsTab({ settings, canEdit }: { settings: Settings; canEdit
         title="Names"
         description="How files are named and what the review board says at the top."
       >
-        <form
+        <Form
           className="space-y-4"
           onSubmit={(e) => {
             e.preventDefault();
@@ -75,7 +76,7 @@ export function SettingsTab({ settings, canEdit }: { settings: Settings; canEdit
               {save.isSuccess && !dirty && <p className="text-sm text-muted-foreground">Saved.</p>}
             </div>
           )}
-        </form>
+        </Form>
       </Panel>
       <Panel
         title="Review link"

@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import type { Conflict, Fact, FactInput, Offer, OfferInput } from "@/api/types.gen";
+import { Form } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -135,7 +136,7 @@ function NewBrand({ onCreated }: { onCreated: (id: number) => void }) {
     );
   }
   return (
-    <form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
+    <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New brand</h2>
       <Input name="name" placeholder="Name" aria-label="Brand name" />
       <select
@@ -150,7 +151,7 @@ function NewBrand({ onCreated }: { onCreated: (id: number) => void }) {
         Add
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -437,7 +438,7 @@ function NewFact({
   });
   const [opened, setOpened] = useState(0);
   return (
-    <form
+    <Form
       className="space-y-2 rounded-lg border p-3"
       onSubmit={(e) => {
         e.preventDefault();
@@ -546,7 +547,7 @@ function NewFact({
           disagree" above.
         </p>
       )}
-    </form>
+    </Form>
   );
 }
 
@@ -685,7 +686,7 @@ function NewOffer({
   const create = useCreateOffer(brandId);
   const [form, setForm] = useState<OfferInput>(emptyOffer);
   return (
-    <form
+    <Form
       className="space-y-2 rounded-lg border p-3"
       onSubmit={(e) => {
         e.preventDefault();
@@ -698,7 +699,7 @@ function NewOffer({
         Create draft
       </Button>
       {create.error && <p className="text-destructive">{create.error.message}</p>}
-    </form>
+    </Form>
   );
 }
 
@@ -752,7 +753,7 @@ function OfferDetail({
         Approval says the offer is true as written. It authorizes no spend and publishes nothing.
       </p>
       {editing && (
-        <form
+        <Form
           className="space-y-2"
           onSubmit={(e) => {
             e.preventDefault();
@@ -764,7 +765,7 @@ function OfferDetail({
             Save as version {offer.current.version + 1}
           </Button>
           {revise.error && <p className="text-destructive">{revise.error.message}</p>}
-        </form>
+        </Form>
       )}
       {affected.length > 0 && (
         <div className="rounded-md border border-destructive/40 p-2">

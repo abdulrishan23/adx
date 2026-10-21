@@ -12,7 +12,7 @@ import (
 )
 
 const listAcceptedPlanVersionsForProject = `-- name: ListAcceptedPlanVersionsForProject :many
-SELECT plan_versions.id, plan_versions.plan_id, plan_versions.version, plan_versions.document, plan_versions.state, plan_versions.validation, plan_versions.source, plan_versions.note, plan_versions.created_by, plan_versions.created_at, plan_versions.accepted_by, plan_versions.accepted_at, plans.id, plans.workspace_id, plans.brand_id, plans.project_id, plans.title, plans.created_by, plans.created_at, plans.updated_at
+SELECT plan_versions.id, plan_versions.plan_id, plan_versions.version, plan_versions.document, plan_versions.state, plan_versions.validation, plan_versions.source, plan_versions.note, plan_versions.created_by, plan_versions.created_at, plan_versions.accepted_by, plan_versions.accepted_at, plans.id, plans.workspace_id, plans.brand_id, plans.project_id, plans.title, plans.created_by, plans.created_at, plans.updated_at, plans.campaign_id
 FROM plan_versions
 JOIN plans ON plans.id = plan_versions.plan_id
 WHERE plans.workspace_id = ? AND plans.project_id = ? AND plan_versions.state = 'accepted'
@@ -59,6 +59,7 @@ func (q *Queries) ListAcceptedPlanVersionsForProject(ctx context.Context, arg Li
 			&i.Plan.CreatedBy,
 			&i.Plan.CreatedAt,
 			&i.Plan.UpdatedAt,
+			&i.Plan.CampaignID,
 		); err != nil {
 			return nil, err
 		}

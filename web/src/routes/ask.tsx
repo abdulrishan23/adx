@@ -12,6 +12,7 @@ import { useAsk, useConversations, useProposeChange } from "@/api/adx";
 import { SUGGESTIONS } from "@/api/mock/ask";
 import type { AskAnswer, Conversation } from "@/api/models";
 import { AdxMark } from "@/components/brand";
+import { Form } from "@/components/form";
 import { ErrorNote, Eyebrow } from "@/components/page";
 import { ThinkingMark } from "@/components/thinking";
 import { Button } from "@/components/ui/button";
@@ -235,7 +236,7 @@ export function Composer({
     }
   }
   return (
-    <form
+    <Form
       onSubmit={submit}
       className="flex items-end gap-3 border border-input bg-card py-2 pr-2 pl-4 transition-colors hover:border-ring focus-within:border-foreground hover:focus-within:border-foreground"
     >
@@ -267,7 +268,7 @@ export function Composer({
       >
         <ArrowRight className="size-4" />
       </button>
-    </form>
+    </Form>
   );
 }
 
