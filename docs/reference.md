@@ -66,6 +66,7 @@ Money is in AED, converted at the rate on the day. Google and Meta conversions a
 - **Intent score.** How engaged a lead is now. It goes up or down as signals come in (see Signal below).
 - **Temperature.** Hot, warm or cold, set from fit and intent. ADX writes it to GoHighLevel in its own fields.
 - **Signal.** A behaviour that changes the intent score, such as a second form, a WhatsApp tap on the thank-you screen, a pricing or floor plan page view, or a status moving back to Follow Up. Website signals only count once a visit is tied to a lead, and how that happens is open (#34).
+- **Conversation.** A WhatsApp thread with one person, run by the text agent from the sales brief and the approved facts until it hands to a person (a request for a person, an objection no fact answers, a question the facts don't carry, a reply that quoted something not approved) or closes. Its reading feeds the score and the enquiry's stage the way a call reading does.
 - **Page catalogue.** A table that maps each website URL to its project, page type, intent weight and market. ADX drafts it by crawling the site, and a marketer confirms it.
 
 A phone country code shows where someone lives, not their nationality. Buyers from India who live in the UAE have +971 numbers (see D-10).
