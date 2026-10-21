@@ -8,9 +8,10 @@
 // campaign is created. A campaign is the target of one line only: when two
 // lines would take the same campaign a person decides which line it is for
 // and the other creates, so no budget is counted twice. The plan is the
-// month's ceiling: a matched campaign's spend this month nets off its line,
-// and the daily budget is what remains spread over the days left in the
-// Dubai month. A pick is recorded here, as the person's choice, before any
+// period's ceiling: a matched campaign's spend inside the plan's period so
+// far nets off its line (nothing before the period starts), and the daily
+// budget is what remains spread over the days left in the period, by the
+// Dubai day. A pick is recorded here, as the person's choice, before any
 // intent is written. Nothing in this package talks to a platform or writes
 // a proposal; it answers what would happen.
 package launch
@@ -54,14 +55,15 @@ type LaunchLine struct {
 	Geography    string `json:"geography"`
 }
 
-// MonthBudget is the line's money for the rest of this month.
+// MonthBudget is the line's money for the rest of the plan's period.
 type MonthBudget struct {
-	// SpentMinor is what the matched campaign spent this month. Zero for a
-	// campaign to be created.
+	// SpentMinor is what the matched campaign spent inside the period so
+	// far. Zero for a campaign to be created, and zero before the period
+	// starts.
 	SpentMinor int64 `json:"spentMinor"`
-	// SpendKnown is false when the matched campaign has no figures read
-	// this month: nothing nets off, and the screen says the spend is not
-	// available rather than zero.
+	// SpendKnown is false when the period has started and the matched
+	// campaign has no figures read inside it: nothing nets off, and the
+	// screen says the spend is not available rather than zero.
 	SpendKnown     bool  `json:"spendKnown"`
 	RemainingMinor int64 `json:"remainingMinor"`
 	DailyMinor     int64 `json:"dailyMinor"`
@@ -95,14 +97,17 @@ type LineResolution struct {
 
 // LaunchResolution is the whole plan version resolved on a given day.
 type LaunchResolution struct {
-	PlanID      int64            `json:"planId"`
-	PlanVersion int64            `json:"planVersion"`
-	ProjectID   *int64           `json:"projectId"`
-	Today       reporting.Day    `json:"today"`
-	MonthEnd    reporting.Day    `json:"monthEnd"`
-	DaysLeft    int              `json:"daysLeft"`
-	TimeZone    string           `json:"timeZone"`
-	Lines       []LineResolution `json:"lines"`
+	PlanID      int64         `json:"planId"`
+	PlanVersion int64         `json:"planVersion"`
+	ProjectID   *int64        `json:"projectId"`
+	Today       reporting.Day `json:"today"`
+	PeriodStart reporting.Day `json:"periodStart"`
+	PeriodEnd   reporting.Day `json:"periodEnd"`
+	// DaysLeft counts the days of the period still to come, today included
+	// once the period has started; before it starts, the whole period.
+	DaysLeft int              `json:"daysLeft"`
+	TimeZone string           `json:"timeZone"`
+	Lines    []LineResolution `json:"lines"`
 	// Unmatched are the project's running campaigns no line of this version
 	// updates. They stay "Not under a plan" until a line matches them.
 	Unmatched []reporting.ProjectCampaign `json:"unmatched"`
@@ -181,10 +186,12 @@ func (s *Service) Pick(ctx context.Context, actor core.Actor, planID, version in
 }
 
 // Coverage says whether a campaign of an account, by the platform's id, has
-// an accepted plan behind it today: a plan of its project whose period
-// covers today and whose lines resolve to updating it, by a sole match or a
-// recorded pick (BD-68 rule 3). A campaign ADX has not read, or that has no
-// project, is not under a plan.
+// an accepted plan behind it: a plan of its project whose period has not
+// ended and whose lines resolve to updating or resuming it, by a sole match
+// or a recorded pick (BD-68 rules 3 and 11). Coverage runs from acceptance,
+// not from the period's start, so a plan accepted ahead of its month covers
+// the campaigns it will spend on. A campaign ADX has not read, or that has
+// no project, is not under a plan.
 func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, externalID string) (PlanCoverage, error) {
 	row, err := s.db.Reader().GetAdCampaignByExternalID(ctx, store.GetAdCampaignByExternalIDParams{AccountID: accountID, ExternalID: externalID})
 	if errors.Is(err, sql.ErrNoRows) || (err == nil && row.WorkspaceID != workspaceID) {
@@ -212,7 +219,7 @@ func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, ex
 		if err != nil {
 			return PlanCoverage{}, err
 		}
-		if pv.Document.PeriodFrom == "" || pv.Document.PeriodTo == "" || today < pv.Document.PeriodFrom || today > pv.Document.PeriodTo {
+		if pv.Document.PeriodFrom == "" || pv.Document.PeriodTo == "" || today > pv.Document.PeriodTo {
 			continue
 		}
 		res, err := s.resolve(ctx, actor, v.Plan.ID, pv.Version, s.clock.Now())
@@ -226,7 +233,7 @@ func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, ex
 			}
 		}
 	}
-	return PlanCoverage{Reason: "no accepted plan whose period covers today resolves to this campaign"}, nil
+	return PlanCoverage{Reason: "no accepted plan whose period has not ended resolves to this campaign"}, nil
 }
 
 // UnderPlan is Coverage as proposals ask it.
@@ -250,13 +257,27 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 	if pv.State != plans.StateAccepted {
 		return LaunchResolution{}, core.Conflict("plan %d version %d is %s; only an accepted version launches", planID, version, pv.State)
 	}
-	today := now.In(reporting.ReportingZone)
-	monthStart := time.Date(today.Year(), today.Month(), 1, 0, 0, 0, 0, reporting.ReportingZone)
-	monthEnd := monthStart.AddDate(0, 1, -1)
-	daysLeft := monthEnd.Day() - today.Day() + 1
-	res := LaunchResolution{PlanID: planID, PlanVersion: pv.Version, Today: reporting.DayOf(today), MonthEnd: reporting.DayOf(monthEnd), DaysLeft: daysLeft, TimeZone: reporting.ReportingZone.String(),
+	today := reporting.DayOf(now.In(reporting.ReportingZone))
+	from, to := reporting.Day(pv.Document.PeriodFrom), reporting.Day(pv.Document.PeriodTo)
+	_, err1 := from.Time()
+	toT, err2 := to.Time()
+	if err1 != nil || err2 != nil || to < from {
+		return LaunchResolution{}, core.Conflict("plan %d version %d has no valid period; nothing launches into it", planID, version)
+	}
+	if today > to {
+		return LaunchResolution{}, core.Conflict("plan %d version %d's period ended on %s; nothing launches into it", planID, version, to)
+	}
+	// Days left in the period, today included once it has started.
+	start := today
+	if today < from {
+		start = from
+	}
+	startT, _ := start.Time()
+	daysLeft := int(toT.Sub(startT).Hours()/24) + 1
+	res := LaunchResolution{PlanID: planID, PlanVersion: pv.Version, Today: today, PeriodStart: from, PeriodEnd: to, DaysLeft: daysLeft, TimeZone: reporting.ReportingZone.String(),
 		Lines: []LineResolution{}, Unmatched: []reporting.ProjectCampaign{},
-		Note: "What the launch would do today. One matching running campaign is updated; more than one needs a person's pick; none and a campaign is created. This month's spend nets off each line and the rest is spread over the days left."}
+		Note: "What the launch would do today. One matching running campaign is updated; more than one needs a person's pick; a paused one is resumed; none and a campaign is created. Spend inside the plan's period nets off each line and the rest is spread over the days left in it."}
+	beforeStart := today < from
 	if plan.ProjectID.Valid {
 		id := plan.ProjectID.Int64
 		res.ProjectID = &id
@@ -274,7 +295,7 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 		if cs, ok := campaignsByProject[project]; ok {
 			return cs, nil
 		}
-		cs, err := s.reporting.ProjectCampaigns(ctx, actor, project, reporting.DayOf(monthStart), reporting.DayOf(monthEnd))
+		cs, err := s.reporting.ProjectCampaigns(ctx, actor, project, from, to)
 		if err != nil {
 			return nil, err
 		}
@@ -343,7 +364,7 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 	settle := func(m *matched, c reporting.ProjectCampaign, pick *store.LaunchPick) {
 		cc := c
 		m.lr.Kind, m.lr.Campaign = m.kind, &cc
-		b := spendBudget(m.lr.Line.BudgetMinor, cc, daysLeft)
+		b := spendBudget(m.lr.Line.BudgetMinor, cc, daysLeft, beforeStart)
 		m.lr.Budget = &b
 		if pick != nil {
 			m.lr.Pick = &LaunchPick{CampaignID: pick.CampaignID, PickedBy: idPtr(pick.PickedBy), PickedAt: pick.PickedAt.UTC()}
@@ -440,9 +461,12 @@ func (s *Service) resolve(ctx context.Context, actor core.Actor, planID, version
 	return res, nil
 }
 
-func spendBudget(lineMinor int64, c reporting.ProjectCampaign, daysLeft int) MonthBudget {
+// spendBudget nets the campaign's spend inside the period off the line.
+// Before the period starts nothing has been spent in it, so the spend is a
+// known zero rather than not available.
+func spendBudget(lineMinor int64, c reporting.ProjectCampaign, daysLeft int, beforeStart bool) MonthBudget {
 	if c.SpentMinor == nil {
-		return budget(lineMinor, 0, false, daysLeft)
+		return budget(lineMinor, 0, beforeStart, daysLeft)
 	}
 	return budget(lineMinor, *c.SpentMinor, true, daysLeft)
 }

@@ -99,13 +99,46 @@ func (s *Service) Submit(ctx context.Context, actor core.Actor, in SubmitInput) 
 	if err != nil {
 		return SubmitResult{}, err
 	}
+	// All or nothing on coverage (BD-68 rule 11): every line is evaluated
+	// before any is written, and a line policy would deny because its
+	// campaign is not under a plan stops the whole submission. Other
+	// denials stay per line, reported in the result.
+	type prepared struct {
+		line  LineResolution
+		input *proposals.ProposalInput
+		state string
+		note  string
+	}
+	var lines []prepared
+	var uncovered []string
+	for _, l := range res.Lines {
+		input, state, note := s.proposalFor(plan, l, envelopes[l.Line.Channel])
+		lines = append(lines, prepared{line: l, input: input, state: state, note: note})
+		if input == nil {
+			continue
+		}
+		decision, err := s.proposals.Evaluate(ctx, actor, *input)
+		if err != nil {
+			return SubmitResult{}, fmt.Errorf("line %d: %w", l.Line.Index, err)
+		}
+		if decision.Reason == policies.ReasonUnplannedCampaign {
+			why := "not under an accepted plan"
+			if c, err := s.Coverage(ctx, actor.WorkspaceID, input.AccountID, input.TargetRef); err == nil && c.Reason != "" {
+				why = c.Reason
+			}
+			uncovered = append(uncovered, fmt.Sprintf("line %d (%s) on campaign %s: %s", l.Line.Index, l.Line.Channel, input.TargetRef, why))
+		}
+	}
+	if len(uncovered) > 0 {
+		return SubmitResult{}, core.Conflict("nothing was submitted: %s", strings.Join(uncovered, "; "))
+	}
 	out := SubmitResult{PlanID: res.PlanID, PlanVersion: res.PlanVersion, Lines: []SubmittedLine{},
 		Note: "Submitted means an intent is in the outbox; the dispatcher sends it when live writes are on and policy still allows it. Nothing here is delivery."}
-	for _, l := range res.Lines {
+	for _, pl := range lines {
+		l, input := pl.line, pl.input
 		sl := SubmittedLine{Line: l.Line, Kind: l.Kind}
-		input, state, note := s.proposalFor(plan, l, envelopes[l.Line.Channel])
 		if input == nil {
-			sl.State, sl.Note = state, note
+			sl.State, sl.Note = pl.state, pl.note
 			out.Lines = append(out.Lines, sl)
 			continue
 		}
@@ -187,11 +220,11 @@ func (s *Service) proposalFor(plan store.Plan, l LineResolution, env proposals.E
 		return nil, StateSkipped, "no budget envelope with an account is open for " + l.Line.Channel
 	}
 	if l.Budget == nil || l.Budget.DailyMinor <= 0 {
-		return nil, StateExhausted, "the line's budget for this month is spent; nothing is set. Pause the campaign from Perform if it should stop."
+		return nil, StateExhausted, "the line's budget for the period is spent; nothing is set. Pause the campaign from Perform if it should stop."
 	}
 	daily := l.Budget.DailyMinor
 	key := fmt.Sprintf("launch:%d:%d:%d:%s:", plan.ID, env.PlanVersion, l.Line.Index, l.Kind)
-	reason := fmt.Sprintf("launch of plan %d version %d, line %d (%s): %d of the line's %d %s is left this month, %d a day over %d days", plan.ID, env.PlanVersion, l.Line.Index, l.Line.Channel, l.Budget.RemainingMinor, l.Line.BudgetMinor, l.Line.Currency, daily, l.Budget.DaysLeft)
+	reason := fmt.Sprintf("launch of plan %d version %d, line %d (%s): %d of the line's %d %s is left in the period, %d a day over %d days", plan.ID, env.PlanVersion, l.Line.Index, l.Line.Channel, l.Budget.RemainingMinor, l.Line.BudgetMinor, l.Line.Currency, daily, l.Budget.DaysLeft)
 	base := proposals.ProposalInput{TargetKind: "campaign", Reason: reason, AmountMinor: l.Budget.RemainingMinor, Currency: env.Currency, EnvelopeID: env.ID}
 	switch l.Kind {
 	case KindCreate:

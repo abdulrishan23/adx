@@ -2180,7 +2180,8 @@ export interface LaunchResolution {
     planVersion: number;
     projectId: number | null;
     today: Day;
-    monthEnd: Day;
+    periodStart: Day;
+    periodEnd: Day;
     daysLeft: number;
     timeZone: string;
     lines: LineResolution[];

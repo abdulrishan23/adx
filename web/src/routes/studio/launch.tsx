@@ -508,7 +508,7 @@ function MoneyPanel({
       title="Where the money goes"
       description={
         res
-          ? `Each plan line against its project's campaigns, as of ${formatDate(res.today)}. One running match is updated; more than one and you pick; a paused one is resumed; none and Adx creates one. This month's spend comes off the line and the rest is spread over the ${res.daysLeft} days to ${formatDate(res.monthEnd)}.`
+          ? `Each plan line against its project's campaigns, as of ${formatDate(res.today)}. One running match is updated; more than one and you pick; a paused one is resumed; none and Adx creates one. Spend inside the plan's period comes off the line and the rest is spread over the ${res.daysLeft} days to ${formatDate(res.periodEnd)}.`
           : undefined
       }
       bodyClassName="p-0"
@@ -586,7 +586,7 @@ function MoneyLine({
           <dl className="flex flex-wrap gap-x-6 gap-y-1">
             <Figure label="Spent this month" value={figures.spent} />
             <Figure label="Left" value={figures.left} />
-            <Figure label={`A day to ${formatDate(res.monthEnd)}`} value={figures.daily} />
+            <Figure label={`A day to ${formatDate(res.periodEnd)}`} value={figures.daily} />
           </dl>
         )}
         {l.candidates.length > 0 && (

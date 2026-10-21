@@ -445,6 +445,21 @@ func (p *Proposals) Propose(ctx context.Context, actor core.Actor, in ProposalIn
 	return pr, true, err
 }
 
+// Evaluate answers what Propose would decide for in, without recording
+// anything: the policy's outcome and reason for this actor, target and
+// action, with the target's plan coverage filled in. Launch asks it for
+// every line before writing any.
+func (p *Proposals) Evaluate(ctx context.Context, actor core.Actor, in ProposalInput) (policies.PolicyDecision, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return policies.PolicyDecision{}, core.ErrForbidden
+	}
+	req, err := p.PolicyRequestFor(ctx, actor.WorkspaceID, in.AccountID, in.Action, in.TargetKind, in.TargetRef)
+	if err != nil {
+		return policies.PolicyDecision{}, err
+	}
+	return p.policies.Evaluate(ctx, actor, req)
+}
+
 // Approve binds an admin's approval to the proposal's current target
 // version. Policy is evaluated again at this moment: a kill switch engaged
 // since the proposal refuses the approval.

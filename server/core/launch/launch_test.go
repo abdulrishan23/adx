@@ -16,6 +16,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
 	"github.com/WokeWorks/adx/server/core/proposals"
+	"github.com/WokeWorks/adx/server/core/proposals/proposalstest"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/storetest"
@@ -162,7 +163,7 @@ func TestOneMatchUpdatesAndNetsThisMonthsSpend(t *testing.T) {
 	res, err := e.launch.Resolve(t.Context(), coretest.Viewer, plan, 1)
 	require.NoError(t, err)
 	assert.Equal(t, reporting.Day("2026-10-12"), res.Today)
-	assert.Equal(t, reporting.Day("2026-10-31"), res.MonthEnd)
+	assert.Equal(t, reporting.Day("2026-10-31"), res.PeriodEnd)
 	assert.Equal(t, 20, res.DaysLeft)
 	l := res.Lines[0]
 	assert.Equal(t, launch.KindUpdate, l.Kind)
@@ -211,10 +212,10 @@ func TestNettingNeverGoesBelowZeroAndCountsOnlyThisMonth(t *testing.T) {
 	assert.Equal(t, int64(2_000_00), m.Budget.DailyMinor)
 }
 
-// Catches: the month being taken in UTC. At 21:00 UTC on 31 October it is
-// already 1 November in Dubai: November's days are left and October's spend
-// is last month's.
-func TestMonthIsTheDubaiMonth(t *testing.T) {
+// Catches: the day being taken in UTC. At 21:00 UTC on 31 October it is
+// already 1 November in Dubai: the November plan has started, its 30 days
+// are left, and only November's spend is inside its period.
+func TestDayIsTheDubaiDay(t *testing.T) {
 	e := setup(t)
 	g := e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, nil)
 	e.metric(t, g, "2026-10-31", 10_000_00)
@@ -225,7 +226,7 @@ func TestMonthIsTheDubaiMonth(t *testing.T) {
 	res, err := e.launch.Resolve(t.Context(), coretest.Viewer, plan, 1)
 	require.NoError(t, err)
 	assert.Equal(t, reporting.Day("2026-11-01"), res.Today)
-	assert.Equal(t, reporting.Day("2026-11-30"), res.MonthEnd)
+	assert.Equal(t, reporting.Day("2026-11-30"), res.PeriodEnd)
 	assert.Equal(t, 30, res.DaysLeft)
 	assert.Equal(t, launch.MonthBudget{SpentMinor: 1_000_00, SpendKnown: true, RemainingMinor: 30_000_00, DailyMinor: 1_000_00, DaysLeft: 30}, *res.Lines[0].Budget)
 }
@@ -634,4 +635,112 @@ func TestSubmitResumesAndStopsAtTheCeiling(t *testing.T) {
 	assert.Equal(t, int64(35_000_00), *resume.Proposal.AmountMinor)
 	assert.Equal(t, launch.StateExhausted, res.Lines[1].State)
 	assert.Nil(t, res.Lines[1].Proposal)
+}
+
+// futureSearch seeds a running Search campaign spending 10,000 a day with
+// 40,000 of October spend, and returns it.
+func (e *env) futureSearch(t *testing.T) store.AdCampaign {
+	t.Helper()
+	g := e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, i64(40_000_00))
+	_, err := e.db.Writer().UpsertAdCampaign(t.Context(), store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.googleAcc, Platform: "google_ads", ExternalID: "g1", Name: "Search | Wadi", Status: "ENABLED",
+		ChannelType: sql.NullString{String: "SEARCH", Valid: true}, BudgetMinor: sql.NullInt64{Int64: 10_000_00, Valid: true}, BudgetPeriod: sql.NullString{String: "daily", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	return g
+}
+
+// Catches: a November plan launched in October half-succeeding (creates
+// through, updates denied as not under a plan), and October's spend netted
+// off a November line (the owner, 2026-10-21: coverage runs from acceptance,
+// spend is netted within the period).
+func TestFuturePlanLaunchesWholeBeforeItsPeriod(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	e.writes(t)
+	g := e.futureSearch(t)
+	plan := e.planFor(t, e.wadi, "2026-11-01", "2026-11-30", alloc("google_search", 152_000_00), alloc("google_pmax", 20_000_00))
+
+	res, err := e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	require.NoError(t, err)
+	assert.Equal(t, reporting.Day("2026-10-12"), res.Today)
+	assert.Equal(t, reporting.Day("2026-11-01"), res.PeriodStart)
+	assert.Equal(t, reporting.Day("2026-11-30"), res.PeriodEnd)
+	assert.Equal(t, 30, res.DaysLeft, "the whole period is still to come")
+	update := res.Lines[0]
+	assert.Equal(t, launch.KindUpdate, update.Kind)
+	assert.Equal(t, launch.MonthBudget{SpentMinor: 0, SpendKnown: true, RemainingMinor: 152_000_00, DailyMinor: 5_066_67, DaysLeft: 30}, *update.Budget, "October's spend is outside November's period")
+	assert.Equal(t, launch.MonthBudget{SpentMinor: 0, SpendKnown: true, RemainingMinor: 20_000_00, DailyMinor: 666_67, DaysLeft: 30}, *res.Lines[1].Budget)
+	c, err := e.launch.Coverage(ctx, 1, e.googleAcc, g.ExternalID)
+	require.NoError(t, err)
+	assert.True(t, c.UnderPlan, "accepted in October for November: covered from acceptance")
+
+	sub, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	require.NoError(t, err)
+	require.Len(t, sub.Lines, 2)
+	assert.Equal(t, launch.StateSubmitted, sub.Lines[0].State, sub.Lines[0].Note)
+	assert.Equal(t, policies.BudgetLower, sub.Lines[0].Proposal.Action)
+	assert.JSONEq(t, `{"dailyBudgetMinor":506667}`, string(sub.Lines[0].Proposal.Proposed))
+	assert.Equal(t, launch.StateSubmitted, sub.Lines[1].State, sub.Lines[1].Note)
+}
+
+// Catches: coverage gated by the period's start, coverage ending before
+// the period's last day, and a plan whose period is over still covering or
+// launching.
+func TestCoverageRunsFromAcceptanceToThePeriodsEnd(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	g := e.futureSearch(t)
+	plan := e.planFor(t, e.wadi, "2026-11-01", "2026-11-30", alloc("google_search", 30_000_00))
+	under := func() bool {
+		c, err := e.launch.Coverage(ctx, 1, e.googleAcc, g.ExternalID)
+		require.NoError(t, err)
+		return c.UnderPlan
+	}
+	assert.True(t, under(), "12 October, accepted for November")
+	e.clock.Set(time.Date(2026, 11, 30, 8, 0, 0, 0, time.UTC))
+	assert.True(t, under(), "the period's last day")
+	res, err := e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.DaysLeft)
+	e.clock.Set(time.Date(2026, 11, 30, 20, 30, 0, 0, time.UTC)) // 00:30 on 1 December in Dubai
+	assert.False(t, under(), "the period ended last night, Dubai time")
+	_, err = e.launch.Resolve(ctx, coretest.Viewer, plan, 1)
+	requireKind(t, err, core.KindConflict)
+	assert.Contains(t, err.Error(), "period ended on 2026-11-30")
+}
+
+// Catches: a submission writing its creates while an update is denied for
+// coverage (the owner, 2026-10-21: all or nothing on coverage), and a
+// denial for another reason stopping the lines that are fine.
+func TestSubmitIsAllOrNothingOnCoverage(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	e.writes(t)
+	e.futureSearch(t)
+	// 300,000 over 20 days is 15,000 a day, above the 10,000 Search runs
+	// at: a raise, which an unplanned campaign may not take.
+	plan := e.plan(t, alloc("google_pmax", 20_000_00), alloc("google_search", 300_000_00))
+	pol := policies.New(e.db)
+	uncovered := proposals.New(e.db, pol, e.plans, proposals.Config{Clock: e.clock, Coverage: proposalstest.Unplanned{}})
+	e.launch.AttachProposals(uncovered)
+
+	_, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	requireKind(t, err, core.KindConflict)
+	assert.Contains(t, err.Error(), "nothing was submitted")
+	assert.Contains(t, err.Error(), "line 1 (google_search) on campaign g1")
+	assert.NotContains(t, err.Error(), "line 0")
+	list, err := uncovered.List(ctx, coretest.Viewer, "", 0)
+	require.NoError(t, err)
+	assert.Empty(t, list, "the create was not written either")
+
+	// A denial for another reason (the account's kill switch) stays per
+	// line: the other line still goes through.
+	covered := proposals.New(e.db, pol, e.plans, proposals.Config{Clock: e.clock, Coverage: e.launch})
+	e.launch.AttachProposals(covered)
+	_, err = pol.SetKillSwitch(ctx, coretest.Admin, e.googleAcc, true, "spend spike")
+	require.NoError(t, err)
+	res, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	require.NoError(t, err)
+	assert.Equal(t, launch.StateDenied, res.Lines[0].State)
+	assert.Equal(t, launch.StateDenied, res.Lines[1].State)
+	assert.Contains(t, res.Lines[1].Note, policies.ReasonKillSwitch)
 }
