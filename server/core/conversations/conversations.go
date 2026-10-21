@@ -399,9 +399,45 @@ func (c *Conversations) Receive(ctx context.Context, actor core.Actor, in Inboun
 		if reply != nil {
 			out.Reply = reply
 		}
+	} else if row.State == StateWaiting && in.Kind == "text" && asksForHuman(in.Body) {
+		// A thread already waiting (no model, a question nobody answered)
+		// whose customer now asks for a person is urgent, with or without
+		// an agent to say so.
+		reply, err := c.acknowledgeHuman(ctx, actor, row, in.Body)
+		if err != nil {
+			return ThreadReceived{}, err
+		}
+		out.Reply = reply
 	}
 	out.Conversation, err = c.get(ctx, actor.WorkspaceID, row.ID)
 	return out, err
+}
+
+// acknowledgeHuman records a request for a person on a thread, drafts the
+// one line that says a colleague will write, and sends it when the gates
+// allow. It asks no model: the customer said it.
+func (c *Conversations) acknowledgeHuman(ctx context.Context, actor core.Actor, row store.Thread, words string) (*ThreadTurn, error) {
+	now := c.clock.Now().UTC()
+	body := "Of course. A colleague from Reportage will message you here shortly."
+	if strings.HasPrefix(row.Language, "ar") {
+		body = "بالتأكيد. سيراسلك زميل من ريبورتاج هنا قريباً."
+	}
+	t, err := c.db.Writer().CreateThreadTurn(ctx, store.CreateThreadTurnParams{ThreadID: row.ID, Direction: "out", Author: "agent", Kind: "text", Body: body, State: "draft", Handoff: HandoffRequestedHuman, IdempotencyKey: outKey(row.ID, now), Claims: "{}", OccurredAt: now, CreatedAt: now, UpdatedAt: now})
+	if err != nil {
+		return nil, err
+	}
+	reason := "the customer asked for a person: " + truncate(words, 120)
+	if err := c.db.Writer().SetThreadStateAny(ctx, store.SetThreadStateAnyParams{State: StateWaiting, StateReason: reason, HandoffKind: HandoffRequestedHuman, HandoffAt: sql.NullTime{Time: now, Valid: true}, UpdatedAt: now, ID: row.ID}); err != nil {
+		return nil, err
+	}
+	if err := c.read(ctx, actor, row.ID); err != nil {
+		return nil, err
+	}
+	sent, err := c.dispatch(ctx, actor, row, t, false)
+	if err != nil {
+		return nil, err
+	}
+	return &sent, nil
 }
 
 // UpdateStatus applies the provider's delivery status to the sent turn it

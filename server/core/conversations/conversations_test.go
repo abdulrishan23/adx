@@ -530,6 +530,14 @@ func TestWithoutAModelTheThreadWaitsForAPerson(t *testing.T) {
 	_, err = e.conv.HandBack(t.Context(), coretest.Marketer, r.Conversation.ID)
 	var ce *core.Error
 	require.ErrorAs(t, err, &ce)
+
+	// A request for a person on the waiting thread is still urgent, and the
+	// acknowledgement goes without a model.
+	r2 := e.inbound(t, "wamid.2", "+971501234567", "can I speak to someone?")
+	assert.Equal(t, conversations.HandoffRequestedHuman, r2.Conversation.HandoffKind)
+	require.NotNil(t, r2.Reply)
+	assert.Equal(t, "sent", r2.Reply.State)
+	assert.Equal(t, "pending", r2.Conversation.ReviewStatus, "no model to read the thread")
 }
 
 // Catches: a person's own words checked as if they were the agent's, and

@@ -532,7 +532,11 @@ func (s *Supervisor) Inbox(ctx context.Context, actor core.Actor) ([]InboxItem, 
 				if d.Handoff == conversations.HandoffOutsideFacts {
 					continue // the handoff item above carries it; the draft cannot be approved
 				}
-				items = append(items, InboxItem{Kind: "conversation_reply", Ref: d.ID, Severity: "info", Title: "A WhatsApp reply waits for approval", Detail: d.Reason, Actions: []string{"approve", "discard"}, Since: d.OccurredAt})
+				title := "A WhatsApp reply waits for approval"
+				if d.State == "held" {
+					title = "A WhatsApp reply is held"
+				}
+				items = append(items, InboxItem{Kind: "conversation_reply", Ref: d.ID, Severity: "info", Title: title, Detail: d.Reason, Actions: []string{"approve", "discard"}, Since: d.OccurredAt})
 			}
 			for _, f := range w.Failed {
 				items = append(items, InboxItem{Kind: "conversation_reply", Ref: f.ID, Severity: "warning", Title: "A WhatsApp message failed to send", Detail: f.Reason, Actions: []string{"approve", "discard"}, Since: f.OccurredAt})

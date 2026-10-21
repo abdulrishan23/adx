@@ -184,22 +184,7 @@ func (c *Conversations) reply(ctx context.Context, actor core.Actor, id int64) (
 	// A request for a person is honoured without asking the model: the
 	// customer said it, and a model that misses it must not get the chance.
 	if lastIn.Kind == "text" && asksForHuman(lastIn.Body) {
-		body := "Of course. A colleague from Reportage will message you here shortly."
-		if strings.HasPrefix(row.Language, "ar") {
-			body = "بالتأكيد. سيراسلك زميل من ريبورتاج هنا قريباً."
-		}
-		t, err := c.db.Writer().CreateThreadTurn(ctx, store.CreateThreadTurnParams{ThreadID: id, Direction: "out", Author: "agent", Kind: "text", Body: body, State: "draft", Handoff: HandoffRequestedHuman, IdempotencyKey: outKey(id, now), Claims: "{}", OccurredAt: now, CreatedAt: now, UpdatedAt: now})
-		if err != nil {
-			return nil, err
-		}
-		if err := c.handoff(ctx, actor, id, HandoffRequestedHuman, "the customer asked for a person: "+truncate(lastIn.Body, 120)); err != nil {
-			return nil, err
-		}
-		sent, err := c.dispatch(ctx, actor, row, t, false)
-		if err != nil {
-			return nil, err
-		}
-		return &sent, nil
+		return c.acknowledgeHuman(ctx, actor, row, lastIn.Body)
 	}
 	if c.cfg.Model == nil {
 		return nil, c.handoff(ctx, actor, id, HandoffNoModel, "no model is configured; a person replies")
