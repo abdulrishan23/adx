@@ -8,8 +8,10 @@ import {
   useProjectsOverview,
   useProposeChange,
 } from "@/api/adx";
+import { useCampaignCoverage } from "@/api/launch";
 import { projectOf } from "@/api/mock/data";
 import type { AdRow, Campaign, Proposal } from "@/api/models";
+import type { CampaignCoverage } from "@/api/types.gen";
 import { ScopeBar } from "@/app/scope";
 import { useSession } from "@/app/session";
 import { ChartLegend, DailyChart, ProportionBar, Sparkline } from "@/components/charts";
@@ -23,6 +25,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { analyticsSearch } from "@/lib/analytics";
+import { allowedChanges, coverageFor, launchChip, planChip, planLine } from "@/lib/coverage";
 import { formatMoneyShort, formatNumber, formatPercent, NOT_AVAILABLE } from "@/lib/format";
 import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
@@ -60,6 +63,10 @@ export function CampaignsPage() {
   const session = useSession();
   // The month's budget pacing per project, which By project used to show.
   const overview = useProjectsOverview(analyticsSearch({}));
+  // Which campaigns an accepted plan stands behind and where each launch
+  // is, from the server (BD-68). Rows Adx has not read get no chip.
+  const coverage = useCampaignCoverage();
+  const covOf = (c: Campaign) => coverageFor(coverage.data?.campaigns, c);
   // Which projects are folded away. Remembered per browser, as a view
   // preference; storage can be blocked, so it falls back to all open.
   const [closed, setClosed] = useState<Set<number>>(() => {
@@ -259,6 +266,7 @@ export function CampaignsPage() {
                               {STATUS_LABEL[c.status]}
                             </span>
                           )}
+                          <RowChips coverage={covOf(c)} />
                         </div>
                       </TD>
                       <Figures c={c} muted />
@@ -277,7 +285,9 @@ export function CampaignsPage() {
           </Table>
         </section>
       )}
-      {open && <CampaignSheet campaign={open} onClose={() => setOpenId(null)} />}
+      {open && (
+        <CampaignSheet campaign={open} coverage={covOf(open)} onClose={() => setOpenId(null)} />
+      )}
     </>
   );
 }
@@ -317,7 +327,34 @@ function Figures({ c, muted = false }: { c: Totals; muted?: boolean }) {
   );
 }
 
-function CampaignSheet({ campaign: c, onClose }: { campaign: Campaign; onClose: () => void }) {
+// The plan and launch chips on a row: "Not under a plan" for a campaign no
+// accepted plan resolves to, "Launching" while its intent waits for approval
+// or is on its way, "Delivering" once the platform's figures show it.
+function RowChips({ coverage }: { coverage: CampaignCoverage | null }) {
+  return [planChip(coverage), launchChip(coverage)]
+    .filter((chip) => chip !== null)
+    .map((chip) => (
+      <StatusChip
+        key={chip.label}
+        status={chip.status}
+        title={chip.note}
+        className="h-5 px-1.5 text-[0.6rem]"
+      >
+        {chip.label}
+      </StatusChip>
+    ));
+}
+
+function CampaignSheet({
+  campaign: c,
+  coverage,
+  onClose,
+}: {
+  campaign: Campaign;
+  coverage: CampaignCoverage | null;
+  onClose: () => void;
+}) {
+  const plan = planLine(coverage);
   const figures = [
     { label: "Spend", value: formatMoneyShort(c.spendMinor) },
     { label: "Leads", value: formatNumber(c.leads) },
@@ -347,6 +384,12 @@ function CampaignSheet({ campaign: c, onClose }: { campaign: Campaign; onClose: 
             </div>
           ))}
         </dl>
+        {plan && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <RowChips coverage={coverage} />
+            <span className="text-muted-foreground">{plan}</span>
+          </div>
+        )}
         <div className="space-y-2">
           <Eyebrow>Lead temperature</Eyebrow>
           <ProportionBar
@@ -361,8 +404,11 @@ function CampaignSheet({ campaign: c, onClose }: { campaign: Campaign; onClose: 
             {formatNumber(c.temperatureMix.cold)} cold
           </p>
         </div>
-        {/* Budget changes are writes, which arrive with proposals in phase 3. */}
-        {released(3) && <BudgetForm campaignId={c.id} />}
+        {/* Budget changes are writes, which arrive with proposals in phase 3. A
+            campaign with no plan behind it takes a cut, never a raise. */}
+        {released(3) && (
+          <BudgetForm campaignId={c.id} allowRaise={allowedChanges(coverage).raise} />
+        )}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <Eyebrow>Daily</Eyebrow>
@@ -500,13 +546,17 @@ function ProposalResult({ proposal }: { proposal: Proposal }) {
   );
 }
 
-function BudgetForm({ campaignId }: { campaignId: string }) {
+function BudgetForm({ campaignId, allowRaise }: { campaignId: string; allowRaise: boolean }) {
   const budget = useDailyBudget(campaignId);
   const propose = useProposeChange();
   const [value, setValue] = useState("");
   const id = useId();
   if (!budget.data) return null;
   const next = Math.round(Number(value) * 100);
+  const raise = Boolean(value) && next > budget.data;
+  // Not under a plan: the server would deny the raise (BD-68 rule 4), so
+  // the form does not offer it.
+  const blocked = raise && !allowRaise;
   return (
     <Form
       className="space-y-2 rounded-lg border p-4"
@@ -532,14 +582,26 @@ function BudgetForm({ campaignId }: { campaignId: string }) {
             className="w-36 font-mono"
           />
         </div>
-        <Button type="submit" disabled={!value || next === budget.data || propose.isPending}>
+        <Button
+          type="submit"
+          disabled={!value || next === budget.data || blocked || propose.isPending}
+        >
           {!value || next === budget.data
-            ? "Change budget"
+            ? allowRaise
+              ? "Change budget"
+              : "Lower budget"
             : next > budget.data
               ? "Propose raise"
               : "Lower budget"}
         </Button>
       </div>
+      {!allowRaise && (
+        <p className="text-xs text-muted-foreground">
+          {blocked
+            ? "A raise needs an accepted plan behind the campaign."
+            : "Not under a plan: only lowering is offered until a plan adopts it."}
+        </p>
+      )}
       {propose.error && <ErrorNote error={propose.error} />}
       {propose.data && <ProposalResult proposal={propose.data} />}
     </Form>

@@ -118,6 +118,9 @@ export type Campaign = {
   id: string;
   name: string;
   platform: Platform;
+  // The platform's own campaign id, which the launch coverage read is keyed
+  // by (GET /api/launch/coverage).
+  externalId: string;
   type: string;
   projectId: number;
   status: "active" | "paused" | "limited";

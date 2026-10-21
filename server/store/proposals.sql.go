@@ -346,6 +346,33 @@ func (q *Queries) FirstDeliveryDay(ctx context.Context, arg FirstDeliveryDayPara
 	return i, err
 }
 
+const firstDeliveryDayFrom = `-- name: FirstDeliveryDayFrom :one
+SELECT m.day, m.impressions, m.observed_at
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.account_id = ? AND c.external_id = ? AND m.day >= ? AND m.impressions > 0
+ORDER BY m.day LIMIT 1
+`
+
+type FirstDeliveryDayFromParams struct {
+	AccountID  int64
+	ExternalID string
+	Day        string
+}
+
+type FirstDeliveryDayFromRow struct {
+	Day         string
+	Impressions int64
+	ObservedAt  time.Time
+}
+
+func (q *Queries) FirstDeliveryDayFrom(ctx context.Context, arg FirstDeliveryDayFromParams) (FirstDeliveryDayFromRow, error) {
+	row := q.db.QueryRowContext(ctx, firstDeliveryDayFrom, arg.AccountID, arg.ExternalID, arg.Day)
+	var i FirstDeliveryDayFromRow
+	err := row.Scan(&i.Day, &i.Impressions, &i.ObservedAt)
+	return i, err
+}
+
 const getBudgetEnvelope = `-- name: GetBudgetEnvelope :one
 SELECT id, workspace_id, plan_id, plan_version, channel, account_id, currency, amount_minor, opened_by, opened_at FROM budget_envelopes WHERE id = ? AND workspace_id = ?
 `
@@ -1069,6 +1096,66 @@ type ListProposalsParams struct {
 
 func (q *Queries) ListProposals(ctx context.Context, arg ListProposalsParams) ([]Proposal, error) {
 	rows, err := q.db.QueryContext(ctx, listProposals, arg.WorkspaceID, arg.State, arg.Max)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Proposal{}
+	for rows.Next() {
+		var i Proposal
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AccountID,
+			&i.Action,
+			&i.TargetKind,
+			&i.TargetRef,
+			&i.TargetVersion,
+			&i.ExpectedCurrent,
+			&i.Proposed,
+			&i.Reason,
+			&i.EvidenceRefs,
+			&i.AmountMinor,
+			&i.Currency,
+			&i.EnvelopeID,
+			&i.PolicyVersion,
+			&i.PolicyOutcome,
+			&i.PolicyReason,
+			&i.State,
+			&i.IdempotencyKey,
+			&i.ProposedBy,
+			&i.ProposedVia,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProposalsForPlanVersion = `-- name: ListProposalsForPlanVersion :many
+SELECT p.id, p.workspace_id, p.account_id, p."action", p.target_kind, p.target_ref, p.target_version, p.expected_current, p.proposed, p.reason, p.evidence_refs, p.amount_minor, p.currency, p.envelope_id, p.policy_version, p.policy_outcome, p.policy_reason, p.state, p.idempotency_key, p.proposed_by, p.proposed_via, p.created_at, p.updated_at FROM proposals p
+JOIN budget_envelopes e ON e.id = p.envelope_id
+WHERE p.workspace_id = ? AND e.plan_id = ? AND e.plan_version = ?
+ORDER BY p.id
+`
+
+type ListProposalsForPlanVersionParams struct {
+	WorkspaceID int64
+	PlanID      int64
+	PlanVersion int64
+}
+
+func (q *Queries) ListProposalsForPlanVersion(ctx context.Context, arg ListProposalsForPlanVersionParams) ([]Proposal, error) {
+	rows, err := q.db.QueryContext(ctx, listProposalsForPlanVersion, arg.WorkspaceID, arg.PlanID, arg.PlanVersion)
 	if err != nil {
 		return nil, err
 	}

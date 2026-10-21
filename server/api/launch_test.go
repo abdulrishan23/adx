@@ -2,10 +2,12 @@ package api_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -109,4 +111,27 @@ func TestLaunchRoutes(t *testing.T) {
 	assert.Contains(t, body, `"dailyMinor":1000000`)
 	assert.Contains(t, body, `"pickedBy":2`)
 	_ = ids
+
+	// Coverage: the pick made m2 the line's campaign; m1 is not under the
+	// plan. A junk project answers 400, an unknown one an empty list.
+	res, body = get(t, e.srv, "/api/launch/coverage?project=junk", viewer, nil)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode, body)
+	res, body = get(t, e.srv, "/api/launch/coverage?project=999", viewer, nil)
+	require.Equal(t, http.StatusOK, res.StatusCode, body)
+	assert.JSONEq(t, `{"campaigns":[]}`, body)
+	res, body = get(t, e.srv, "/api/launch/coverage?project="+strconv.FormatInt(project.ID, 10), viewer, nil)
+	require.Equal(t, http.StatusOK, res.StatusCode, body)
+	var cov api.CoverageResponse
+	require.NoError(t, json.Unmarshal([]byte(body), &cov))
+	require.Len(t, cov.Campaigns, 2)
+	byExt := map[string]launch.CampaignCoverage{}
+	for _, c := range cov.Campaigns {
+		byExt[c.ExternalID] = c
+	}
+	assert.False(t, byExt["m1"].UnderPlan)
+	assert.True(t, byExt["m2"].UnderPlan)
+	assert.Equal(t, 0, *byExt["m2"].Line)
+	assert.Equal(t, "update", byExt["m2"].Kind)
+	assert.Equal(t, "none", byExt["m2"].Launch.State)
+	assert.Contains(t, body, `"underPlan":true`)
 }

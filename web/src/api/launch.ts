@@ -6,7 +6,14 @@
 // clients so both screens share one cache while both exist. The resolution,
 // picks and submission have no engine screen, so their hooks live here.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { LaunchPickInput, LaunchResolution, SubmitInput, SubmitResult } from "@/api/types.gen";
+import { MOCK_MODE } from "@/api/mock";
+import type {
+  CoverageResponse,
+  LaunchPickInput,
+  LaunchResolution,
+  SubmitInput,
+  SubmitResult,
+} from "@/api/types.gen";
 import { getJSON, postJSON } from "@/engine/api/client";
 
 export {
@@ -63,5 +70,18 @@ export function useSubmitLaunch() {
       qc.invalidateQueries({ queryKey: ["proposals"] });
       qc.invalidateQueries({ queryKey: ["envelopes"] });
     },
+  });
+}
+
+// Every campaign Adx has read, with the plan behind it and where its launch
+// stands, for the chips on Perform › Campaigns (BD-68). Read on the same
+// rhythm as the launch status, since intents move on their own. Not asked
+// for when everything is sample data: there is no server to ask.
+export function useCampaignCoverage() {
+  return useQuery({
+    queryKey: ["launch", "coverage"],
+    queryFn: () => getJSON<CoverageResponse>("/api/launch/coverage"),
+    enabled: MOCK_MODE !== "all",
+    refetchInterval: 15000,
   });
 }

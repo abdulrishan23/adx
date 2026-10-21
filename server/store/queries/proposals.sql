@@ -123,3 +123,16 @@ FROM campaign_daily_metrics m
 JOIN ad_campaigns c ON c.id = m.campaign_id
 WHERE c.account_id = ? AND c.external_id = ? AND m.impressions > 0
 ORDER BY m.day LIMIT 1;
+
+-- name: ListProposalsForPlanVersion :many
+SELECT p.* FROM proposals p
+JOIN budget_envelopes e ON e.id = p.envelope_id
+WHERE p.workspace_id = ? AND e.plan_id = ? AND e.plan_version = ?
+ORDER BY p.id;
+
+-- name: FirstDeliveryDayFrom :one
+SELECT m.day, m.impressions, m.observed_at
+FROM campaign_daily_metrics m
+JOIN ad_campaigns c ON c.id = m.campaign_id
+WHERE c.account_id = ? AND c.external_id = ? AND m.day >= ? AND m.impressions > 0
+ORDER BY m.day LIMIT 1;
