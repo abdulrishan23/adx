@@ -79,7 +79,7 @@ Written for B6.4 on 2026-10-17 from `docs/build/progress.json`, `docs/build/veri
 | B6.1 | Full client isolation and industry configuration | implemented_local | none needed |
 | B6.2 | Selected channel extensions and native capability review | implemented_local | messaging policy (who may send what, on which channel, with what consent) and ADX_WHATSAPP_*/ADX_SMTP_* with ADX_LIVE_WRITES=1: a live send through the new adapters |
 | B6.3 | Reliability, cost and model release evaluation | implemented_local | backup retention period from Reportage: setting ADX_BACKUP_RETENTION_DAYS above 0 |
-| BD-69 | WhatsApp inbound qualification agent (`core/conversations`) | implemented_local | the owner's answers to BD-71's questions, ADX_WHATSAPP_APP_SECRET and ADX_WHATSAPP_VERIFY_TOKEN for the webhook, ADX_WHATSAPP_* with ADX_LIVE_WRITES=1 and the channel mode on for replies, a template catalogue for anything outside the window |
+| BD-69 | WhatsApp inbound qualification agent (`core/conversations`) | implemented_local | ADX_WHATSAPP_APP_SECRET and ADX_WHATSAPP_VERIFY_TOKEN for the webhook, ADX_WHATSAPP_* with ADX_LIVE_WRITES=1 and the channel mode on for replies, a template catalogue for anything outside the window |
 | B6.4 | Final seven-phase capability verification and handoff | implemented_local | real business users and a connected environment: the operator-effort review and production verification |
 
 ## Connectors
