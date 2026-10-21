@@ -191,3 +191,72 @@ func TestStaleIngestionAndLifecycle(t *testing.T) {
 	_, err = e.alerts.PutConfig(t.Context(), coretest.Admin, alerts.AlertDocument{CostSpike: alerts.CostSpikeConfig{ThresholdPct: i(0)}})
 	require.ErrorAs(t, err, &ce)
 }
+
+// Catches: a snoozed alert surfacing before its date or closing so the check
+// opens a second one, a dismissed alert staying open, a dismissal without a
+// reason, and a viewer doing either.
+func TestSnoozeAndDismiss(t *testing.T) {
+	e := setup(t)
+	e.fresh(t, "2026-10-16", false, e.clock.Now())
+	_, err := e.alerts.PutConfig(t.Context(), coretest.Admin, alerts.AlertDocument{CostSpike: alerts.CostSpikeConfig{ThresholdPct: i(50)}})
+	require.NoError(t, err)
+	_, err = e.alerts.Evaluate(t.Context(), coretest.Marketer, "2026-10-16")
+	require.NoError(t, err)
+	open, _ := e.alerts.List(t.Context(), coretest.Viewer, "open", 10)
+	require.Len(t, open, 1)
+	spiky := open[0]
+	assert.False(t, spiky.Snoozed(e.clock.Now()))
+
+	_, err = e.alerts.Snooze(t.Context(), coretest.Viewer, spiky.ID, 7)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	_, err = e.alerts.Snooze(t.Context(), coretest.Marketer, spiky.ID, 0)
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+
+	snoozed, err := e.alerts.Snooze(t.Context(), coretest.Marketer, spiky.ID, 7)
+	require.NoError(t, err)
+	assert.Equal(t, "open", snoozed.State, "a snooze keeps the alert open")
+	require.NotNil(t, snoozed.SnoozedUntil)
+	assert.True(t, snoozed.Snoozed(e.clock.Now()))
+	assert.True(t, snoozed.Snoozed(e.clock.Now().Add(6*24*time.Hour)))
+	assert.False(t, snoozed.Snoozed(e.clock.Now().Add(8*24*time.Hour)), "the snooze ends on its date")
+
+	// Spiky spikes again while snoozed: one more occurrence on the same
+	// alert, still snoozed, not a second alert.
+	e.metric(t, "Spiky", "2026-10-17", 40000)
+	e.metric(t, "Steady", "2026-10-17", 10000)
+	e.fresh(t, "2026-10-17", false, e.clock.Now())
+	_, err = e.alerts.Evaluate(t.Context(), coretest.Marketer, "2026-10-17")
+	require.NoError(t, err)
+	open, _ = e.alerts.List(t.Context(), coretest.Viewer, "open", 10)
+	require.Len(t, open, 1)
+	assert.Equal(t, int64(2), open[0].Occurrences)
+	assert.True(t, open[0].Snoozed(e.clock.Now()))
+
+	_, err = e.alerts.Dismiss(t.Context(), coretest.Marketer, spiky.ID, "  ")
+	require.ErrorAs(t, err, &ce)
+	_, err = e.alerts.Dismiss(t.Context(), coretest.Viewer, spiky.ID, "Expected")
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	dismissed, err := e.alerts.Dismiss(t.Context(), coretest.Marketer, spiky.ID, "Expected")
+	require.NoError(t, err)
+	assert.Equal(t, "resolved", dismissed.State)
+	require.NotNil(t, dismissed.DismissReason)
+	assert.Equal(t, "Expected", *dismissed.DismissReason)
+	assert.NotNil(t, dismissed.ResolvedAt)
+	open, _ = e.alerts.List(t.Context(), coretest.Viewer, "open", 10)
+	assert.Empty(t, open)
+	_, err = e.alerts.Dismiss(t.Context(), coretest.Marketer, spiky.ID, "Expected")
+	require.ErrorAs(t, err, &ce, "dismissing twice is not found, not a 500")
+
+	// The check firing on a later day is a new alert.
+	e.metric(t, "Spiky", "2026-10-18", 40000)
+	e.metric(t, "Steady", "2026-10-18", 10000)
+	e.fresh(t, "2026-10-18", false, e.clock.Now())
+	ev, err := e.alerts.Evaluate(t.Context(), coretest.Marketer, "2026-10-18")
+	require.NoError(t, err)
+	assert.Equal(t, 1, ev.Fired)
+	open, _ = e.alerts.List(t.Context(), coretest.Viewer, "open", 10)
+	require.Len(t, open, 1)
+	assert.NotEqual(t, spiky.ID, open[0].ID)
+	assert.Nil(t, open[0].DismissReason)
+}

@@ -14,7 +14,7 @@ import (
 const acknowledgeAlert = `-- name: AcknowledgeAlert :one
 UPDATE alerts SET state = 'acknowledged', acknowledged_by = ?, acknowledged_at = ?
 WHERE id = ? AND workspace_id = ? AND state = 'open'
-RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
 `
 
 type AcknowledgeAlertParams struct {
@@ -49,6 +49,8 @@ func (q *Queries) AcknowledgeAlert(ctx context.Context, arg AcknowledgeAlertPara
 		&i.AcknowledgedBy,
 		&i.AcknowledgedAt,
 		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
 	)
 	return i, err
 }
@@ -57,7 +59,7 @@ const createAlert = `-- name: CreateAlert :one
 INSERT INTO alerts
     (workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at)
 VALUES (?, ?, ?, ?, ?, 'open', ?, ?, ?, 1, ?, ?)
-RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
 `
 
 type CreateAlertParams struct {
@@ -104,6 +106,8 @@ func (q *Queries) CreateAlert(ctx context.Context, arg CreateAlertParams) (Alert
 		&i.AcknowledgedBy,
 		&i.AcknowledgedAt,
 		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
 	)
 	return i, err
 }
@@ -255,6 +259,50 @@ func (q *Queries) CreateReportSchedule(ctx context.Context, arg CreateReportSche
 	return i, err
 }
 
+const dismissAlert = `-- name: DismissAlert :one
+UPDATE alerts SET state = 'resolved', resolved_at = ?, dismiss_reason = ?
+WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
+`
+
+type DismissAlertParams struct {
+	ResolvedAt    sql.NullTime
+	DismissReason sql.NullString
+	ID            int64
+	WorkspaceID   int64
+}
+
+func (q *Queries) DismissAlert(ctx context.Context, arg DismissAlertParams) (Alert, error) {
+	row := q.db.QueryRowContext(ctx, dismissAlert,
+		arg.ResolvedAt,
+		arg.DismissReason,
+		arg.ID,
+		arg.WorkspaceID,
+	)
+	var i Alert
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CheckName,
+		&i.SubjectKey,
+		&i.SubjectLabel,
+		&i.Severity,
+		&i.State,
+		&i.Message,
+		&i.Evidence,
+		&i.ConfigVersion,
+		&i.Occurrences,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.AcknowledgedBy,
+		&i.AcknowledgedAt,
+		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
+	)
+	return i, err
+}
+
 const getCurrentAlertConfig = `-- name: GetCurrentAlertConfig :one
 SELECT id, workspace_id, version, document, created_by, created_at FROM alert_configs WHERE workspace_id = ? ORDER BY version DESC LIMIT 1
 `
@@ -274,7 +322,7 @@ func (q *Queries) GetCurrentAlertConfig(ctx context.Context, workspaceID int64) 
 }
 
 const getOpenAlert = `-- name: GetOpenAlert :one
-SELECT id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at FROM alerts WHERE workspace_id = ? AND check_name = ? AND subject_key = ? AND state IN ('open', 'acknowledged')
+SELECT id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason FROM alerts WHERE workspace_id = ? AND check_name = ? AND subject_key = ? AND state IN ('open', 'acknowledged')
 `
 
 type GetOpenAlertParams struct {
@@ -303,6 +351,8 @@ func (q *Queries) GetOpenAlert(ctx context.Context, arg GetOpenAlertParams) (Ale
 		&i.AcknowledgedBy,
 		&i.AcknowledgedAt,
 		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
 	)
 	return i, err
 }
@@ -403,7 +453,7 @@ func (q *Queries) GetReportSchedule(ctx context.Context, arg GetReportSchedulePa
 }
 
 const listAlerts = `-- name: ListAlerts :many
-SELECT id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at FROM alerts
+SELECT id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason FROM alerts
 WHERE workspace_id = ?1
   AND (?2 IS NULL OR state = ?2)
 ORDER BY CASE severity WHEN 'urgent' THEN 0 WHEN 'warning' THEN 1 ELSE 2 END, last_seen_at DESC
@@ -442,6 +492,8 @@ func (q *Queries) ListAlerts(ctx context.Context, arg ListAlertsParams) ([]Alert
 			&i.AcknowledgedBy,
 			&i.AcknowledgedAt,
 			&i.ResolvedAt,
+			&i.SnoozedUntil,
+			&i.DismissReason,
 		); err != nil {
 			return nil, err
 		}
@@ -585,7 +637,7 @@ func (q *Queries) ListReports(ctx context.Context, arg ListReportsParams) ([]Rep
 const resolveAlert = `-- name: ResolveAlert :one
 UPDATE alerts SET state = 'resolved', resolved_at = ?
 WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
-RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
 `
 
 type ResolveAlertParams struct {
@@ -614,6 +666,8 @@ func (q *Queries) ResolveAlert(ctx context.Context, arg ResolveAlertParams) (Ale
 		&i.AcknowledgedBy,
 		&i.AcknowledgedAt,
 		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
 	)
 	return i, err
 }
@@ -643,10 +697,48 @@ func (q *Queries) SetReportDelivery(ctx context.Context, arg SetReportDeliveryPa
 	return result.RowsAffected()
 }
 
+const snoozeAlert = `-- name: SnoozeAlert :one
+UPDATE alerts SET snoozed_until = ?
+WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
+`
+
+type SnoozeAlertParams struct {
+	SnoozedUntil sql.NullTime
+	ID           int64
+	WorkspaceID  int64
+}
+
+func (q *Queries) SnoozeAlert(ctx context.Context, arg SnoozeAlertParams) (Alert, error) {
+	row := q.db.QueryRowContext(ctx, snoozeAlert, arg.SnoozedUntil, arg.ID, arg.WorkspaceID)
+	var i Alert
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.CheckName,
+		&i.SubjectKey,
+		&i.SubjectLabel,
+		&i.Severity,
+		&i.State,
+		&i.Message,
+		&i.Evidence,
+		&i.ConfigVersion,
+		&i.Occurrences,
+		&i.FirstSeenAt,
+		&i.LastSeenAt,
+		&i.AcknowledgedBy,
+		&i.AcknowledgedAt,
+		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
+	)
+	return i, err
+}
+
 const touchAlert = `-- name: TouchAlert :one
 UPDATE alerts SET occurrences = occurrences + 1, last_seen_at = ?, message = ?, evidence = ?, severity = ?
 WHERE id = ?
-RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at
+RETURNING id, workspace_id, check_name, subject_key, subject_label, severity, state, message, evidence, config_version, occurrences, first_seen_at, last_seen_at, acknowledged_by, acknowledged_at, resolved_at, snoozed_until, dismiss_reason
 `
 
 type TouchAlertParams struct {
@@ -683,6 +775,8 @@ func (q *Queries) TouchAlert(ctx context.Context, arg TouchAlertParams) (Alert, 
 		&i.AcknowledgedBy,
 		&i.AcknowledgedAt,
 		&i.ResolvedAt,
+		&i.SnoozedUntil,
+		&i.DismissReason,
 	)
 	return i, err
 }
