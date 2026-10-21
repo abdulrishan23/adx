@@ -1,6 +1,6 @@
 {
   "spec_version": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-21",
   "states": [
     "pending",
     "in_progress",
@@ -1672,9 +1672,7 @@
         "a malformed output fails schema validation with every problem named",
         "a model-written draft stays draft until an admin accepts it"
       ],
-      "remaining": [
-        "activation from the browser in dev mode (the dev admin has no user id; see verification.md, \"Browser journeys 2026-10-18, remaining pages\")"
-      ],
+      "remaining": [],
       "blockers": [],
       "commit": null,
       "notes": "BD-49."
