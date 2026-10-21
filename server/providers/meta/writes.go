@@ -19,14 +19,15 @@ import (
 	"github.com/WokeWorks/adx/server/core/proposals"
 )
 
-// Writes. Three actions from the Marketing API reference noted in
+// Writes. Four actions from the Marketing API reference noted in
 // docs/build/api-notes/meta-marketing.md: create a paused campaign, change
-// a campaign's daily budget, pause a campaign. Ad sets, ads, creatives and
-// audiences are not claimed. Created campaigns carry the marker in their
-// name so a lost response can be found again.
+// a campaign's daily budget, pause a campaign, resume a paused campaign
+// (with its daily budget when the intent carries one). Ad sets, ads,
+// creatives and audiences are not claimed. Created campaigns carry the
+// marker in their name so a lost response can be found again.
 
 func (c *Client) Capabilities() []policies.WriteAction {
-	return []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause}
+	return []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause, policies.CampaignResume}
 }
 
 type createCampaign struct {
@@ -38,6 +39,13 @@ type createCampaign struct {
 
 type budgetChange struct {
 	DailyBudgetMinor int64 `json:"dailyBudgetMinor"`
+}
+
+// resumeChange is what a campaign.resume proposes: the status to set, which
+// can only be ACTIVE, and the daily budget to run at, zero to leave it.
+type resumeChange struct {
+	Status           string `json:"status"`
+	DailyBudgetMinor int64  `json:"dailyBudgetMinor"`
 }
 
 func (c *Client) Apply(ctx context.Context, req execution.ApplyRequest) (execution.ApplyResult, error) {
@@ -93,11 +101,62 @@ func (c *Client) Apply(ctx context.Context, req execution.ApplyRequest) (executi
 			return execution.ApplyResult{}, err
 		}
 		return execution.ApplyResult{Refs: []proposals.ProviderRef{{Platform: "meta", Kind: "campaign", ExternalID: req.TargetRef, At: time.Now().UTC()}}, Detail: "campaign paused"}, nil
+	case policies.CampaignResume:
+		// The status and the budget go in one POST to the campaign node, so
+		// a campaign is never resumed at its old budget because a second
+		// request failed.
+		var in resumeChange
+		if err := json.Unmarshal(req.Proposed, &in); err != nil || in.DailyBudgetMinor < 0 {
+			return execution.ApplyResult{}, core.Invalid("a resume needs the status to set and, when it changes, dailyBudgetMinor")
+		}
+		if s := strings.ToUpper(strings.TrimSpace(in.Status)); s != "" && s != "ACTIVE" {
+			return execution.ApplyResult{}, core.Invalid("a resume sets a campaign to ACTIVE, not %s", in.Status)
+		}
+		if !digitsOnly(req.TargetRef) {
+			return execution.ApplyResult{}, core.Invalid("the target must be a campaign id")
+		}
+		form := url.Values{"status": {"ACTIVE"}}
+		detail := "campaign resumed"
+		if in.DailyBudgetMinor > 0 {
+			form.Set("daily_budget", strconv.FormatInt(in.DailyBudgetMinor, 10))
+			detail = fmt.Sprintf("campaign resumed at %d minor units a day", in.DailyBudgetMinor)
+		}
+		var out struct {
+			Success bool `json:"success"`
+		}
+		if err := c.post(ctx, req.Token, "/"+req.TargetRef, form, &out); err != nil {
+			return execution.ApplyResult{}, err
+		}
+		return execution.ApplyResult{Refs: []proposals.ProviderRef{{Platform: "meta", Kind: "campaign", ExternalID: req.TargetRef, At: time.Now().UTC()}}, Detail: detail}, nil
 	}
 	return execution.ApplyResult{}, core.Invalid("action %s is not implemented for Meta", req.Action)
 }
 
+// Lookup finds a campaign created with the marker, or, for a resume, reads
+// the target back: once it reads ACTIVE the resume landed and a retry sends
+// nothing a second time. Other updates are resent, which is safe.
 func (c *Client) Lookup(ctx context.Context, token, accountID, marker string, action policies.WriteAction, targetRef string) (execution.LookupResult, error) {
+	if action == policies.CampaignResume {
+		if !digitsOnly(targetRef) {
+			return execution.LookupResult{}, core.Invalid("the target must be a campaign id")
+		}
+		var out struct {
+			ID     string `json:"id"`
+			Status string `json:"status"`
+		}
+		err := c.get(ctx, token, c.url("/"+targetRef, url.Values{"fields": {"id,status,effective_status"}}), &out)
+		var ce *core.Error
+		if errors.As(err, &ce) && ce.Kind == core.KindNotFound {
+			return execution.LookupResult{Found: false, Detail: "campaign " + targetRef + " not found"}, nil
+		}
+		if err != nil {
+			return execution.LookupResult{}, err
+		}
+		if out.Status == "ACTIVE" {
+			return execution.LookupResult{Found: true, Status: out.Status, Detail: "campaign " + targetRef + " reads ACTIVE; the resume landed", Refs: []proposals.ProviderRef{{Platform: "meta", Kind: "campaign", ExternalID: targetRef, At: time.Now().UTC()}}}, nil
+		}
+		return execution.LookupResult{Found: false, Status: out.Status, Detail: "campaign " + targetRef + " still reads " + out.Status + "; the resume did not land and is safe to resend"}, nil
+	}
 	if action != policies.CampaignCreatePaus {
 		return execution.LookupResult{Found: false, Detail: "update outcome unknown; resend is safe"}, nil
 	}
