@@ -108,3 +108,41 @@ export const SUBMIT_STATE: Record<string, { status: SubmitTone; label: string }>
 function capitalize(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
+
+// The policy's reason codes, said the way a person would. The code stays
+// beside the sentence so Guardrails can be searched for it.
+const DENIAL_REASON: Record<string, string> = {
+  role_cannot_write: "your role cannot write to ad accounts",
+  unknown_action: "the action is not in the policy catalog",
+  policy_unconfigured: "no policy has been saved in Guardrails",
+  action_unconfigured: "the action is not configured in Guardrails",
+  action_off: "the action is switched off in Guardrails",
+  kill_switch: "the account's kill switch is on",
+  account_write_not_enabled: "writes to this account are not enabled in Guardrails",
+  write_capability_unverified: "the account's write capability has not been verified",
+  cap_unconfigured: "the spend and change caps are not set in Guardrails",
+  workspace_mismatch: "the account belongs to another workspace",
+  account_not_connected: "the account is not connected",
+  campaign_not_under_a_plan: "the campaign is not under an accepted plan whose period covers today",
+};
+
+// A submitted line's note, with a policy denial spelled out. The server
+// writes "policy: <code>"; anything else is already a sentence.
+export function plainNote(note: string): string {
+  const m = /^policy: (\S+)$/.exec(note);
+  if (!m) return note;
+  const code = m[1] as string;
+  const why = DENIAL_REASON[code];
+  return why ? `Denied because ${why} (${code}).` : `Denied by policy: ${code}.`;
+}
+
+// Who picked, named the way the person reads it: themselves, or nobody in
+// particular. A user id is not a name, so it is never shown.
+export function pickCaption(
+  pick: { pickedBy: number | null; pickedAt: string },
+  userId: number | null | undefined,
+  relative: (iso: string) => string,
+): string {
+  const who = pick.pickedBy !== null && pick.pickedBy === userId ? "Picked by you" : "Picked";
+  return `${who} · ${relative(pick.pickedAt)}`;
+}

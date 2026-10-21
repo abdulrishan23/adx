@@ -31,11 +31,14 @@ import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { useAccounts } from "@/engine/api/accounts";
 import { useEnvelopes } from "@/engine/api/proposals";
+import { useSession as useServerSession } from "@/engine/api/session";
 import { formatDate, formatDateTime, formatMoneyShort, formatRelative } from "@/lib/format";
 import {
   accountsByPlatform,
   campaignSpend,
   lineFigures,
+  pickCaption,
+  plainNote,
   platformsWithoutAccount,
   SUBMIT_STATE,
   submitBlocker,
@@ -550,6 +553,7 @@ function MoneyLine({
   label: (channel: string) => string;
 }) {
   const pick = usePickCampaign();
+  const session = useServerSession();
   const kind = KIND[l.kind] ?? { status: "pending" as Status, label: l.kind };
   const figures = lineFigures(l);
   const cur = l.line.currency;
@@ -608,8 +612,7 @@ function MoneyLine({
             />
             {l.pick && (
               <span className="text-xs text-muted-foreground">
-                Picked{l.pick.pickedBy !== null && ` by user ${l.pick.pickedBy}`}{" "}
-                {formatRelative(l.pick.pickedAt)}
+                {pickCaption(l.pick, session.data?.user?.id, formatRelative)}
               </span>
             )}
           </div>
@@ -755,14 +758,12 @@ function SubmitOutcome({
                   </span>
                 )}
               </p>
-              {s.note && <p className="text-muted-foreground">{s.note}</p>}
+              {s.note && <p className="text-muted-foreground">{plainNote(s.note)}</p>}
               {s.state === "awaiting_approval" && s.proposal && (
-                <Link
-                  to="/proposals"
-                  search={{ open: String(s.proposal.id) }}
-                  className="underline underline-offset-4"
-                >
-                  Open in Perform › Change log
+                // The engine's proposals screen is the working one (BD-57). This
+                // moves to /proposals?open=<id> when Perform › Proposals is rewired.
+                <Link to="/engine/proposals" className="underline underline-offset-4">
+                  Open in the proposals screen
                 </Link>
               )}
             </div>

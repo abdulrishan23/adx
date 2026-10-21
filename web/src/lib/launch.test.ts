@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { LineResolution, ProjectCampaign } from "@/api/types.gen";
-import { accountsByPlatform, lineFigures, platformsWithoutAccount, submitBlocker } from "./launch";
+import {
+  accountsByPlatform,
+  lineFigures,
+  pickCaption,
+  plainNote,
+  platformsWithoutAccount,
+  submitBlocker,
+} from "./launch";
 
 // The screen's own reading of the server's resolution (BD-68). The rules
 // (what a line matches, how spend nets off) are tested in
@@ -151,5 +158,35 @@ describe("accountsByPlatform", () => {
   it("ignores unsupported lines", () => {
     const lines = [line({ kind: "unsupported", budget: null, platform: "meta" })];
     expect(platformsWithoutAccount(lines, accountsByPlatform(lines, []))).toEqual([]);
+  });
+});
+
+describe("plainNote", () => {
+  // Catches: a bare policy code shown as the whole reason for a denial.
+  it("spells a policy denial out and keeps the code", () => {
+    expect(plainNote("policy: campaign_not_under_a_plan")).toBe(
+      "Denied because the campaign is not under an accepted plan whose period covers today (campaign_not_under_a_plan).",
+    );
+    expect(plainNote("policy: something_new")).toBe("Denied by policy: something_new.");
+  });
+
+  it("leaves a sentence alone", () => {
+    expect(plainNote("waits for an admin in Perform")).toBe("waits for an admin in Perform");
+  });
+});
+
+describe("pickCaption", () => {
+  const rel = () => "just now";
+  // Catches: a user id shown as a name, or another person's pick credited to you.
+  it("says you only for your own pick, and never shows an id", () => {
+    expect(pickCaption({ pickedBy: 2, pickedAt: "2026-10-21T13:00:00Z" }, 2, rel)).toBe(
+      "Picked by you · just now",
+    );
+    expect(pickCaption({ pickedBy: 2, pickedAt: "2026-10-21T13:00:00Z" }, 1, rel)).toBe(
+      "Picked · just now",
+    );
+    expect(pickCaption({ pickedBy: null, pickedAt: "2026-10-21T13:00:00Z" }, null, rel)).toBe(
+      "Picked · just now",
+    );
   });
 });
