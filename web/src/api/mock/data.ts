@@ -14,6 +14,7 @@ import type {
   Platform,
   Project,
   Proposal,
+  SampleCampaign,
   Signal,
   Temperature,
 } from "../models";
@@ -223,7 +224,7 @@ const SEEDS: CampaignSeed[] = [
 const sum = (points: DailyPoint[], key: keyof Omit<DailyPoint, "date">) =>
   points.reduce((acc, p) => acc + p[key], 0);
 
-export const CAMPAIGNS: Campaign[] = SEEDS.map((s, i) => {
+export const CAMPAIGNS: SampleCampaign[] = SEEDS.map((s, i) => {
   const daily = series(s.dailySpend, s.cpl, s.qualRate);
   const last30 = daily.slice(-30);
   const leads = sum(last30, "leads");

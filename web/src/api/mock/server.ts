@@ -13,13 +13,14 @@ import type {
   LeadsSummary,
   MarketRow,
   Proposal,
+  SampleCampaign,
   Scope,
 } from "../models";
 import { markets as splitMarkets } from "./brief";
 import { ALERTS, CAMPAIGNS, CONNECTIONS, DAY, LEADS, now, PROJECTS, PROPOSALS } from "./data";
 import { source } from "./sources";
 
-const inScope = (c: Campaign, scope: Scope) =>
+const inScope = (c: SampleCampaign, scope: Scope) =>
   (scope.platform === "all" || c.platform === scope.platform) &&
   (scope.projectId === "all" || c.projectId === scope.projectId);
 
@@ -32,7 +33,7 @@ function total(points: DailyPoint[], key: "spendMinor" | "leads" | "qualified") 
   return points.reduce((acc, p) => acc + p[key], 0);
 }
 
-export function campaigns(scope: Scope): Campaign[] {
+export function campaigns(scope: Scope): SampleCampaign[] {
   return CAMPAIGNS.filter((c) => inScope(c, scope)).map((c) => {
     const w = window(c.daily, scope.days);
     const factor = scope.days / 30;

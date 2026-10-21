@@ -9,8 +9,10 @@ import {
   useProposeChange,
 } from "@/api/adx";
 import { useCampaignCoverage } from "@/api/launch";
-import { projectOf } from "@/api/mock/data";
-import type { AdRow, Campaign, Proposal } from "@/api/models";
+import { isLive } from "@/api/mock";
+import { projectOf as sampleProjectOf } from "@/api/mock/data";
+import type { AdRow, Campaign, CampaignFigures, Proposal } from "@/api/models";
+import { useProjects } from "@/api/projects";
 import type { CampaignCoverage } from "@/api/types.gen";
 import { ScopeBar } from "@/app/scope";
 import { useSession } from "@/app/session";
@@ -25,6 +27,7 @@ import { Sheet } from "@/components/ui/sheet";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { analyticsSearch } from "@/lib/analytics";
+import { costPer, returnOnSpend, sumFigures } from "@/lib/campaign-rows";
 import { allowedChanges, coverageFor, launchChip, planChip, planLine } from "@/lib/coverage";
 import { formatMoneyShort, formatNumber, formatPercent, NOT_AVAILABLE } from "@/lib/format";
 import { released } from "@/lib/release";
@@ -34,26 +37,39 @@ type SortKey = "spend" | "leads" | "cpl" | "qualified" | "cpq" | "deals";
 
 const FOLD_KEY = "adx-campaigns-folded";
 
-const per = (minor: number, n: number) => (n > 0 ? Math.round(minor / n) : null);
-const roas = (c: Campaign) =>
-  c.revenueMinor !== null && c.spendMinor > 0 ? c.revenueMinor / c.spendMinor : null;
+// Rows and figures come from the engine (lib/campaign-rows.ts) unless the
+// screen is on sample data. Live, the sheet shows only what the engine
+// serves: the figures, the plan line and the budget form.
+const LIVE = isLive("campaigns");
 
-const SORTERS: Record<SortKey, (c: Campaign) => number | null> = {
+const SORTERS: Record<SortKey, (c: CampaignFigures) => number | null> = {
   spend: (c) => c.spendMinor,
   leads: (c) => c.leads,
-  cpl: (c) => per(c.spendMinor, c.leads),
+  cpl: (c) => costPer(c.spendMinor, c.leads),
   qualified: (c) => c.qualified,
-  cpq: (c) => per(c.spendMinor, c.qualified),
+  cpq: (c) => costPer(c.spendMinor, c.qualified),
   deals: (c) => c.deals,
 };
+
+// Groups rows by project; a campaign Adx assigned to no project sits under
+// "No project" (key 0), last.
+const NO_PROJECT = 0;
 
 const STATUS_MARK = { paused: "pending", limited: "caution" } as const;
 const STATUS_LABEL = { paused: "Paused", limited: "Limited by budget" } as const;
 
-function formatRoas(c: Campaign) {
-  const r = roas(c);
+function formatRoas(c: CampaignFigures) {
+  const r = returnOnSpend(c);
   if (r === null) return NOT_AVAILABLE;
   return `${r.toFixed(1)}×`;
+}
+
+// Cost per lead or per qualified lead: the figure, "No leads" when there is
+// nothing to divide by, "Not available" when either side is unknown.
+function formatCostPer(spendMinor: number | null, count: number | null, noun: string) {
+  if (spendMinor === null || count === null) return NOT_AVAILABLE;
+  if (count === 0) return `No ${noun}`;
+  return formatMoneyShort(costPer(spendMinor, count));
 }
 
 const route = getRouteApi("/app/campaigns");
@@ -62,7 +78,17 @@ export function CampaignsPage() {
   const campaigns = useCampaigns();
   const session = useSession();
   // The month's budget pacing per project, which By project used to show.
-  const overview = useProjectsOverview(analyticsSearch({}));
+  // Sample only: the engine has no project month budget yet, so a live row
+  // shows no pacing rather than a sample one.
+  const overview = useProjectsOverview(analyticsSearch({}), !LIVE);
+  // Project names from the projects endpoint, which is live; the sample
+  // fixtures name the sample rows.
+  const projects = useProjects();
+  const projectOf = (id: number) => {
+    if (id === NO_PROJECT) return "No project";
+    if (!LIVE) return sampleProjectOf(id);
+    return projects.data?.projects.find((p) => p.id === id)?.name ?? `Project ${id}`;
+  };
   // Which campaigns an accepted plan stands behind and where each launch
   // is, from the server (BD-68). Rows Adx has not read get no chip.
   const coverage = useCampaignCoverage();
@@ -91,7 +117,7 @@ export function CampaignsPage() {
     remember(next);
   };
   const pacingOf = (projectId: number) =>
-    overview.data?.find((p) => p.projectId === projectId)?.pacing ?? null;
+    LIVE ? null : (overview.data?.find((p) => p.projectId === projectId)?.pacing ?? null);
   const [sort, setSort] = useState<{ key: SortKey; dir: "asc" | "desc" }>({
     key: "spend",
     dir: "desc",
@@ -114,20 +140,25 @@ export function CampaignsPage() {
     };
     const byProject = new Map<number, Campaign[]>();
     for (const c of campaigns.data ?? []) {
-      byProject.set(c.projectId, [...(byProject.get(c.projectId) ?? []), c]);
+      const key = c.projectId ?? NO_PROJECT;
+      byProject.set(key, [...(byProject.get(key) ?? []), c]);
     }
     return [...byProject.entries()]
       .map(([projectId, list]) => ({
         projectId,
-        total: sumOf(list),
+        total: sumFigures(list),
         campaigns: [...list].sort((a, b) => order(get(a), get(b))),
       }))
-      .sort((a, b) => order(get(a.total), get(b.total)));
+      .sort((a, b) => {
+        if ((a.projectId === NO_PROJECT) !== (b.projectId === NO_PROJECT))
+          return a.projectId === NO_PROJECT ? 1 : -1;
+        return order(get(a.total), get(b.total));
+      });
   }, [campaigns.data, sort]);
 
   const rows = groups.flatMap((g) => g.campaigns);
   const open = rows.find((c) => c.id === openId) ?? null;
-  const totals = sumOf(rows);
+  const totals = sumFigures(rows);
 
   function SortHead({ k, children }: { k: SortKey; children: string }) {
     const active = sort.key === k;
@@ -238,9 +269,11 @@ export function CampaignsPage() {
                         </span>
                       )}
                     </div>
-                    <div className="mt-3 w-80 max-w-full pl-7">
-                      <PacingCell pacing={pacingOf(g.projectId)} />
-                    </div>
+                    {!LIVE && (
+                      <div className="mt-3 w-80 max-w-full pl-7">
+                        <PacingCell pacing={pacingOf(g.projectId)} />
+                      </div>
+                    )}
                   </TD>
                   <Figures c={g.total} />
                 </TR>
@@ -286,43 +319,37 @@ export function CampaignsPage() {
         </section>
       )}
       {open && (
-        <CampaignSheet campaign={open} coverage={covOf(open)} onClose={() => setOpenId(null)} />
+        <CampaignSheet
+          campaign={open}
+          coverage={covOf(open)}
+          projectName={projectOf(open.projectId ?? NO_PROJECT)}
+          onClose={() => setOpenId(null)}
+        />
       )}
     </>
   );
 }
 
-type Totals = Pick<Campaign, "spendMinor" | "leads" | "qualified" | "deals" | "revenueMinor">;
-
-function sumOf(list: Totals[]): Campaign {
-  const known = list.filter((c) => c.revenueMinor !== null);
-  return {
-    spendMinor: list.reduce((a, c) => a + c.spendMinor, 0),
-    leads: list.reduce((a, c) => a + c.leads, 0),
-    qualified: list.reduce((a, c) => a + c.qualified, 0),
-    deals: list.reduce((a, c) => a + c.deals, 0),
-    revenueMinor: known.length ? known.reduce((a, c) => a + (c.revenueMinor ?? 0), 0) : null,
-  } as Campaign;
-}
-
-// The figure cells, the same for a campaign, a project and the total.
-function Figures({ c, muted = false }: { c: Totals; muted?: boolean }) {
+// The figure cells, the same for a campaign, a project and the total. A
+// figure the engine does not have reads "Not available", never 0.
+function Figures({ c, muted = false }: { c: CampaignFigures; muted?: boolean }) {
+  const cpq = formatCostPer(c.spendMinor, c.qualified, "qualified");
   return (
     <>
       <TD numeric>{formatMoneyShort(c.spendMinor)}</TD>
       <TD numeric>{formatNumber(c.leads)}</TD>
       <TD numeric>{formatNumber(c.qualified)}</TD>
       <TD numeric className="text-muted-foreground">
-        {formatMoneyShort(per(c.spendMinor, c.leads))}
+        {formatCostPer(c.spendMinor, c.leads, "leads")}
       </TD>
       <TD numeric className={cn("font-semibold", muted && "font-medium")}>
-        {per(c.spendMinor, c.qualified) === null ? (
-          <span className="font-normal text-muted-foreground">No qualified</span>
+        {cpq === "No qualified" ? (
+          <span className="font-normal text-muted-foreground">{cpq}</span>
         ) : (
-          formatMoneyShort(per(c.spendMinor, c.qualified))
+          cpq
         )}
       </TD>
-      <TD numeric>{c.deals}</TD>
+      <TD numeric>{formatNumber(c.deals)}</TD>
     </>
   );
 }
@@ -348,10 +375,12 @@ function RowChips({ coverage }: { coverage: CampaignCoverage | null }) {
 function CampaignSheet({
   campaign: c,
   coverage,
+  projectName,
   onClose,
 }: {
   campaign: Campaign;
   coverage: CampaignCoverage | null;
+  projectName: string;
   onClose: () => void;
 }) {
   const plan = planLine(coverage);
@@ -359,10 +388,10 @@ function CampaignSheet({
     { label: "Spend", value: formatMoneyShort(c.spendMinor) },
     { label: "Leads", value: formatNumber(c.leads) },
     { label: "Qualified", value: formatNumber(c.qualified) },
-    { label: "Per qualified", value: formatMoneyShort(per(c.spendMinor, c.qualified)) },
-    { label: "Deals", value: String(c.deals) },
+    { label: "Per qualified", value: formatCostPer(c.spendMinor, c.qualified, "qualified") },
+    { label: "Deals", value: formatNumber(c.deals) },
     { label: "Revenue", value: formatMoneyShort(c.revenueMinor) },
-    { label: "Per lead", value: formatMoneyShort(per(c.spendMinor, c.leads)) },
+    { label: "Per lead", value: formatCostPer(c.spendMinor, c.leads, "leads") },
     { label: "Return on spend", value: formatRoas(c) },
     { label: "Status", value: c.status === "active" ? "Active" : STATUS_LABEL[c.status] },
   ];
@@ -371,7 +400,7 @@ function CampaignSheet({
       open
       onOpenChange={(o) => !o && onClose()}
       title={c.name}
-      description={`${platformLabel(c.platform)} · ${c.type} · ${projectOf(c.projectId)}`}
+      description={`${platformLabel(c.platform)} · ${c.type} · ${projectName}`}
     >
       <div className="space-y-6">
         <dl className="grid grid-cols-3 gap-px overflow-hidden rounded-lg border bg-border">
@@ -390,40 +419,51 @@ function CampaignSheet({
             <span className="text-muted-foreground">{plan}</span>
           </div>
         )}
-        <div className="space-y-2">
-          <Eyebrow>Lead temperature</Eyebrow>
-          <ProportionBar
-            parts={[
-              { label: "Hot", value: c.temperatureMix.hot },
-              { label: "Warm", value: c.temperatureMix.warm },
-              { label: "Cold", value: c.temperatureMix.cold },
-            ]}
-          />
-          <p className="font-mono text-xs text-muted-foreground tabular-nums">
-            {formatNumber(c.temperatureMix.hot)} hot · {formatNumber(c.temperatureMix.warm)} warm ·{" "}
-            {formatNumber(c.temperatureMix.cold)} cold
-          </p>
-        </div>
+        {/* Lead temperature, the daily chart, ad sets and the ads list are
+            sample detail the engine does not serve yet: hidden on a live row
+            rather than shown beside real figures. */}
+        {c.temperatureMix && (
+          <div className="space-y-2">
+            <Eyebrow>Lead temperature</Eyebrow>
+            <ProportionBar
+              parts={[
+                { label: "Hot", value: c.temperatureMix.hot },
+                { label: "Warm", value: c.temperatureMix.warm },
+                { label: "Cold", value: c.temperatureMix.cold },
+              ]}
+            />
+            <p className="font-mono text-xs text-muted-foreground tabular-nums">
+              {formatNumber(c.temperatureMix.hot)} hot · {formatNumber(c.temperatureMix.warm)} warm
+              · {formatNumber(c.temperatureMix.cold)} cold
+            </p>
+          </div>
+        )}
         {/* Budget changes are writes, which arrive with proposals in phase 3. A
             campaign with no plan behind it takes a cut, never a raise. */}
         {released(3) && (
-          <BudgetForm campaignId={c.id} allowRaise={allowedChanges(coverage).raise} />
+          <BudgetForm
+            campaignId={c.id}
+            allowRaise={allowedChanges(coverage).raise}
+            liveBudget={LIVE ? (coverage?.dailyBudgetMinor ?? null) : undefined}
+          />
         )}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Eyebrow>Daily</Eyebrow>
-            <ChartLegend
-              items={[
-                { label: "Spend", kind: "bar" },
-                { label: "Qualified", kind: "line" },
-              ]}
+        {c.daily && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Eyebrow>Daily</Eyebrow>
+              <ChartLegend
+                items={[
+                  { label: "Spend", kind: "bar" },
+                  { label: "Qualified", kind: "line" },
+                ]}
+              />
+            </div>
+            <DailyChart
+              points={c.daily.map((d) => ({ date: d.date, bar: d.spendMinor, line: d.qualified }))}
             />
           </div>
-          <DailyChart
-            points={c.daily.map((d) => ({ date: d.date, bar: d.spendMinor, line: d.qualified }))}
-          />
-        </div>
-        {c.adSets.length > 0 && (
+        )}
+        {c.adSets && c.adSets.length > 0 && (
           <div className="space-y-2">
             <Eyebrow>Ad sets</Eyebrow>
             <div className="rounded-lg border">
@@ -442,7 +482,7 @@ function CampaignSheet({
                       <TD>{a.name}</TD>
                       <TD numeric>{formatMoneyShort(a.spendMinor)}</TD>
                       <TD numeric>{formatNumber(a.leads)}</TD>
-                      <TD numeric>{formatMoneyShort(per(a.spendMinor, a.qualified))}</TD>
+                      <TD numeric>{formatCostPer(a.spendMinor, a.qualified, "qualified")}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -450,7 +490,7 @@ function CampaignSheet({
             </div>
           </div>
         )}
-        <AdsSection campaignId={c.id} platform={c.platform} />
+        {!LIVE && <AdsSection campaignId={c.id} platform={c.platform} />}
       </div>
     </Sheet>
   );
@@ -546,12 +586,25 @@ function ProposalResult({ proposal }: { proposal: Proposal }) {
   );
 }
 
-function BudgetForm({ campaignId, allowRaise }: { campaignId: string; allowRaise: boolean }) {
-  const budget = useDailyBudget(campaignId);
+// liveBudget is the daily budget the engine last read for a live row (null
+// when it read none, or a lifetime budget: no form then); undefined means a
+// sample row, whose budget comes from the sample read.
+function BudgetForm({
+  campaignId,
+  allowRaise,
+  liveBudget,
+}: {
+  campaignId: string;
+  allowRaise: boolean;
+  liveBudget: number | null | undefined;
+}) {
+  const sampleBudget = useDailyBudget(campaignId, liveBudget === undefined);
   const propose = useProposeChange();
   const [value, setValue] = useState("");
   const id = useId();
-  if (!budget.data) return null;
+  const current = liveBudget === undefined ? sampleBudget.data : liveBudget;
+  if (!current) return null;
+  const budget = { data: current };
   const next = Math.round(Number(value) * 100);
   const raise = Boolean(value) && next > budget.data;
   // Not under a plan: the server would deny the raise (BD-68 rule 4), so

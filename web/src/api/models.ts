@@ -114,7 +114,19 @@ export type MarketRow = {
   qualified: number;
 };
 
-export type Campaign = {
+// A campaign's figures for the scope's window. Null is a figure the engine
+// does not have for it, shown as "Not available", never 0: spend when no
+// platform figures were read or currencies mix, qualified and deals until
+// the funnel mapping is configured, revenue until Done-Deal values arrive.
+export type CampaignFigures = {
+  spendMinor: number | null;
+  leads: number | null;
+  qualified: number | null;
+  deals: number | null;
+  revenueMinor: number | null;
+};
+
+export type Campaign = CampaignFigures & {
   id: string;
   name: string;
   platform: Platform;
@@ -122,16 +134,27 @@ export type Campaign = {
   // by (GET /api/launch/coverage).
   externalId: string;
   type: string;
-  projectId: number;
+  // Null when Adx has read the campaign but assigned it to no project.
+  projectId: number | null;
   status: "active" | "paused" | "limited";
+  // Detail the engine does not serve yet. Null hides the section in the
+  // sheet rather than showing a sample one beside real figures.
+  temperatureMix: { hot: number; warm: number; cold: number } | null;
+  daily: DailyPoint[] | null;
+  adSets: { name: string; spendMinor: number; leads: number; qualified: number }[] | null;
+};
+
+// A sample campaign has every figure and every detail, so the fixtures and
+// the mock server can do arithmetic on them. The screens take a Campaign.
+export type SampleCampaign = Campaign & {
+  projectId: number;
   spendMinor: number;
   leads: number;
   qualified: number;
   deals: number;
-  revenueMinor: number | null;
-  temperatureMix: { hot: number; warm: number; cold: number };
+  temperatureMix: NonNullable<Campaign["temperatureMix"]>;
   daily: DailyPoint[];
-  adSets: { name: string; spendMinor: number; leads: number; qualified: number }[];
+  adSets: NonNullable<Campaign["adSets"]>;
 };
 
 export type FunnelStage = { key: string; label: string; count: number };

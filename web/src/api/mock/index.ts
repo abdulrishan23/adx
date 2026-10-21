@@ -10,11 +10,13 @@ const raw =
 export const MOCK_MODE: MockMode = raw === "all" || raw === "none" ? raw : "partial";
 
 // Features the Go server serves today. Add one here when its endpoints land.
-export type Feature = "projects" | "crm";
+export type Feature = "projects" | "campaigns" | "crm";
 // Only features whose endpoints the engine server serves in the shape our
 // screens expect. GoHighLevel leads and Creative Studio come back here as
 // each is rewired to the engine's API (see docs/build/decisions.md).
-const LIVE: ReadonlySet<Feature> = new Set<Feature>(["projects"]);
+// "campaigns" is Perform › Campaigns: its rows join the launch coverage
+// list with the analytics grouped by campaign (lib/campaign-rows.ts).
+const LIVE: ReadonlySet<Feature> = new Set<Feature>(["projects", "campaigns"]);
 
 export const isLive = (f: Feature) =>
   MOCK_MODE === "none" || (MOCK_MODE === "partial" && LIVE.has(f));

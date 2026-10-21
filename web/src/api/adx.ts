@@ -6,8 +6,12 @@ import { projectPerformance } from "./mock/project-performance";
 // real data means the Go endpoint exists and returns this same shape.
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { useScope } from "@/app/scope";
+import { campaignRows, scopeWindow } from "@/lib/campaign-rows";
+import { ENGINE_PLATFORM } from "@/lib/coverage";
 import { ApiError, getJSON, postForm, postJSON } from "./client";
+import { useCampaignCoverage } from "./launch";
 import { isLive, mockResponse, USE_MOCK } from "./mock";
 import * as actions from "./mock/actions";
 import * as ask from "./mock/ask";
@@ -57,6 +61,7 @@ import type {
   SourceDetail,
   WriteAction,
 } from "./models";
+import type { ReportingResult } from "./types.gen";
 import type {
   ConnectionsResponse,
   Connection as CrmConnection,
@@ -91,11 +96,11 @@ export function useProjectsList() {
 }
 
 // Project performance uses the same reporting dates as Analytics.
-export function useProjectsOverview(search: AnalyticsSearch) {
+export function useProjectsOverview(search: AnalyticsSearch, enabled = true) {
   const { metric: _, project: _project, platform: _platform, ...dates } = search;
   return useQuery({
     queryKey: ["projects-overview", dates],
-    enabled: !rangeError(search),
+    enabled: enabled && !rangeError(search),
     queryFn: () =>
       get<ProjectPerformance[]>(
         `/api/projects/overview?${new URLSearchParams(
@@ -116,12 +121,44 @@ export function useBrief() {
   });
 }
 
-export function useCampaigns() {
+// Perform › Campaigns. Live, the rows are the campaigns the engine has read
+// (the launch coverage list, shared with the chips) joined with the
+// analytics grouped by campaign for the scope's window; the join is
+// lib/campaign-rows.ts. Otherwise the sample rows. Both reads must answer
+// before a row shows, so figures and chips never come from different lists.
+export function useCampaigns(): {
+  data: Campaign[] | undefined;
+  isPending: boolean;
+  error: Error | null;
+} {
   const scope = useScope();
-  return useQuery({
-    queryKey: ["campaigns", scope],
-    queryFn: () => get<Campaign[]>(`/api/campaigns?${qs(scope)}`, () => mock.campaigns(scope)),
+  const live = isLive("campaigns");
+  const sample = useQuery({
+    queryKey: ["campaigns", "sample", scope],
+    queryFn: () => mockResponse(() => mock.campaigns(scope)),
+    enabled: !live,
   });
+  const coverage = useCampaignCoverage();
+  const window = scopeWindow(scope);
+  const search = new URLSearchParams({ from: window.from, to: window.to, group: "campaign" });
+  if (scope.platform !== "all") search.set("platform", ENGINE_PLATFORM[scope.platform]);
+  if (scope.projectId !== "all") search.set("project_id", String(scope.projectId));
+  const report = useQuery({
+    queryKey: ["analytics", "campaigns", window, scope.platform, scope.projectId],
+    queryFn: () => getJSON<ReportingResult>(`/api/analytics?${search}`),
+    enabled: live,
+  });
+  const data = useMemo(() => {
+    if (!live) return sample.data;
+    if (!coverage.data || !report.data) return undefined;
+    return campaignRows(coverage.data.campaigns, report.data, scope);
+  }, [live, sample.data, coverage.data, report.data, scope]);
+  if (!live) return { data, isPending: sample.isPending, error: sample.error };
+  return {
+    data,
+    isPending: coverage.isPending || report.isPending,
+    error: coverage.error ?? report.error,
+  };
 }
 
 // Where leads live for the screen's scope, from the phone country code.
@@ -626,11 +663,14 @@ export function useSnoozeAlert() {
   });
 }
 
-export function useDailyBudget(campaignId: string) {
+// The sample daily budget read. A live row's budget comes with its coverage
+// entry, so the read is skipped for it (enabled false).
+export function useDailyBudget(campaignId: string, enabled = true) {
   return useQuery({
     queryKey: ["daily-budget", campaignId],
     queryFn: () =>
       get<number>(`/api/campaigns/${campaignId}/budget`, () => actions.dailyBudget(campaignId)),
+    enabled,
   });
 }
 
