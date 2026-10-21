@@ -14,6 +14,8 @@ import (
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/plans"
+	"github.com/WokeWorks/adx/server/core/policies"
+	"github.com/WokeWorks/adx/server/core/proposals"
 	"github.com/WokeWorks/adx/server/core/reporting"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/storetest"
@@ -454,9 +456,182 @@ func TestCoverageFollowsTheResolution(t *testing.T) {
 	_ = m1
 }
 
-func requireKind(t *testing.T, err error, kind core.Kind) {
+func requireKind(t *testing.T, err error, kind core.Kind, msg ...any) {
 	t.Helper()
 	var ce *core.Error
 	require.ErrorAs(t, err, &ce, "%v", err)
-	assert.Equal(t, kind, ce.Kind, ce.Message)
+	assert.Equal(t, kind, ce.Kind, append([]any{ce.Message}, msg...)...)
+}
+
+// writes configures policy with the suggested defaults, verified write
+// capabilities on both accounts, and proposals that ask this launch service
+// for plan coverage.
+func (e *env) writes(t *testing.T) *proposals.Proposals {
+	t.Helper()
+	ctx := t.Context()
+	pol := policies.New(e.db)
+	for _, acc := range []int64{e.googleAcc, e.metaAcc} {
+		for _, c := range []string{"write.budget", "write.status", "write.campaign"} {
+			require.NoError(t, e.db.Writer().UpsertAccountCapability(ctx, store.UpsertAccountCapabilityParams{AccountID: acc, Capability: c, State: "verified", CheckedAt: e.clock.Now()}))
+		}
+	}
+	pct, changes := 50, 20
+	doc := policies.SuggestedDefaults()
+	doc.Caps = policies.PolicyCaps{DailySpendIncreasePct: &pct, MaxChangesPerDay: &changes}
+	doc.WriteAccounts = []int64{e.googleAcc, e.metaAcc}
+	_, err := pol.Put(ctx, coretest.Admin, doc)
+	require.NoError(t, err)
+	props := proposals.New(e.db, pol, e.plans, proposals.Config{Clock: e.clock, Coverage: e.launch})
+	e.launch.AttachProposals(props)
+	return props
+}
+
+func (e *env) accounts() map[string]int64 {
+	return map[string]int64{"google_ads": e.googleAcc, "meta": e.metaAcc}
+}
+
+// Catches: a second Submit creating a second campaign or a second intent,
+// an update proposing a raise when the budget should fall (or the reverse),
+// a create proposed without the line's envelope and amount, an unchanged
+// budget proposed anyway, and an unsupported line reaching proposals.
+func TestSubmitWritesOneProposalPerLineOnce(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	props := e.writes(t)
+	// Search runs at 10,000 a day and the line leaves 5,600 a day: a lower.
+	g := e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, i64(40_000_00))
+	_, err := e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.googleAcc, Platform: "google_ads", ExternalID: "g1", Name: "Search | Wadi", Status: "ENABLED",
+		ChannelType: sql.NullString{String: "SEARCH", Valid: true}, BudgetMinor: sql.NullInt64{Int64: 10_000_00, Valid: true}, BudgetPeriod: sql.NullString{String: "daily", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	// Leads runs at 1,000 a day and the line leaves 2,000: a raise.
+	m := e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads", "OUTCOME_LEADS", "ACTIVE", e.wadi, nil)
+	_, err = e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.metaAcc, Platform: "meta", ExternalID: "m1", Name: "Wadi | Leads", Status: "ACTIVE",
+		ChannelType: sql.NullString{String: "OUTCOME_LEADS", Valid: true}, BudgetMinor: sql.NullInt64{Int64: 1_000_00, Valid: true}, BudgetPeriod: sql.NullString{String: "daily", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	// Traffic already spends exactly what the line leaves: unchanged.
+	e.campaign(t, e.metaAcc, "meta", "m2", "Wadi | Traffic", "OUTCOME_TRAFFIC", "ACTIVE", e.wadi, nil)
+	_, err = e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.metaAcc, Platform: "meta", ExternalID: "m2", Name: "Wadi | Traffic", Status: "ACTIVE",
+		ChannelType: sql.NullString{String: "OUTCOME_TRAFFIC", Valid: true}, BudgetMinor: sql.NullInt64{Int64: 500_00, Valid: true}, BudgetPeriod: sql.NullString{String: "daily", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	plan := e.plan(t, alloc("google_search", 152_000_00), alloc("meta_lead_form", 40_000_00), alloc("meta_traffic", 10_000_00), alloc("google_pmax", 20_000_00), alloc("tiktok", 5_000_00))
+
+	res, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	require.NoError(t, err)
+	require.Len(t, res.Lines, 5)
+	byIndex := map[int]launch.SubmittedLine{}
+	for _, l := range res.Lines {
+		byIndex[l.Line.Index] = l
+	}
+	lower := byIndex[0]
+	assert.Equal(t, launch.StateSubmitted, lower.State, lower.Note)
+	assert.Equal(t, policies.BudgetLower, lower.Proposal.Action)
+	assert.Equal(t, g.ExternalID, lower.Proposal.TargetRef)
+	assert.Equal(t, "budget:1000000", lower.Proposal.TargetVersion)
+	assert.JSONEq(t, `{"dailyBudgetMinor":560000}`, string(lower.Proposal.Proposed))
+	assert.Equal(t, int64(112_000_00), *lower.Proposal.AmountMinor)
+	require.NotNil(t, lower.Intent)
+	assert.Equal(t, "reserved", lower.Intent.State)
+	raise := byIndex[1]
+	assert.Equal(t, policies.BudgetRaise, raise.Proposal.Action)
+	assert.Equal(t, m.ExternalID, raise.Proposal.TargetRef)
+	assert.Equal(t, launch.StateSubmitted, raise.State, "the admin self-approves a raise")
+	assert.Equal(t, launch.StateUnchanged, byIndex[2].State)
+	assert.Nil(t, byIndex[2].Proposal)
+	create := byIndex[3]
+	assert.Equal(t, launch.StateSubmitted, create.State, create.Note)
+	assert.Equal(t, policies.CampaignCreatePaus, create.Proposal.Action)
+	assert.Equal(t, "new:launch:1:1:3", create.Proposal.TargetRef)
+	assert.Equal(t, int64(20_000_00), *create.Proposal.AmountMinor)
+	require.NotNil(t, create.Proposal.EnvelopeID)
+	assert.Contains(t, string(create.Proposal.Proposed), `"channelType":"PERFORMANCE_MAX"`)
+	assert.Contains(t, string(create.Proposal.Proposed), `"dailyBudgetMinor":100000`)
+	assert.Contains(t, create.Proposal.Reason, "plan 1 version 1, line 3")
+	assert.Equal(t, launch.StateSkipped, byIndex[4].State)
+	assert.Nil(t, byIndex[4].Proposal)
+
+	intents, err := props.ListIntents(ctx, coretest.Viewer, "", 0)
+	require.NoError(t, err)
+	assert.Len(t, intents, 3)
+	envs, err := props.ListEnvelopes(ctx, coretest.Viewer)
+	require.NoError(t, err)
+	assert.Len(t, envs, 4, "one envelope per channel ADX can deploy; TikTok gets none")
+
+	// Again: the same proposals come back, nothing new is made.
+	again, err := e.launch.Submit(ctx, coretest.Marketer, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	require.NoError(t, err)
+	for i := range res.Lines {
+		if res.Lines[i].Proposal != nil {
+			assert.Equal(t, res.Lines[i].Proposal.ID, again.Lines[i].Proposal.ID, "line %d", i)
+			assert.Equal(t, launch.StateSubmitted, again.Lines[i].State)
+		}
+	}
+	intents, err = props.ListIntents(ctx, coretest.Viewer, "", 0)
+	require.NoError(t, err)
+	assert.Len(t, intents, 3)
+	proposalsNow, err := props.List(ctx, coretest.Viewer, "", 0)
+	require.NoError(t, err)
+	assert.Len(t, proposalsNow, 3)
+}
+
+// Catches: a submission going ahead while a line still waits on a pick, a
+// marketer opening envelopes or submitting with none open, and a marketer's
+// raise executing without the admin.
+func TestSubmitNeedsEveryPickAndOpenEnvelopes(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	props := e.writes(t)
+	m1 := e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads | AR", "OUTCOME_LEADS", "ACTIVE", e.wadi, nil)
+	e.campaign(t, e.metaAcc, "meta", "m2", "Wadi | Leads | EN", "OUTCOME_LEADS", "ACTIVE", e.wadi, nil)
+	plan := e.plan(t, alloc("meta_lead_form", 40_000_00))
+
+	_, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	requireKind(t, err, core.KindConflict)
+	assert.Contains(t, err.Error(), "needs a person's pick")
+	_, err = e.launch.Pick(ctx, coretest.Marketer, plan, 1, 0, m1.ID)
+	require.NoError(t, err)
+
+	_, err = e.launch.Submit(ctx, coretest.Marketer, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	requireKind(t, err, core.KindConflict)
+	assert.Contains(t, err.Error(), "an admin opens")
+	bot := coretest.Marketer
+	bot.Via = core.ViaAssistant
+	_, err = e.launch.Submit(ctx, bot, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	_, err = e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	requireKind(t, err, core.KindInvalid, "an admin with no accounts named cannot open envelopes either")
+
+	// Envelopes open; the marketer's raise waits for the admin.
+	_, err = props.OpenEnvelopes(ctx, coretest.Admin, plan, 1, e.accounts())
+	require.NoError(t, err)
+	res, err := e.launch.Submit(ctx, coretest.Marketer, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	require.NoError(t, err)
+	require.Len(t, res.Lines, 1)
+	assert.Equal(t, launch.StateAwaitingApproval, res.Lines[0].State)
+	assert.Equal(t, policies.BudgetRaise, res.Lines[0].Proposal.Action, "no daily budget read: proposed as a raise to the plan's figure")
+	assert.Equal(t, "budget:unknown", res.Lines[0].Proposal.TargetVersion)
+	assert.Nil(t, res.Lines[0].Intent)
+}
+
+// Catches: a paused-only match being created again instead of resumed, and
+// a spent line setting a zero budget.
+func TestSubmitResumesAndStopsAtTheCeiling(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	e.writes(t)
+	e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads", "OUTCOME_LEADS", "CAMPAIGN_PAUSED", e.wadi, i64(5_000_00))
+	e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, i64(45_000_00))
+	plan := e.plan(t, alloc("meta_lead_form", 40_000_00), alloc("google_search", 30_000_00))
+
+	res, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan, PlanVersion: 1, AccountByPlatform: e.accounts()})
+	require.NoError(t, err)
+	resume := res.Lines[0]
+	assert.Equal(t, launch.KindResume, resume.Kind)
+	assert.Equal(t, launch.StateSubmitted, resume.State, resume.Note)
+	assert.Equal(t, policies.CampaignResume, resume.Proposal.Action)
+	assert.Equal(t, "m1", resume.Proposal.TargetRef)
+	assert.Equal(t, "status:CAMPAIGN_PAUSED", resume.Proposal.TargetVersion)
+	assert.JSONEq(t, `{"status":"ACTIVE","dailyBudgetMinor":175000}`, string(resume.Proposal.Proposed))
+	assert.Equal(t, int64(35_000_00), *resume.Proposal.AmountMinor)
+	assert.Equal(t, launch.StateExhausted, res.Lines[1].State)
+	assert.Nil(t, res.Lines[1].Proposal)
 }

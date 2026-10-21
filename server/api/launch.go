@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"strconv"
+
+	"github.com/WokeWorks/adx/server/core/launch"
 )
 
 // LaunchPickInput is a person's choice for a plan line that matched more
@@ -45,4 +47,19 @@ func (h *handlers) launchPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// launchSubmit is POST /api/launch/submit: writes the resolution out as
+// proposals and intents under the version's envelopes.
+func (h *handlers) launchSubmit(w http.ResponseWriter, r *http.Request) {
+	var in launch.SubmitInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	res, err := h.launch.Submit(r.Context(), actorFrom(r), in)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, res)
 }

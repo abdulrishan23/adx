@@ -4492,6 +4492,27 @@ export interface Stat {
 // From runs/runs.go
 export type State = "failed" | "interrupted" | "partial" | "queued" | "running" | "succeeded";
 
+// From launch/submit.go
+export const StateAwaitingApproval = "awaiting_approval";
+
+// From launch/submit.go
+export const StateDenied = "denied";
+
+// From launch/submit.go
+export const StateExhausted = "exhausted";
+
+// From launch/submit.go
+export const StateHeld = "held";
+
+// From launch/submit.go
+export const StateSkipped = "skipped";
+
+// From launch/submit.go
+export const StateSubmitted = "submitted";
+
+// From launch/submit.go
+export const StateUnchanged = "unchanged";
+
 // From api/crm.go
 export interface StatedAttributeInput {
     key: string;
@@ -4520,6 +4541,31 @@ export interface Submission {
 // From api/pages.go
 export interface SubmissionsResponse {
     submissions: Submission[];
+}
+
+// From launch/submit.go
+export interface SubmitInput {
+    planId: number;
+    planVersion: number;
+    accountByPlatform: Record<string, number> | null;
+}
+
+// From launch/submit.go
+export interface SubmitResult {
+    planId: number;
+    planVersion: number;
+    lines: SubmittedLine[];
+    note: string;
+}
+
+// From launch/submit.go
+export interface SubmittedLine {
+    line: LaunchLine;
+    kind: string;
+    state: string;
+    proposal: Proposal | null;
+    intent: Intent | null;
+    note: string;
 }
 
 // From supervisor/supervisor.go
