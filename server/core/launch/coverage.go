@@ -62,7 +62,14 @@ type CampaignCoverage struct {
 	Name       string `json:"name"`
 	Status     string `json:"status"`
 	Running    bool   `json:"running"`
-	ProjectID  *int64 `json:"projectId"`
+	// ChannelType is the platform's own word for what the campaign is
+	// (SEARCH, PERFORMANCE_MAX, OUTCOME_LEADS, ...), as read.
+	ChannelType string `json:"channelType"`
+	// DailyBudgetMinor is the daily budget as last read, in the campaign's
+	// currency. Null when none was read or the budget is lifetime.
+	DailyBudgetMinor *int64 `json:"dailyBudgetMinor"`
+	Currency         string `json:"currency"`
+	ProjectID        *int64 `json:"projectId"`
 	PlanCoverage
 	Launch LaunchState `json:"launch"`
 }
@@ -89,7 +96,11 @@ func (s *Service) Campaigns(ctx context.Context, actor core.Actor, projectID int
 	out := make([]CampaignCoverage, 0, len(rows))
 	for _, c := range rows {
 		cc := CampaignCoverage{ID: c.ID, AccountID: c.AccountID, Platform: c.Platform, ExternalID: c.ExternalID, Name: c.Name, Status: c.Status, Running: reporting.Running(c.Platform, c.Status),
-			Launch: LaunchState{State: LaunchNone}}
+			ChannelType: c.ChannelType.String, Currency: c.Currency.String, Launch: LaunchState{State: LaunchNone}}
+		if c.BudgetMinor.Valid && c.BudgetPeriod.String == "daily" {
+			daily := c.BudgetMinor.Int64
+			cc.DailyBudgetMinor = &daily
+		}
 		if !c.ProjectID.Valid {
 			cc.Reason = reasonNoProject
 			out = append(out, cc)
