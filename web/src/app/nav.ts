@@ -216,9 +216,9 @@ export const NAV: readonly NavGroup[] = [
         to: "/convert/inbox",
         icon: Inbox,
         phase: 5,
-        status: "soon",
+        status: "live",
         summary:
-          "WhatsApp, email and SMS in one place, with Adx's note on each lead and a drafted reply.",
+          "WhatsApp conversations the agent answers from the approved facts, the ones it handed to you, and what it learned.",
       },
       {
         label: "CRM sync",
