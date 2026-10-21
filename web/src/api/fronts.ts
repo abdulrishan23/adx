@@ -205,7 +205,7 @@ export function toCard(c: CardWire): Card {
   if (c.figure) {
     card.figure =
       c.figure.value === null
-        ? { value: NOT_AVAILABLE, unit: c.figure.unit || undefined }
+        ? { value: NOT_AVAILABLE }
         : {
             value: c.figure.value,
             count: c.figure.count ?? undefined,

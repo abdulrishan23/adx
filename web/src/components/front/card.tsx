@@ -4,6 +4,7 @@ import { useCreativeProject } from "@/api/creative";
 import type { Card } from "@/api/fronts";
 import { StatusMark } from "@/components/ui/status-chip";
 import { fileUrl } from "@/creative/files";
+import { NOT_AVAILABLE } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { CountUp } from "./count-up";
 import { HBars, Pie } from "./pictures";
@@ -43,7 +44,12 @@ export function CardView({
       </div>
       <p className="line-clamp-2 px-4 pt-1 text-xs text-muted-foreground">{c.why}</p>
       <div className="flex min-h-0 flex-1 flex-col justify-end gap-2.5 overflow-hidden px-4 pt-2">
-        {c.figure && (
+        {c.figure && c.figure.value === NOT_AVAILABLE && (
+          <p className="font-heading text-xl font-semibold text-muted-foreground">
+            {NOT_AVAILABLE}
+          </p>
+        )}
+        {c.figure && c.figure.value !== NOT_AVAILABLE && (
           <p className="flex items-baseline gap-1.5 font-heading text-[2.75rem] font-semibold leading-none tracking-[-0.03em] tabular-nums">
             <CountUp value={c.figure.value} to={c.figure.count} />
             {c.figure.unit && (

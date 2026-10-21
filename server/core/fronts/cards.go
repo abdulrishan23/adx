@@ -59,7 +59,7 @@ func (s *Service) alertCards(ctx context.Context, actor core.Actor, now time.Tim
 
 func alertCard(a alerts.Alert) Card {
 	id := a.ID
-	c := Card{ID: fmt.Sprintf("alert-%d", a.ID), Door: DoorPerform, Status: severityStatus(a.Severity), NeedsYou: true, Why: a.Message, At: a.FirstSeenAt, AlertID: &id}
+	c := Card{ID: fmt.Sprintf("alert-%d", a.ID), Door: DoorPerform, Status: severityStatus(a.Severity), NeedsYou: true, Why: strings.TrimSpace(a.Message), At: a.FirstSeenAt, AlertID: &id}
 	var ev struct {
 		Day        string `json:"day"`
 		SpendMinor *int64 `json:"spendMinor"`
@@ -69,7 +69,7 @@ func alertCard(a alerts.Alert) Card {
 	_ = json.Unmarshal(a.Evidence, &ev)
 	switch a.Check {
 	case alerts.CheckCostSpike:
-		c.Title = "Cost spike: " + a.SubjectLabel
+		c.Title = titled("Cost spike", a.SubjectLabel)
 		c.Action = &CardAction{Label: "Analytics", To: toAnalytics}
 		if ev.SpendMinor != nil {
 			c.Figure = &Figure{Value: str(money(*ev.SpendMinor, ev.Currency)), Count: count(*ev.SpendMinor / 100), Unit: "on " + dayLabel(reporting.Day(ev.Day))}
@@ -78,26 +78,35 @@ func alertCard(a alerts.Alert) Card {
 			}
 		}
 	case alerts.CheckZeroLeads:
-		c.Title = "Spend with no leads: " + a.SubjectLabel
+		c.Title = titled("Spend with no leads", a.SubjectLabel)
 		c.Action = &CardAction{Label: "Analytics", To: toAnalytics}
 		if ev.SpendMinor != nil {
 			c.Figure = &Figure{Value: str(money(*ev.SpendMinor, ev.Currency)), Count: count(*ev.SpendMinor / 100), Unit: "on " + dayLabel(reporting.Day(ev.Day)), Change: "no lead reached GoHighLevel"}
 		}
 	case alerts.CheckStaleIngestion:
-		c.Title = "Figures stale: " + a.SubjectLabel
+		c.Title = titled("Figures stale", a.SubjectLabel)
 		c.Action = &CardAction{Label: "Connections", To: toConnections}
 	case "lead_hot":
 		c.Door = DoorConvert
 		c.Title = "A lead turned hot"
 		c.Action = &CardAction{Label: "Leads", To: toLeads}
 	default:
-		c.Title = strings.ToUpper(a.Check[:1]) + strings.ReplaceAll(a.Check[1:], "_", " ") + ": " + a.SubjectLabel
+		c.Title = titled(strings.ToUpper(a.Check[:1])+strings.ReplaceAll(a.Check[1:], "_", " "), a.SubjectLabel)
 	}
 	if a.Occurrences > 1 {
 		c.Why = fmt.Sprintf("%s Seen %d times.", c.Why, a.Occurrences)
 	}
 	c.Question = "Tell me more about this: " + c.Title
 	return c
+}
+
+// titled joins a check's name and its subject, or stands alone when the
+// check could not name the subject.
+func titled(check, label string) string {
+	if strings.TrimSpace(label) == "" {
+		return check
+	}
+	return check + ": " + label
 }
 
 func severityStatus(sev string) CardStatus {
@@ -309,6 +318,13 @@ func through(f reporting.ResultFreshness) string {
 	return "Figures through " + dayLabel(*f.ObservedThrough) + "."
 }
 
+func has(n int64) string {
+	if n == 1 {
+		return "has"
+	}
+	return "have"
+}
+
 func platformName(p string) string {
 	switch p {
 	case "google_ads":
@@ -337,7 +353,7 @@ func (s *Service) leadCards(ctx context.Context, actor core.Actor, now time.Time
 		return nil, nil
 	}
 	return []Card{{ID: "leads-no-status", Door: DoorConvert, Status: StatusCaution, Title: "Leads without a status", At: now,
-		Why:      fmt.Sprintf("%s of %s have no status in GoHighLevel, so they count as neither qualified nor lost.", plural(int(missing), "lead", "leads"), thousands(cov.Total)),
+		Why:      fmt.Sprintf("%s of %s %s no status in GoHighLevel, so they count as neither qualified nor lost.", plural(int(missing), "lead", "leads"), thousands(cov.Total), has(missing)),
 		Figure:   &Figure{Value: str(thousands(missing)), Count: count(missing), Unit: "leads"},
 		Question: "Which leads have no status in GoHighLevel, and who owns them?", Action: &CardAction{Label: "Leads", To: toLeads}}}, nil
 }
@@ -366,7 +382,7 @@ func (s *Service) planCards(ctx context.Context, actor core.Actor, now time.Time
 		for i := range d.Versions {
 			v := &d.Versions[i]
 			latest = v
-			if v.Acceptance != nil {
+			if v.Acceptance != nil || v.State == plans.StateAccepted {
 				accepted = v
 			}
 		}
@@ -392,14 +408,20 @@ func (s *Service) planCards(ctx context.Context, actor core.Actor, now time.Time
 		if err != nil {
 			return nil, err
 		}
-		base := Card{ID: fmt.Sprintf("plan-%d-launch", p.ID), Door: DoorStudio, At: accepted.Acceptance.AcceptedAt, Action: &CardAction{Label: "Launch", To: toLaunch}}
+		// An imported version can be accepted without an acceptance record;
+		// its creation is then the best date there is.
+		acceptedAt := accepted.CreatedAt
+		if accepted.Acceptance != nil {
+			acceptedAt = accepted.Acceptance.AcceptedAt
+		}
+		base := Card{ID: fmt.Sprintf("plan-%d-launch", p.ID), Door: DoorStudio, At: acceptedAt, Action: &CardAction{Label: "Launch", To: toLaunch}}
 		switch {
 		case ls.Delivered:
 			continue
 		case ls.State == "none":
 			base.Status, base.NeedsYou = StatusCaution, true
 			base.Title = fmt.Sprintf("%s is accepted, not launched", p.Title)
-			base.Why = fmt.Sprintf("Plan v%d was accepted %s and nothing has been sent to a platform.", accepted.Version, waited(now.Sub(accepted.Acceptance.AcceptedAt))+" ago")
+			base.Why = fmt.Sprintf("Plan v%d was accepted %s ago and nothing has been sent to a platform.", accepted.Version, waited(now.Sub(acceptedAt)))
 			base.Question = fmt.Sprintf("What's blocking the %s launch?", p.Title)
 			base.Action.Primary = true
 		case ls.State == "failed":

@@ -7,7 +7,7 @@ import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/compone
 import { Segmented } from "@/components/segmented";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusMark } from "@/components/ui/status-chip";
-import { formatRelative } from "@/lib/format";
+import { formatRelative, NOT_AVAILABLE } from "@/lib/format";
 import { AlertActions } from "./brief";
 
 type View = "cards" | "list";
@@ -135,7 +135,9 @@ function Row({ card: c, onAsk }: { card: Card; onAsk: (q: string) => void }) {
         {c.alertId && <AlertActions id={c.alertId} />}
       </div>
       <p className="col-start-2 font-heading text-xl font-semibold tabular-nums md:col-start-auto md:text-right">
-        {c.figure ? (
+        {c.figure?.value === NOT_AVAILABLE ? (
+          <span className="text-sm font-normal text-muted-foreground">{NOT_AVAILABLE}</span>
+        ) : c.figure ? (
           <>
             {c.figure.value}
             {c.figure.unit && (
