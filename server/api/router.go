@@ -21,6 +21,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evaluation"
 	"github.com/WokeWorks/adx/server/core/execution"
+	"github.com/WokeWorks/adx/server/core/fronts"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -82,7 +83,9 @@ type Deps struct {
 	Execution   *execution.Dispatcher
 	// Launch serves the plan-line resolution and picks (BD-68). Nil leaves
 	// the routes out.
-	Launch        *launch.Service
+	Launch *launch.Service
+	// Fronts serves Home and the Inbox. Nil leaves the routes out.
+	Fronts        *fronts.Service
 	CRM           *crm.CRM
 	Signals       *signals.Signals
 	Outreach      *outreach.Outreach
@@ -128,6 +131,7 @@ type handlers struct {
 	proposals     *proposals.Proposals
 	execution     *execution.Dispatcher
 	launch        *launch.Service
+	fronts        *fronts.Service
 	crm           *crm.CRM
 	signals       *signals.Signals
 	outreach      *outreach.Outreach
@@ -147,7 +151,7 @@ type handlers struct {
 func NewRouter(d Deps) http.Handler {
 	h := &handlers{log: d.Log, dev: d.Dev, devUser: d.DevUser, projects: d.Projects, connections: d.Connections, ops: d.Ops, identity: d.Identity,
 		policies: d.Policies, runs: d.Runs, leads: d.Leads, reporting: d.Reporting, reports: d.Reports, alerts: d.Alerts, assistant: d.Assistant,
-		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
+		creative: d.Creative, studio: d.Studio, campaigns: d.Campaigns, brands: d.Brands, research: d.Research, plans: d.Plans, pages: d.Pages, measurement: d.Measurement, proposals: d.Proposals, execution: d.Execution, launch: d.Launch, fronts: d.Fronts, crm: d.CRM, signals: d.Signals, outreach: d.Outreach, calls: d.Calls, qualification: d.Qualification, evaluation: d.Evaluation, pipeline: d.Pipeline, registry: d.Registry, workflows: d.Workflows, supervisor: d.Supervisor, learning: d.Learning, workspaces: d.Workspaces, wiring: d.Wiring, webhookSecret: d.WebhookSecret}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.Recoverer, logRequests(d.Log))
@@ -262,9 +266,31 @@ func NewRouter(d Deps) http.Handler {
 			r.Post("/api/alerts/{id}/resolve", h.alertAction(func(a *alerts.Alerts) func(*http.Request, int64) (alerts.Alert, error) {
 				return func(r *http.Request, id int64) (alerts.Alert, error) { return a.Resolve(r.Context(), actorFrom(r), id) }
 			}))
+			r.Post("/api/alerts/{id}/snooze", h.alertAction(func(a *alerts.Alerts) func(*http.Request, int64) (alerts.Alert, error) {
+				return func(r *http.Request, id int64) (alerts.Alert, error) {
+					var in SnoozeAlertInput
+					if err := decodeJSON(r, &in); err != nil {
+						return alerts.Alert{}, err
+					}
+					return a.Snooze(r.Context(), actorFrom(r), id, in.Days)
+				}
+			}))
+			r.Post("/api/alerts/{id}/dismiss", h.alertAction(func(a *alerts.Alerts) func(*http.Request, int64) (alerts.Alert, error) {
+				return func(r *http.Request, id int64) (alerts.Alert, error) {
+					var in DismissAlertInput
+					if err := decodeJSON(r, &in); err != nil {
+						return alerts.Alert{}, err
+					}
+					return a.Dismiss(r.Context(), actorFrom(r), id, in.Reason)
+				}
+			}))
 			r.Get("/api/alerts/config", h.getAlertConfig)
 			r.Put("/api/alerts/config", h.putAlertConfig)
 			r.Post("/api/alerts/evaluate", h.evaluateAlerts)
+		}
+		if h.fronts != nil {
+			r.Get("/api/fronts", h.desk)
+			r.Get("/api/inbox", h.inbox)
 		}
 		if h.assistant != nil {
 			r.Get("/api/assistant/conversations", h.listConversations)
