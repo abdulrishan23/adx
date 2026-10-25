@@ -47,10 +47,12 @@ export function useCreativeOverview() {
   });
 }
 
+// A project id of 0 means "not set up yet", so nothing is asked for.
 export function useCreativeProject(projectId: number) {
   return useQuery({
     queryKey: [...KEY, "project", projectId],
     queryFn: () => getJSON<CreativeProject>(`/api/creative/projects/${projectId}`),
+    enabled: projectId > 0,
   });
 }
 
