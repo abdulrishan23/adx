@@ -26,6 +26,9 @@ export function useProjectProgress(projectId: number | null) {
     queryKey: [...KEY, "progress", projectId],
     queryFn: () => getJSON<ProjectProgress>(`/api/projects/${projectId}/progress`),
     enabled: projectId !== null,
+    // The sidebar keeps this query alive across screens, and facts, plans
+    // and reviews change on other screens, so it re-reads on its own.
+    refetchInterval: 30_000,
   });
 }
 
