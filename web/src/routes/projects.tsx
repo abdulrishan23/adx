@@ -57,7 +57,7 @@ export function ProjectsPage() {
                 return (
                   <Link
                     key={p.id}
-                    to="/projects/$projectId"
+                    to="/projects/$projectId/brand"
                     params={{ projectId: String(p.id) }}
                     className="flex animate-rise flex-col border bg-card p-6 transition-colors hover:border-foreground/40"
                     style={{ animationDelay: `${i * 40}ms` }}

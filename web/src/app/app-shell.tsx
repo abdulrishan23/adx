@@ -1,13 +1,27 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Menu, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { needsYou, useHomeDesk } from "@/api/fronts";
 import { AdxMark, AdxWordmark } from "@/components/brand";
 import { CommandPalette, useCommandPaletteHotkey } from "@/components/command-palette";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
+import { useProjects } from "@/engine/api/projects";
+import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
+import { lastProject } from "@/routes/project-sections";
 import { AccountMenu } from "./account-menu";
-import { doorOf, HOME, INBOX, type NavGroup, type NavItem, navFor } from "./nav";
+import {
+  doorOf,
+  HOME,
+  INBOX,
+  type NavGroup,
+  type NavItem,
+  navFor,
+  PROJECT_SECTIONS,
+  projectIdFrom,
+  projectSectionPath,
+} from "./nav";
 import { ScopeProvider } from "./scope";
 import { useSession } from "./session";
 
@@ -182,6 +196,9 @@ function SidebarNav({
                 active={open?.label === g.label}
               />
             )}
+            {!collapsed && g.label === "Projects" && open?.label === g.label && (
+              <ProjectSections pathname={pathname} />
+            )}
             {!collapsed && open?.label === g.label && g.items.length > 1 && (
               <ul className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
                 {g.items.map((item) => (
@@ -213,6 +230,64 @@ function SidebarNav({
         </div>
       ))}
     </nav>
+  );
+}
+
+// ProjectSections is the Projects door's inside: the project switcher and
+// the five sections of the project in the URL. On the Projects list it
+// offers the last project opened instead.
+function ProjectSections({ pathname }: { pathname: string }) {
+  const projectId = projectIdFrom(pathname);
+  const projects = useProjects();
+  const navigate = useNavigate();
+  const list = projects.data?.projects ?? [];
+  const remembered = lastProject();
+  const last = projectId === null ? list.find((p) => p.id === remembered) : undefined;
+  if (projectId === null) {
+    if (!last) return null;
+    return (
+      <ul className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
+        <li>
+          <Link
+            to={projectSectionPath("brand")}
+            params={{ projectId: String(last.id) }}
+            className="flex h-7 items-center gap-2 px-2 text-[0.8rem] text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+          >
+            <span className="truncate">Continue: {last.name}</span>
+          </Link>
+        </li>
+      </ul>
+    );
+  }
+  const sections = PROJECT_SECTIONS.filter((s) => released(s.phase));
+  return (
+    <div className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
+      {list.length > 0 && (
+        <Select
+          aria-label="Project"
+          value={String(projectId)}
+          onValueChange={(v) =>
+            navigate({ to: projectSectionPath("brand"), params: { projectId: v } })
+          }
+          options={list.map((p) => ({ value: String(p.id), label: p.name }))}
+        />
+      )}
+      <ul className="space-y-0.5">
+        {sections.map((s) => (
+          <li key={s.segment}>
+            <Link
+              to={projectSectionPath(s.segment)}
+              params={{ projectId: String(projectId) }}
+              activeOptions={{ exact: s.segment !== "campaigns" }}
+              className="flex h-7 items-center gap-2 px-2 text-[0.8rem] text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-foreground" }}
+            >
+              <span className="truncate">{s.label}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { router } from "@/router";
-import { doorOf, HOME, NAV, navFor } from "./nav";
+import {
+  doorOf,
+  HOME,
+  NAV,
+  navFor,
+  PROJECT_SECTIONS,
+  projectIdFrom,
+  projectSectionPath,
+} from "./nav";
 
 const items = [HOME, ...NAV.flatMap((g) => g.items)];
 
@@ -12,6 +20,28 @@ describe("nav", () => {
     for (const item of items) {
       expect(paths).toContain(item.to);
     }
+  });
+
+  // Catches a project section whose route was renamed or never added, and a
+  // path outside a project being taken for one.
+  it("has a route for every project section and knows which project a path is in", () => {
+    const paths = Object.keys(router.routesByPath);
+    for (const s of PROJECT_SECTIONS) {
+      expect(paths).toContain(projectSectionPath(s.segment));
+    }
+    expect(PROJECT_SECTIONS.map((s) => s.segment)).toEqual([
+      "brand",
+      "media",
+      "studio",
+      "measurement",
+      "campaigns",
+    ]);
+    expect(projectIdFrom("/projects/7")).toBe(7);
+    expect(projectIdFrom("/projects/7/media")).toBe(7);
+    expect(projectIdFrom("/projects/7/campaigns/12")).toBe(7);
+    expect(projectIdFrom("/projects")).toBeNull();
+    expect(projectIdFrom("/projects/new")).toBeNull();
+    expect(projectIdFrom("/perform/projects")).toBeNull();
   });
 
   it("opens each door at a live screen under it", () => {

@@ -172,7 +172,7 @@ export function SetUpStudio({ projectId, canEdit }: { projectId: number; canEdit
   );
 }
 
-function Overview({ projectId, brandId }: { projectId: number; brandId: number | null }) {
+export function Overview({ projectId, brandId }: { projectId: number; brandId: number | null }) {
   const brand = useBrand(brandId);
   const briefs = useBriefs();
   if (brandId !== null && brand.isPending) return <LoadingRows rows={6} />;
@@ -324,7 +324,7 @@ function SideList({
   );
 }
 
-function PagesTab({ projectId, brandId }: { projectId: number; brandId: number | null }) {
+export function PagesTab({ projectId, brandId }: { projectId: number; brandId: number | null }) {
   const pages = usePages();
   const list = (pages.data?.pages ?? []).filter((p) => p.projectId === projectId);
   return (
@@ -451,7 +451,7 @@ function CampaignsSide({ projectId }: { projectId: number }) {
 }
 
 // ResearchTab is what Adx read for this project: its briefs, one at a time.
-function ResearchTab({ projectId }: { projectId: number }) {
+export function ResearchTab({ projectId }: { projectId: number }) {
   const briefs = useBriefs();
   const [chosen, setChosen] = useState<number | null>(null);
   const list = (briefs.data?.briefs ?? []).filter((b) => b.projectId === projectId);

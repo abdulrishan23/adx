@@ -1,12 +1,15 @@
 import type { RegisteredRouter } from "@tanstack/react-router";
 import {
   Activity,
+  BookOpenText,
   Bot,
   ChartNoAxesCombined,
+  ChartPie,
   Clapperboard,
   ClipboardCheck,
   Cog,
   Coins,
+  Crosshair,
   FileText,
   Filter,
   FolderKanban,
@@ -80,6 +83,68 @@ export const INBOX: NavItem = {
   status: "live",
   summary: "Every card Adx has put in front of you: what needs you, and what Adx finished.",
 };
+
+// A project section is one of the five screens every project has, in the
+// order the work happens (docs/screens.md). The sidebar shows them under the
+// Projects door while a project is in the URL.
+export type ProjectSection = {
+  segment: "brand" | "media" | "studio" | "measurement" | "campaigns";
+  label: string;
+  icon: LucideIcon;
+  phase: Phase;
+  summary: string;
+};
+
+export const PROJECT_SECTIONS: readonly ProjectSection[] = [
+  {
+    segment: "brand",
+    label: "Brand, facts and research",
+    icon: BookOpenText,
+    phase: 1,
+    summary:
+      "The brand kit, the facts Adx may state about this project, its offers, and the research behind them.",
+  },
+  {
+    segment: "media",
+    label: "Media",
+    icon: ChartPie,
+    phase: 2,
+    summary: "The project's media plans and their versions.",
+  },
+  {
+    segment: "studio",
+    label: "Studio",
+    icon: Palette,
+    phase: 1,
+    summary: "The project's creatives and landing pages.",
+  },
+  {
+    segment: "measurement",
+    label: "Measurement",
+    icon: Crosshair,
+    phase: 1,
+    summary:
+      "What's measured for this project and whether it works: conversion actions, pixels and outcome sync. Figures stay under Perform.",
+  },
+  {
+    segment: "campaigns",
+    label: "Campaigns",
+    icon: Megaphone,
+    phase: 2,
+    summary: "The project's pushes, each from brief to live.",
+  },
+];
+
+export function projectSectionPath(segment: ProjectSection["segment"]): RoutePath {
+  return `/projects/$projectId/${segment}` as RoutePath;
+}
+
+// projectIdFrom reads the project a path is scoped to, or null outside one.
+// The Projects list and New project carry no project.
+export function projectIdFrom(path: string): number | null {
+  const m = /^\/projects\/(\d+)(?:\/|$)/.exec(path);
+  return m ? Number(m[1]) : null;
+}
 
 export const NAV: readonly NavGroup[] = [
   {

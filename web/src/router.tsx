@@ -45,6 +45,7 @@ import { PortalsPage } from "@/routes/portals";
 import { PresentPage } from "@/routes/present";
 import { PrivacyPage } from "@/routes/privacy";
 import { ProjectPage, projectTabSearch } from "@/routes/project";
+import { ProjectSectionPage } from "@/routes/project-sections";
 import { ProjectsPage } from "@/routes/projects";
 import { ProposalsPage } from "@/routes/proposals";
 import { ReportsPage } from "@/routes/reports";
@@ -329,6 +330,7 @@ const projectRoute = createRoute({
   path: "/projects/$projectId",
   validateSearch: projectTabSearch,
   // Pictures, Brand, Settings and loose concepts moved to Creative (BD-66).
+  // The tabs became the project's sections; old links land on the matching one.
   beforeLoad: ({ params, search }) => {
     if (search.tab === "renders" || search.tab === "brand" || search.tab === "settings") {
       throw redirect({
@@ -342,6 +344,9 @@ const projectRoute = createRoute({
     if (search.tab === "concepts") {
       throw redirect({ to: "/creative/concepts" });
     }
+    const section =
+      search.tab === "campaigns" ? "campaigns" : search.tab === "pages" ? "studio" : "brand";
+    throw redirect({ to: `/projects/$projectId/${section}`, params });
   },
   component: function Project() {
     const { projectId } = projectRoute.useParams();
@@ -349,6 +354,26 @@ const projectRoute = createRoute({
     return <ProjectPage projectId={Number(projectId)} tab={tab} />;
   },
 });
+
+// The five sections every project has (docs/screens.md). Each is its own
+// route so the sidebar and links can name one, and so "campaigns" can sit
+// above a campaign's page.
+function projectSection(segment: "brand" | "media" | "studio" | "measurement" | "campaigns") {
+  const route = createRoute({
+    getParentRoute: () => appRoute,
+    path: `/projects/$projectId/${segment}`,
+    component: function Section() {
+      const { projectId } = route.useParams();
+      return <ProjectSectionPage projectId={Number(projectId)} section={segment} />;
+    },
+  });
+  return route;
+}
+const projectBrandRoute = projectSection("brand");
+const projectMediaRoute = projectSection("media");
+const projectStudioRoute = projectSection("studio");
+const projectMeasurementRoute = projectSection("measurement");
+const projectCampaignsRoute = projectSection("campaigns");
 
 const campaignRoute = createRoute({
   getParentRoute: () => appRoute,
@@ -572,6 +597,11 @@ const routeTree = rootRoute.addChildren([
     page("/projects", ProjectsPage),
     page("/projects/new", StartBrandPage),
     projectRoute,
+    projectBrandRoute,
+    projectMediaRoute,
+    projectStudioRoute,
+    projectMeasurementRoute,
+    projectCampaignsRoute,
     campaignRoute,
     oldCompetitorsRoute,
     page("/brands/$brandId", BrandPage),
