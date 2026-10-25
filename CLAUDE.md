@@ -51,3 +51,4 @@ Marketing tool for Reportage. What it does and why: `docs/reference.md` (concept
 - API types: Go structs with json tags reach `web/src/api/types.gen.ts` through `make gen`. Commit generated files.
 - Run `make check` and `make test` before committing.
 - Commit messages are one-line Conventional Commits: `type: message`, with no scope and no body.
+- A feature that spans several areas (store, core, API, screens, docs) runs as a graph with `/adx-graph`: bounded nodes, a check on every edge, and `graph.md`, `checks.md` and `progress.md` under `docs/build/graphs/<ticket>/` so another session can resume it. Small fixes don't.
