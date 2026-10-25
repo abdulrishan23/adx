@@ -3350,6 +3350,14 @@ export interface PriorHypothesis {
     note: string;
 }
 
+// From campaigns/progress.go
+export interface ProgressItem extends LaunchItem {
+    planId: number;
+    planVersion: number;
+    campaignId: number | null;
+    campaignName: string;
+}
+
 // From projects/projects.go
 export interface Project {
     id: number;
@@ -3379,6 +3387,14 @@ export interface ProjectCampaign {
 export interface ProjectOffersResponse {
     brandId: number;
     offers: Offer[];
+}
+
+// From campaigns/progress.go
+export interface ProjectProgress {
+    projectId: number;
+    sections: SectionState[];
+    measurement: ProgressItem[];
+    blocked: boolean;
 }
 
 // From studio/studio.go
@@ -4271,6 +4287,13 @@ export interface Section {
     stats: Stat[];
     table: string[][];
     link: string;
+}
+
+// From campaigns/progress.go
+export interface SectionState {
+    id: string;
+    status: string;
+    note: string;
 }
 
 // From voice/voice.go

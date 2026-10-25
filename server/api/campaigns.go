@@ -32,6 +32,19 @@ func (h *handlers) projectCampaigns(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, CampaignsResponse{Campaigns: list})
 }
 
+func (h *handlers) projectProgress(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "projectID", "project")
+	if !ok {
+		return
+	}
+	progress, err := h.campaigns.Progress(r.Context(), actorFrom(r), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, progress)
+}
+
 func (h *handlers) createCampaign(w http.ResponseWriter, r *http.Request) {
 	var in campaigns.CampaignInput
 	if !readJSON(w, r, &in) {

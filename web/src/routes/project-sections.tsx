@@ -2,13 +2,15 @@ import { Link, type LinkOptions, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, ArrowUpRight, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { useBrand } from "@/api/brands";
-import { useProjectCampaigns } from "@/api/campaigns";
+import { useProjectCampaigns, useProjectProgress } from "@/api/campaigns";
 import { usePages } from "@/api/pages";
+import type { ProgressItem } from "@/api/types.gen";
 import { PROJECT_SECTIONS, type ProjectSection, projectSectionPath } from "@/app/nav";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { buttonVariants } from "@/components/ui/button";
+import { type Status, StatusMark } from "@/components/ui/status-chip";
 import { useProjects } from "@/engine/api/projects";
 import { released } from "@/lib/release";
 import { STATE } from "./campaign";
@@ -135,8 +137,13 @@ export function ProjectSectionPage({
           {section === "brand" && <BrandSection projectId={projectId} brandId={brandId} />}
           {section === "media" && <MediaSection projectId={projectId} />}
           {section === "studio" && <StudioSection projectId={projectId} brandId={brandId} />}
-          {section === "measurement" && <MeasurementSection />}
-          {section === "campaigns" && <CampaignsTab projectId={projectId} />}
+          {section === "measurement" && <MeasurementSection projectId={projectId} />}
+          {section === "campaigns" && (
+            <>
+              <MeasurementGate projectId={projectId} />
+              <CampaignsTab projectId={projectId} />
+            </>
+          )}
         </>
       )}
     </section>
@@ -292,52 +299,182 @@ function StudioSection({ projectId, brandId }: { projectId: number; brandId: num
   );
 }
 
+const ITEM_STATUS: Record<string, { label: string; status: Status }> = {
+  ok: { label: "Passed", status: "ready" },
+  warning: { label: "Warning", status: "caution" },
+  blocked: { label: "Blocked", status: "error" },
+  unsupported: { label: "Not available", status: "pending" },
+};
+
+// fixFor links a measurement line to the screen that fixes it, by what the
+// line points at.
+function fixFor(item: ProgressItem, projectId: number): LinkOptions {
+  switch (item.refKind) {
+    case "account":
+      return { to: "/settings/connections" };
+    case "page":
+      return { to: "/engine/pages" };
+    case "plan":
+      return {
+        to: "/projects/$projectId/media",
+        params: { projectId: String(projectId) },
+      };
+    default:
+      return { to: "/engine/launch" };
+  }
+}
+
+// MeasurementChecks lists the launch-readiness lines about measurement for
+// each of the project's plans: passed, warning, blocked or not available,
+// each with the screen that fixes it. No plan means nothing to check yet.
+function MeasurementChecks({ projectId }: { projectId: number }) {
+  const progress = useProjectProgress(projectId);
+  if (progress.isPending) return <LoadingRows rows={3} />;
+  if (progress.error) return <ErrorNote error={progress.error} />;
+  const items = progress.data?.measurement ?? [];
+  const state = progress.data?.sections.find((s) => s.id === "measurement");
+  if (items.length === 0) {
+    return (
+      <EmptyState title={state?.note ?? "Nothing to check yet"}>
+        The checks run against a campaign's plan: that each ad account has a verified conversion
+        action, each page has its pixel and a passing test submission, and outcomes sync.{" "}
+        <Link
+          to="/projects/$projectId/campaigns"
+          params={{ projectId: String(projectId) }}
+          className="underline underline-offset-4"
+        >
+          Start a campaign
+        </Link>{" "}
+        and the checks appear here.
+      </EmptyState>
+    );
+  }
+  return (
+    <ul className="divide-y">
+      {items.map((it) => {
+        const s = ITEM_STATUS[it.state] ?? { label: it.state, status: "pending" as const };
+        return (
+          <li key={`${it.planId}-${it.code}-${it.refId}`} className="px-6 py-3.5 text-sm">
+            <div className="flex items-start gap-3">
+              <StatusMark status={s.status} className="mt-1.5" />
+              <span className="min-w-0 flex-1">
+                <span className="font-medium">{it.message}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {s.label}
+                  {it.campaignName ? ` · ${it.campaignName}` : ""} · {it.area}
+                </span>
+              </span>
+              {it.state !== "ok" && (
+                <Link
+                  {...fixFor(it, projectId)}
+                  className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Fix
+                </Link>
+              )}
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// MeasurementGate sits at the top of Campaigns while measurement has a
+// blocker: a launch can't run until it's fixed.
+function MeasurementGate({ projectId }: { projectId: number }) {
+  const progress = useProjectProgress(projectId);
+  if (!progress.data?.blocked) return null;
+  const blockers = progress.data.measurement.filter((it) => it.state === "blocked");
+  return (
+    <Panel
+      className="mb-6 border-status-error"
+      title="Blocked by measurement"
+      description={`${blockers.length} ${blockers.length === 1 ? "check" : "checks"} must pass before a launch can run.`}
+      action={
+        <Link
+          to="/projects/$projectId/measurement"
+          params={{ projectId: String(projectId) }}
+          className="text-xs whitespace-nowrap text-muted-foreground hover:text-foreground"
+        >
+          Open Measurement
+        </Link>
+      }
+      bodyClassName="p-0"
+    >
+      <ul className="divide-y">
+        {blockers.map((it) => (
+          <li
+            key={`${it.planId}-${it.code}-${it.refId}`}
+            className="flex items-center gap-3 px-6 py-3 text-sm"
+          >
+            <StatusMark status="error" />
+            <span className="min-w-0 flex-1">{it.message}</span>
+            {it.campaignName && (
+              <span className="text-xs text-muted-foreground">{it.campaignName}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Panel>
+  );
+}
+
 // Measurement is setup only: what's measured and whether it works. Figures
 // stay under Perform. It sits before Campaigns because a launch is blocked
 // while measurement has a blocker.
-function MeasurementSection() {
+function MeasurementSection({ projectId }: { projectId: number }) {
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="space-y-6">
       <Panel
-        title="What's measured"
-        description="Conversion actions, pixels and the outcome events sent back to the platforms."
+        title="Checks for this project"
+        description="What each campaign's launch still needs from measurement. Blockers gate Campaigns."
         bodyClassName="p-0"
       >
-        <Where
-          rows={[
-            {
-              label: "Connections",
-              note: "Google Ads, Meta and GoHighLevel, each with its health and last sync.",
-              link: { to: "/settings/connections" },
-            },
-            {
-              label: "Outcome sync",
-              note: "Qualified leads and Done-Deals sent back to Google and Meta.",
-              link: { to: "/outcomes" },
-            },
-          ]}
-        />
+        <MeasurementChecks projectId={projectId} />
       </Panel>
-      <Panel
-        title="Whether it works"
-        description="The checks a launch needs to pass, and the gaps in the data behind the figures."
-        bodyClassName="p-0"
-      >
-        <Where
-          rows={[
-            {
-              label: "Launch readiness",
-              note: "Measurement is one of the areas a launch checks before it runs.",
-              link: { to: "/engine/launch" },
-            },
-            {
-              label: "Data quality",
-              note: "Platform leads against GoHighLevel leads, status and attribution coverage.",
-              link: { to: "/data-quality" },
-            },
-          ]}
-        />
-      </Panel>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Panel
+          title="What's measured"
+          description="Conversion actions, pixels and the outcome events sent back to the platforms."
+          bodyClassName="p-0"
+        >
+          <Where
+            rows={[
+              {
+                label: "Connections",
+                note: "Google Ads, Meta and GoHighLevel, each with its health and last sync.",
+                link: { to: "/settings/connections" },
+              },
+              {
+                label: "Outcome sync",
+                note: "Qualified leads and Done-Deals sent back to Google and Meta.",
+                link: { to: "/outcomes" },
+              },
+            ]}
+          />
+        </Panel>
+        <Panel
+          title="Whether it works"
+          description="The checks a launch needs to pass, and the gaps in the data behind the figures."
+          bodyClassName="p-0"
+        >
+          <Where
+            rows={[
+              {
+                label: "Launch readiness",
+                note: "Measurement is one of the areas a launch checks before it runs.",
+                link: { to: "/engine/launch" },
+              },
+              {
+                label: "Data quality",
+                note: "Platform leads against GoHighLevel leads, status and attribution coverage.",
+                link: { to: "/data-quality" },
+              },
+            ]}
+          />
+        </Panel>
+      </div>
     </div>
   );
 }

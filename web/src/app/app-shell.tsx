@@ -1,11 +1,13 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Menu, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { useProjectProgress } from "@/api/campaigns";
 import { needsYou, useHomeDesk } from "@/api/fronts";
 import { AdxMark, AdxWordmark } from "@/components/brand";
 import { CommandPalette, useCommandPaletteHotkey } from "@/components/command-palette";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
+import { type Status, StatusMark } from "@/components/ui/status-chip";
 import { useProjects } from "@/engine/api/projects";
 import { released } from "@/lib/release";
 import { cn } from "@/lib/utils";
@@ -239,6 +241,7 @@ function SidebarNav({
 function ProjectSections({ pathname }: { pathname: string }) {
   const projectId = projectIdFrom(pathname);
   const projects = useProjects();
+  const progress = useProjectProgress(projectId);
   const navigate = useNavigate();
   const list = projects.data?.projects ?? [];
   const remembered = lastProject();
@@ -260,6 +263,8 @@ function ProjectSections({ pathname }: { pathname: string }) {
     );
   }
   const sections = PROJECT_SECTIONS.filter((s) => released(s.phase));
+  const stateOf = (segment: string) =>
+    progress.data?.sections.find((s) => s.id === segment) ?? null;
   return (
     <div className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
       {list.length > 0 && (
@@ -281,7 +286,12 @@ function ProjectSections({ pathname }: { pathname: string }) {
               activeOptions={{ exact: s.segment !== "campaigns" }}
               className="flex h-7 items-center gap-2 px-2 text-[0.8rem] text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
               activeProps={{ className: "bg-sidebar-accent font-medium text-sidebar-foreground" }}
+              title={stateOf(s.segment)?.note}
             >
+              {/* The section's state: not started, in progress, done or blocked. */}
+              {stateOf(s.segment) && (
+                <StatusMark status={stateOf(s.segment)?.status as Status} className="shrink-0" />
+              )}
               <span className="truncate">{s.label}</span>
             </Link>
           </li>

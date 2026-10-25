@@ -335,6 +335,7 @@ func NewRouter(d Deps) http.Handler {
 			r.Get("/api/brands/{id}/claims", h.claims)
 			r.Get("/api/projects/{projectID}/offers", h.projectOffers)
 			r.Get("/api/projects/{projectID}/campaigns", h.projectCampaigns)
+			r.Get("/api/projects/{projectID}/progress", h.projectProgress)
 			r.Get("/api/campaigns", h.listCampaigns)
 			r.Post("/api/campaigns", h.createCampaign)
 			r.Get("/api/campaigns/{campaignID}", h.getCampaign)

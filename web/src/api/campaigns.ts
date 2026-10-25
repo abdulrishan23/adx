@@ -3,7 +3,12 @@
 // queries sit under the creative key and refresh with them.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJSON, postJSON, putJSON } from "./client";
-import type { CampaignDetail, CampaignInput, CampaignsResponse } from "./types.gen";
+import type {
+  CampaignDetail,
+  CampaignInput,
+  CampaignsResponse,
+  ProjectProgress,
+} from "./types.gen";
 
 const KEY = ["creative", "campaigns"] as const;
 
@@ -11,6 +16,16 @@ export function useCampaigns() {
   return useQuery({
     queryKey: [...KEY],
     queryFn: () => getJSON<CampaignsResponse>("/api/campaigns"),
+  });
+}
+
+// Where each of a project's five sections stands, and the measurement lines
+// that gate Campaigns. Computed by the server from what the domains hold.
+export function useProjectProgress(projectId: number | null) {
+  return useQuery({
+    queryKey: [...KEY, "progress", projectId],
+    queryFn: () => getJSON<ProjectProgress>(`/api/projects/${projectId}/progress`),
+    enabled: projectId !== null,
   });
 }
 

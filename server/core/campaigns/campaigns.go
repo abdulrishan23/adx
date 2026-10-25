@@ -116,6 +116,10 @@ type Campaigns struct {
 	db   *store.DB
 	deps Deps
 	now  func() time.Time
+	// research and measurement are built after campaigns in cmd/adx, so
+	// they arrive through AttachReaders. Progress reads them.
+	research    ResearchReader
+	measurement ReadinessReader
 }
 
 func New(db *store.DB, deps Deps) *Campaigns {
