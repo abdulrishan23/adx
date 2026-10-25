@@ -529,7 +529,7 @@ function MarketEvents({ canEdit }: { canEdit: boolean }) {
   );
 }
 
-function Schedules({ briefId, canEdit }: { briefId: number; canEdit: boolean }) {
+export function Schedules({ briefId, canEdit }: { briefId: number; canEdit: boolean }) {
   const schedules = useResearchSchedules();
   const create = useCreateResearchSchedule();
   const update = useUpdateResearchSchedule();
@@ -594,7 +594,7 @@ function Schedules({ briefId, canEdit }: { briefId: number; canEdit: boolean }) 
   );
 }
 
-function Reports({
+export function Reports({
   briefId,
   canEdit,
   onOpen,
@@ -1037,7 +1037,7 @@ function PageFinding({
   );
 }
 
-function EvidencePanel({ id, onClose }: { id: number; onClose: () => void }) {
+export function EvidencePanel({ id, onClose }: { id: number; onClose: () => void }) {
   const ev = useResearchEvidence(id);
   return (
     <section className="space-y-2 rounded-lg border p-3">

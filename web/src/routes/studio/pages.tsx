@@ -1,4 +1,4 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useBrand, useBrands } from "@/api/brands";
@@ -27,9 +27,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { PageEditor } from "@/engine/routes/pages";
 import { formatDateTime, formatRelative } from "@/lib/format";
-
-const route = getRouteApi("/app/studio/pages/$pageId");
 
 // Adx writes the page from the brand's approved facts, the offer and the
 // studio's pictures for the project, in English and Arabic as twins that
@@ -166,11 +165,14 @@ export function AskForPage({
   );
 }
 
-export function PagePage() {
-  const { pageId } = route.useParams();
-  const id = Number(pageId);
+// PagePage renders at /projects/$projectId/pages/$pageId, which keeps the
+// project's sections in the sidebar, and at the older /studio/pages/$pageId.
+export function PagePage({ pageId }: { pageId: number }) {
+  const id = pageId;
   const page = usePage(id);
+  const session = useSession();
   const [picked, setPicked] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
   if (page.isPending) return <LoadingRows rows={8} />;
   if (page.error) return <ErrorNote error={page.error} />;
   if (!page.data) return <LoadingRows rows={8} />;
@@ -191,12 +193,11 @@ export function PagePage() {
         </Link>
       ) : d.page.projectId !== null ? (
         <Link
-          to="/projects/$projectId"
+          to="/projects/$projectId/studio"
           params={{ projectId: String(d.page.projectId) }}
-          search={{ tab: "pages" }}
           className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> Unfiled pages
+          <ArrowLeft className="size-4" /> Studio
         </Link>
       ) : (
         <Link
@@ -251,6 +252,31 @@ export function PagePage() {
           ) : (
             <Panel>
               <EmptyState title="No version yet" />
+            </Panel>
+          )}
+          {shown && session.role !== "viewer" && (
+            <Panel
+              title="Edit by hand"
+              description="Change the sections and the form yourself and save it as the next version. Publishing stays a separate step."
+              action={
+                <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+                  {editing ? "Close" : `Edit v${shown.version}`}
+                </Button>
+              }
+            >
+              {editing ? (
+                <PageEditor
+                  key={shown.id}
+                  detail={d}
+                  version={shown.version}
+                  doc={shown.document}
+                  canEdit
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Saving makes a new draft version; what's live doesn't change until it's published.
+                </p>
+              )}
             </Panel>
           )}
           <Submissions pageId={id} />

@@ -307,8 +307,8 @@ export function CampaignPage({
                   <li key={p.id} className="flex items-center gap-3 py-3">
                     <StatusMark status={p.publishedVersion !== null ? "ready" : "caution"} />
                     <Link
-                      to="/studio/pages/$pageId"
-                      params={{ pageId: String(p.id) }}
+                      to="/projects/$projectId/pages/$pageId"
+                      params={{ projectId: String(projectId), pageId: String(p.id) }}
                       className="w-24 font-medium hover:underline"
                     >
                       {p.language === "ar" ? "Arabic" : "English"}
@@ -361,8 +361,8 @@ export function CampaignPage({
             action={
               c.plan ? (
                 <Link
-                  to="/studio/plans/$planId"
-                  params={{ planId: String(c.plan.id) }}
+                  to="/projects/$projectId/plans/$planId"
+                  params={{ projectId: String(projectId), planId: String(c.plan.id) }}
                   className={buttonVariants({ variant: "outline" })}
                 >
                   Open plan

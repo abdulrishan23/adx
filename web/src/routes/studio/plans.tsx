@@ -1,4 +1,4 @@
-import { getRouteApi, Link } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { useAcceptPlanVersion, useGeneratePlan, usePlan, usePlans } from "@/api/plans";
@@ -18,13 +18,12 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
+import { VersionEditor } from "@/engine/routes/plans";
 import { formatDate, formatMoneyShort, formatRelative } from "@/lib/format";
 
 // Plans are whole dirhams; cents would be noise.
 const money = (minor: number, currency: string) =>
   `${currency} ${Math.round(minor / 100).toLocaleString("en")}`;
-
-const route = getRouteApi("/app/studio/plans/$planId");
 
 // "Ready" is ready for acceptance; accepted is content only and authorizes
 // no spend. That stays separate on purpose (handover B2.4).
@@ -39,12 +38,15 @@ export const PLAN_STATE: Record<PlanState, { status: Status; label: string }> = 
 
 const shortDate = (d: string) => formatDate(`${d}T00:00:00Z`, { day: "numeric", month: "short" });
 
-export function PlanPage() {
-  const { planId } = route.useParams();
-  const id = Number(planId);
+// PlanPage renders at /projects/$projectId/plans/$planId, which keeps the
+// project's sections in the sidebar, and at the older /studio/plans/$planId.
+export function PlanPage({ planId }: { planId: number }) {
+  const id = planId;
   const plan = usePlan(id);
   const plans = usePlans();
+  const session = useSession();
   const [picked, setPicked] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
   if (plan.isPending || plans.isPending) return <LoadingRows rows={8} />;
   if (plan.error) return <ErrorNote error={plan.error} />;
   if (!plan.data || !plans.data) return <LoadingRows rows={8} />;
@@ -116,6 +118,33 @@ export function PlanPage() {
           </Panel>
         )}
         <Draft planId={id} brandId={d.plan.brandId} onDone={(n) => setPicked(n)} />
+        {v && session.role !== "viewer" && (
+          <Panel
+            title="Edit by hand"
+            description="Change allocations, assumptions or the period yourself and save it as the next version. The check runs as you type."
+            action={
+              <Button variant="outline" size="sm" onClick={() => setEditing((e) => !e)}>
+                {editing ? "Close" : `Edit v${v.version}`}
+              </Button>
+            }
+          >
+            {editing ? (
+              <VersionEditor
+                key={v.id}
+                planId={id}
+                brandId={d.plan.brandId}
+                version={v}
+                channels={plans.data.channels}
+                canEdit
+                isAdmin={session.role === "admin"}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Saving makes a new version; nothing accepted changes.
+              </p>
+            )}
+          </Panel>
+        )}
       </div>
     </>
   );

@@ -375,6 +375,41 @@ const projectStudioRoute = projectSection("studio");
 const projectMeasurementRoute = projectSection("measurement");
 const projectCampaignsRoute = projectSection("campaigns");
 
+// A plan or page opens inside its project, so the sidebar keeps the project's
+// sections. The /studio paths still work for links that have no project.
+const projectPlanRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects/$projectId/plans/$planId",
+  component: function ProjectPlan() {
+    const { planId } = projectPlanRoute.useParams();
+    return <PlanPage planId={Number(planId)} />;
+  },
+});
+const projectPageRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/projects/$projectId/pages/$pageId",
+  component: function ProjectPagePage() {
+    const { pageId } = projectPageRoute.useParams();
+    return <PagePage pageId={Number(pageId)} />;
+  },
+});
+const oldPlanRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/studio/plans/$planId",
+  component: function OldPlan() {
+    const { planId } = oldPlanRoute.useParams();
+    return <PlanPage planId={Number(planId)} />;
+  },
+});
+const oldPageRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: "/studio/pages/$pageId",
+  component: function OldPage() {
+    const { pageId } = oldPageRoute.useParams();
+    return <PagePage pageId={Number(pageId)} />;
+  },
+});
+
 const campaignRoute = createRoute({
   getParentRoute: () => appRoute,
   path: "/projects/$projectId/campaigns/$campaignId",
@@ -555,8 +590,10 @@ const routeTree = rootRoute.addChildren([
     oldCampaignsListRoute,
     oldResearchRoute,
     oldPlansRoute,
-    page("/studio/plans/$planId", PlanPage),
-    page("/studio/pages/$pageId", PagePage),
+    oldPlanRoute,
+    oldPageRoute,
+    projectPlanRoute,
+    projectPageRoute,
     page("/studio/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
     page("/convert/inbox", ComingSoonPage),

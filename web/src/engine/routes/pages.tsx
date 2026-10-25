@@ -262,7 +262,7 @@ function PageView({ id, canEdit }: { id: number; canEdit: boolean }) {
       </div>
       <ReadinessPanel detail={d} canEdit={canEdit} />
       <div className="grid gap-4 md:grid-cols-2">
-        <Editor
+        <PageEditor
           key={shown.id}
           detail={d}
           version={shown.version}
@@ -375,7 +375,9 @@ function Preview({ pageId, version }: { pageId: number; version: number }) {
 let nextRowId = 1;
 const rowId = () => `row-${nextRowId++}`;
 
-function Editor({
+// PageEditor edits a version's sections and form by hand and saves the next
+// version. The designed page screen uses it too.
+export function PageEditor({
   detail,
   version,
   doc: initial,

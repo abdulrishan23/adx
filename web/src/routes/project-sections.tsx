@@ -14,6 +14,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useProjects } from "@/engine/api/projects";
+import { NewPlan } from "@/engine/routes/plans";
 import { formatRelative } from "@/lib/format";
 import { released } from "@/lib/release";
 import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
@@ -139,7 +140,7 @@ export function ProjectSectionPage({
       ) : (
         <>
           {section === "brand" && <BrandSection projectId={projectId} brandId={brandId} />}
-          {section === "media" && <MediaSection projectId={projectId} />}
+          {section === "media" && <MediaSection projectId={projectId} brandId={brandId} />}
           {section === "studio" && <StudioSection projectId={projectId} brandId={brandId} />}
           {section === "measurement" && <MeasurementSection projectId={projectId} />}
           {section === "campaigns" && (
@@ -194,7 +195,10 @@ function BrandSection({ projectId, brandId }: { projectId: number; brandId: numb
 // Media: the project's plans, each at its latest version and state. A plan
 // opens on the designed plan page (versions, the check, allocations,
 // Accept, Draft). Creating a plan's frame by hand stays on the engine.
-function MediaSection({ projectId }: { projectId: number }) {
+function MediaSection({ projectId, brandId }: { projectId: number; brandId: number | null }) {
+  const navigate = useNavigate();
+  const session = useSession();
+  const canEdit = session.role !== "viewer";
   const plans = usePlans();
   const campaigns = useProjectCampaigns(projectId);
   const mine = new Set((campaigns.data?.campaigns ?? []).map((c) => c.id));
@@ -244,8 +248,8 @@ function MediaSection({ projectId }: { projectId: number }) {
                   <TR key={p.id}>
                     <TD>
                       <Link
-                        to="/studio/plans/$planId"
-                        params={{ planId: String(p.id) }}
+                        to="/projects/$projectId/plans/$planId"
+                        params={{ projectId: String(projectId), planId: String(p.id) }}
                         className="font-medium hover:underline"
                       >
                         {p.title}
@@ -268,12 +272,28 @@ function MediaSection({ projectId }: { projectId: number }) {
           </Table>
         </Panel>
       )}
+      {canEdit && brandId !== null && (
+        <Panel
+          title="New plan"
+          description="The frame: title, objective, budget and period. Versions are drafted from research or edited by hand on the plan page."
+        >
+          <NewPlan
+            fixed={{ brandId, projectId }}
+            onCreated={(planId) =>
+              navigate({
+                to: "/projects/$projectId/plans/$planId",
+                params: { projectId: String(projectId), planId: String(planId) },
+              })
+            }
+          />
+        </Panel>
+      )}
       <p className="text-xs text-muted-foreground">
-        A plan's frame (brand, budget, dates) and hand-saved versions are made on the{" "}
+        Accepting a plan is content only; it authorizes no spend. The same plans are on the{" "}
         <Link to="/engine/plans" className="underline underline-offset-4">
           engine's plans screen
         </Link>
-        . Accepting a plan is content only; it authorizes no spend.
+        .
       </p>
     </div>
   );

@@ -13,6 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useProjects } from "@/engine/api/projects";
+import { EvidencePanel, Reports, Schedules } from "@/engine/routes/research";
 import { formatDate, formatRelative } from "@/lib/format";
 import { CLASS, factValue, keyLabel } from "./brand";
 import { STATE } from "./campaign";
@@ -359,8 +360,8 @@ export function PagesTab({ projectId, brandId }: { projectId: number; brandId: n
                 <TR key={x.id}>
                   <TD>
                     <Link
-                      to="/studio/pages/$pageId"
-                      params={{ pageId: String(x.id) }}
+                      to="/projects/$projectId/pages/$pageId"
+                      params={{ projectId: String(projectId), pageId: String(x.id) }}
                       className="font-medium hover:underline"
                     >
                       {x.name}
@@ -453,7 +454,10 @@ function CampaignsSide({ projectId }: { projectId: number }) {
 // ResearchTab is what Adx read for this project: its briefs, one at a time.
 export function ResearchTab({ projectId }: { projectId: number }) {
   const briefs = useBriefs();
+  const session = useSession();
+  const canEdit = session.role !== "viewer";
   const [chosen, setChosen] = useState<number | null>(null);
+  const [evidence, setEvidence] = useState<number | null>(null);
   const list = (briefs.data?.briefs ?? []).filter((b) => b.projectId === projectId);
   const id = chosen ?? list[0]?.id ?? null;
   if (briefs.isPending) return <LoadingRows rows={6} />;
@@ -487,6 +491,18 @@ export function ResearchTab({ projectId }: { projectId: number }) {
         />
       )}
       {id !== null && <BriefView id={id} />}
+      {id !== null && (
+        <Panel
+          title="Keep it current"
+          description="A schedule re-reads every source each period and writes a comparative report of what changed."
+        >
+          <div className="grid gap-6 text-sm md:grid-cols-2">
+            <Schedules briefId={id} canEdit={canEdit} />
+            <Reports briefId={id} canEdit={canEdit} onOpen={setEvidence} />
+          </div>
+          {evidence !== null && <EvidencePanel id={evidence} onClose={() => setEvidence(null)} />}
+        </Panel>
+      )}
     </div>
   );
 }

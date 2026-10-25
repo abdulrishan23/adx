@@ -143,13 +143,22 @@ function TemplateNote({ gate }: { gate: TemplateGate }) {
   );
 }
 
-function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
+// NewPlan makes a plan's frame: brand, project, title, objective, budget and
+// period, as version 1. A project's Media section passes the brand and
+// project as fixed, so only the frame is asked for.
+export function NewPlan({
+  onCreated,
+  fixed,
+}: {
+  onCreated: (id: number) => void;
+  fixed?: { brandId: number; projectId: number };
+}) {
   const brands = useBrands();
   const create = useCreatePlan();
-  const [brandId, setBrandId] = useState(0);
+  const [brandId, setBrandId] = useState(fixed?.brandId ?? 0);
   const brand = useBrand(brandId || null);
   const [form, setForm] = useState({
-    projectId: 0,
+    projectId: fixed?.projectId ?? 0,
     title: "",
     objective: "",
     budget: "",
@@ -182,34 +191,38 @@ function NewPlan({ onCreated }: { onCreated: (id: number) => void }) {
   return (
     <Form onSubmit={onSubmit} className="space-y-2 rounded-lg border p-3 text-sm">
       <h2 className="font-semibold">New plan</h2>
-      <select
-        className="w-full rounded-md border bg-background px-2 py-1"
-        value={brandId}
-        onChange={(e) => {
-          setBrandId(Number(e.target.value));
-          setForm({ ...form, projectId: 0 });
-        }}
-      >
-        <option value={0}>Brand…</option>
-        {own.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.name}
-          </option>
-        ))}
-      </select>
-      <select
-        className="w-full rounded-md border bg-background px-2 py-1"
-        value={form.projectId}
-        onChange={(e) => setForm({ ...form, projectId: Number(e.target.value) })}
-        disabled={!brandId}
-      >
-        <option value={0}>Whole brand</option>
-        {brand.data?.projects.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {!fixed && (
+        <>
+          <select
+            className="w-full rounded-md border bg-background px-2 py-1"
+            value={brandId}
+            onChange={(e) => {
+              setBrandId(Number(e.target.value));
+              setForm({ ...form, projectId: 0 });
+            }}
+          >
+            <option value={0}>Brand…</option>
+            {own.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="w-full rounded-md border bg-background px-2 py-1"
+            value={form.projectId}
+            onChange={(e) => setForm({ ...form, projectId: Number(e.target.value) })}
+            disabled={!brandId}
+          >
+            <option value={0}>Whole brand</option>
+            {brand.data?.projects.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       <Input
         placeholder="Title"
         value={form.title}
@@ -463,7 +476,10 @@ function DiffView({ planId, from, to }: { planId: number; from: number; to: numb
   );
 }
 
-function VersionEditor({
+// VersionEditor edits a version's document by hand and saves it as the next
+// version, with the check running as you type. The designed plan page uses
+// it too.
+export function VersionEditor({
   planId,
   brandId,
   version,
