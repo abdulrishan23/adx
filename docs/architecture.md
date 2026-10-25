@@ -35,14 +35,14 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. About 30 people. Sales, telesales and brokers never log in, so Sales OS's rep desk, inbox and assignment don't come across.
 
 - **Why.** Reportage wants a marketing tool. Sales already work in GoHighLevel and Akarati.
-- **Cost.** What happens on the sales side only reaches us as GoHighLevel statuses, and half of those are blank (#35).
+- **Cost.** What happens on the sales side only reaches us as GoHighLevel statuses, and half of those are blank (#35). D-29 fills the blanks with an inferred stage.
 - **Revisit if.** Reportage wants sales on the same tool.
 
 #### D-03. ADX sends no outreach
 2026-10-09. No calls, WhatsApp or email to leads. Messages to staff, like approval links, are fine. Leads that went cold are re-engaged through ad audiences instead.
 
 - **Why.** Outreach is out of scope for Reportage, and they're not open to automated calls.
-- **Cost.** The direct re-engagement Sales OS was built for is gone. Tying website visits to leads also gets harder, because ADX never sends a link (#34).
+- **Cost.** The direct re-engagement Sales OS was built for is gone. Tying website visits to leads also gets harder, because ADX never sends a link. D-30 has Reportage's own messages carry the link instead.
 - **Revisit if.** Reportage asks ADX to message leads.
 
 #### D-04. Reportage first, one client
@@ -81,8 +81,9 @@ Each decision says what we chose, why, what it costs us, and what would make us 
 2026-10-09. ADX reads leads and statuses from GoHighLevel. It writes only its own fields (`adx_temperature`, `adx_score`, `adx_reason`, `adx_updated_at`) and tags starting with `adx:`, never statuses, pipeline stages or GoHighLevel's own fields. Akarati data reaches ADX only through GoHighLevel. Reportage's monthly lead sheet (one Google Sheet per month, from January 2025) is only for backfilling history.
 
 - **Why.** GoHighLevel is Reportage's marketing CRM, and Akarati already syncs into it. Their GoHighLevel admin builds workflows on ADX's own fields, so ADX writes only those.
-- **Cost.** Revenue reporting depends on Akarati sending deal values into GoHighLevel, which we don't control (#35).
+- **Cost.** Revenue reporting depends on Akarati sending deal values into GoHighLevel, which we don't control (#35). Akarati's deal fields arrive on 14 November 2026 (D-28).
 - **Revisit if.** Akarati offers an API and GoHighLevel falls short.
+- **Since D-28,** this holds until Reportage drops GoHighLevel about a year after launch. ADX is built with the CRM behind an interface so that cutover is cheap.
 
 #### D-23. GHL through private integration tokens
 2026-10-15. A GHL account admin issues a scoped Private Integration Token for ADX. Each sub-account has its own connection. A reconnect replaces only that account's credentials. ADX encrypts tokens in SQLite with a key outside the database.
@@ -268,10 +269,10 @@ Wanted, but not in the first version.
 - ~~**An MCP server,** so other AI clients can use ADX's tools. The copilot comes first.~~ Replaced by D-19.
 - **Multi-tenancy.** See D-04.
 - **Approval rights for a team under the Head of Marketing & AI,** if they hire one.
-- **Website signals and the page catalogue.** Tying visits to leads is still open (#34), and 61% of leads never visit the site. PostHog still goes on Reportage's sites early, so history builds up.
+- **Website signals and the page catalogue.** How visits get tied to leads is D-30. The parts that depend on Reportage, the site snippet and tracked links, wait on them (#35). PostHog still goes on Reportage's sites early, so history builds up.
 - **Creating campaigns and ads through ADX.** Writes start with budgets, pauses, negative keywords, bids and targets.
 - **Editing the permission checklist inside ADX,** with per-person overrides. D-13's defaults are set in code first. Revisit if the CMO asks.
-- **Currency conversion.** Reportage's accounts probably bill in AED, and money already carries a currency code. Revisit if an account bills in another currency.
+- ~~**Currency conversion.** Reportage's accounts probably bill in AED, and money already carries a currency code. Revisit if an account bills in another currency.~~ Some deals may not be in AED, so conversion at the rate on the day is in scope (D-28).
 
 ## Set aside
 
@@ -282,7 +283,7 @@ Wanted, but not in the first version.
 | Finding and scraping leads' personal social profiles | It says little about property buyers, finds only some profiles, and breaks Meta's terms | Nothing likely |
 | LinkedIn enrichment and course eligibility | Built for Stafford, where eligibility depended on job history | Doesn't apply |
 | Zoho | Only ever pointed at another client's data | A client on Zoho |
-| Connecting to Akarati directly | See D-09 | Akarati offering an API, and GoHighLevel falling short |
+| Connecting to Akarati directly | See D-09. Brought back by D-28: Akarati has an API, and the direct integration follows GoHighLevel's retirement about a year after launch | Already planned |
 | Ecommerce and app tools (Shopping, product groups, App campaigns, Meta catalogs) | Reportage doesn't sell online | Doesn't apply |
 | Events and roadshows | They run through brokers, outside the marketing CRM | Reportage wanting event results in ADX |
 | Creative generation | Out of scope. Creative analysis stays in | A clear ask, or a tool we buy |
@@ -301,7 +302,7 @@ Wanted, but not in the first version.
 Both are pinned GitHub issues, each a checklist with one line per item.
 
 - **[Open questions (#34)](https://github.com/WokeWorks/adx/issues/34).** The biggest are the `marketing-platform` spec Twaha's tech draft refers to, and how website visits get tied to leads.
-- **[Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35).** Revenue reporting is blocked until Akarati sends deal values into GoHighLevel.
+- **[Waiting on others (#35)](https://github.com/WokeWorks/adx/issues/35).** Revenue reporting is blocked until Akarati sends deal values into GoHighLevel, due 14 November 2026 (D-28). The website work waits on the agency installing the snippet and on Reportage approving tracked links (D-30).
 
 #### D-27. The build destination widens ADX beyond marketing-only, behind policy gates
 2026-10-17. The seven-phase build specification (`docs/build/ADX_AUTONOMOUS_BUILD.md`) sets a later destination than D-01 to D-03: marketing plus a native AI CRM, creative production, qualification calling, campaign execution and coordinated agents. ADX is built towards that destination. Each capability that reaches outside (calling a lead, messaging, changing an ad account) stays disabled until Reportage supplies the policy that governs it and an admin configures it. This changes the following without deleting them:
@@ -315,3 +316,56 @@ Both are pinned GitHub issues, each a checklist with one line per item.
 - **Why.** The owner's build handoff asks for it, and asks that the change be recorded rather than the history deleted.
 - **Cost.** Scope is much larger than D-01's. Every gate adds configuration the owner must supply before the feature does anything outside ADX. The build ledger in `docs/build/` lists those inputs.
 - **Revisit if.** Reportage declines the policies that would enable calling or messaging; those capabilities then stay local-only or are removed.
+
+#### D-28. Akarati reaches ADX through GoHighLevel first, then directly
+2026-10-26. Akarati's integration with GoHighLevel completes on 14 November 2026. From then, deal value, booking date and currency arrive as custom fields on the GoHighLevel contact, and revenue reporting works. About a year after ADX goes live, Reportage drops GoHighLevel. ADX then holds the marketing leads itself, which is the native CRM D-27 points at, and reads deals from Akarati's API. D-09 stays in force until that cutover.
+
+So that the cutover is cheap, the CRM is a boundary in ADX, never an assumption.
+
+- Every lead and deal has an ADX ID. A `lead_refs` table maps a lead to its external records as (system, external ID): the GoHighLevel contact today, the Akarati record later. Nothing else keys on a GoHighLevel ID.
+- Deals are their own table: lead, value in minor units, currency, booking date, source system and external ID. A lead can have several deals. The GoHighLevel adapter fills the table from Akarati's fields, and the Akarati adapter fills the same table later.
+- The status-to-stage table is keyed by source system, so Akarati's statuses can sit beside GoHighLevel's during cutover.
+- Core declares one CRM interface (list leads, list status changes, list deals, write ADX's own fields). GoHighLevel implements it now and Akarati later, following the provider rule in `CLAUDE.md`.
+- ADX keeps every status change and deal with its date, because GoHighLevel's history leaves with it.
+- Cutover is a month of reading both systems, reconciling leads and deals by day, then switching. GoHighLevel rows stay in `lead_refs` so old reports still resolve.
+
+Deal rules.
+
+- The deal date is the booking date.
+- The value is the gross unit price. Most deals are in AED and some may not be, so money is converted at the rate on the day. This takes currency conversion off the Deferred list.
+- Cancellations never reach GoHighLevel. Revenue is reported as booked, and every revenue figure says so. The direct Akarati integration is what would close this.
+
+- **Why.** This is Reportage's plan. Akarati has an API and access can be arranged.
+- **Cost.** Revenue figures overstate until Akarati is direct, because cancelled deals stay counted. Making ADX the lead system of record is a bigger phase 5 than D-02 implied.
+- **Open.** The names of the deal custom fields, from Reportage's GoHighLevel admin before 14 November (#35). Whether Akarati's API exposes cancellations.
+- **Revisit if.** Reportage keeps GoHighLevel after all, or wants Akarati to hold the leads too.
+
+#### D-29. A blank status gets an inferred stage, kept beside the observed one
+2026-10-26. Telesales fills the statuses that matter. When a status is blank, ADX computes its own inferred stage with a confidence and a reason, and keeps it apart from the observed status. ADX still never writes a GoHighLevel status (D-09).
+
+- The observed status always wins when there is one.
+- ADX infers only Follow Up and Potential. A meeting is an event and a deal is a sale, so neither is guessed.
+- The inputs, strongest first: what GoHighLevel records even when the status is blank (appointments, conversations with replies, call outcomes, tags, pipeline stage); the lead form's answers, read per form from the Meta and Google APIs (purchase timeline, payment method, unit type, purpose), each worth points that an admin sets in Settings beside the stage table; and behaviour such as a second enquiry. Portal leads have none of these and stay "Not available".
+- An inferred stage counts in qualified-lead figures once the reviewer accepts it, or after 14 days of telesales silence. Until then it's an estimate shown separately, and every figure splits "by status" from "inferred". The lead stays flagged either way.
+- The reviewer is the Head of Marketing & AI, working from a Review queue that shows the proposed stage, the reason and the confidence, with bulk accept, reject and correct. Each decision is a labelled example. ADX reports its precision against the corrections, and once precision has held above a bar the admin sets, leads above the threshold are auto-accepted and the reviewer audits a sample.
+- ADX writes `adx_stage_inferred`, `adx_reason` and a flag to its own GoHighLevel fields. Reportage's GoHighLevel admin builds the workflow that reminds the lead's owner every day to fill or confirm the status. ADX sends nothing (D-03).
+
+- **Why.** Half of the statuses are blank, and a team to fill them isn't on offer. One reviewer plus a precision check is what Reportage can staff.
+- **Cost.** Inferred counts are opinions, and the 14-day rule means a figure can rise without anyone confirming it. A new form with different questions breaks the points until it's mapped. Meta form questions wait on Standard Access (D-22).
+- **Open.** Whether Reportage builds the reminder workflow in GoHighLevel (#35).
+- **Revisit if.** Precision stays below the bar, or Reportage asks ADX to write statuses.
+
+#### D-30. Website visits tie to leads at identification points, with tracked links behind approval
+2026-10-26. Two problems hide in "visits aren't tied to leads". Leads who visit the site aren't matched to their visits, and 61% of leads never visit at all. Each gets its own fix.
+
+- A `core/identity` table holds each person's keys: hashed phone, hashed email, click IDs, PostHog distinct ID, GoHighLevel contact ID and later the Akarati ID, each with its match level. Attribution, inference (D-29) and the cutover (D-28) all use this one table.
+- For visitors, a snippet on Reportage's site identifies the PostHog visitor by hashed phone or email when a form is submitted, and hidden fields carry the distinct ID, `gclid`, `fbclid` and UTMs into GoHighLevel custom fields. PostHog then joins the earlier anonymous visits to the lead. A later brochure or floor-plan form matches by hashed phone or email.
+- For leads who never visit, ADX generates a signed per-lead token and writes it to an `adx_link` field. A GoHighLevel message template carries the link, and the snippet reads the token and identifies the visitor. ADX sends nothing. This is the Sales OS tracked-link mechanism from D-17. It's built but switched off until Reportage approves it.
+- Click-to-WhatsApp ads carry a short code per ad in the prefilled message, which ties the conversation to the campaign.
+- The intent score uses a signal set per source. For lead-form leads, WhatsApp replies, call outcomes, email opens and repeat enquiries stand in for page views, so a lead with no web signals isn't pushed down.
+- Web signal coverage is shown next to anything the intent score feeds.
+
+- **Why.** D-03 means ADX can't send a lead a link, but Reportage's own messages can carry one. The site is where intent shows.
+- **Cost.** The snippet goes through the outside agency that runs the website. Tracked links need Reportage to start a new-lead automation in GoHighLevel, which doesn't exist today, and to approve the links. Until both happen, web signals cover only leads from the site's own forms.
+- **Open.** The agency installing the snippet; a new-lead automation in GoHighLevel; written approval for tracked links under the consent basis in BD-70 (#35). Whether a Meta instant form's thank-you button URL can be set per form (#34).
+- **Revisit if.** Reportage declines tracked links. Website signals then stay limited to site-form leads.
