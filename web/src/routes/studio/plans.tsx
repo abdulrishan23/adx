@@ -18,7 +18,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { VersionEditor } from "@/engine/routes/plans";
+import { PlanTransfer, VersionEditor } from "@/engine/routes/plans";
 import { formatDate, formatMoneyShort, formatRelative } from "@/lib/format";
 
 // Plans are whole dirhams; cents would be noise.
@@ -118,6 +118,16 @@ export function PlanPage({ planId }: { planId: number }) {
           </Panel>
         )}
         <Draft planId={id} brandId={d.plan.brandId} onDone={(n) => setPicked(n)} />
+        {v && (
+          <Panel
+            title="Import and export"
+            description={`Take v${v.version} out as JSON or CSV, or bring a JSON document in as the next version. The check runs on what comes in.`}
+          >
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <PlanTransfer planId={id} version={v.version} canImport={session.role !== "viewer"} />
+            </div>
+          </Panel>
+        )}
         {v && session.role !== "viewer" && (
           <Panel
             title="Edit by hand"

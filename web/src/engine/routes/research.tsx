@@ -444,7 +444,7 @@ function BriefView({ id, canEdit }: { id: number; canEdit: boolean }) {
 // Market events are the only way a festival or economic explanation enters
 // a report: a person records what happened, with a source. Nothing is
 // derived from a calendar ADX doesn't have.
-function MarketEvents({ canEdit }: { canEdit: boolean }) {
+export function MarketEvents({ canEdit }: { canEdit: boolean }) {
   const events = useMarketEvents();
   const record = useRecordMarketEvent();
   const [form, setForm] = useState({

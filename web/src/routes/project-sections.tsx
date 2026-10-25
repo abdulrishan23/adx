@@ -15,6 +15,7 @@ import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useProjects } from "@/engine/api/projects";
 import { NewPlan } from "@/engine/routes/plans";
+import { MarketEvents } from "@/engine/routes/research";
 import { formatRelative } from "@/lib/format";
 import { released } from "@/lib/release";
 import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
@@ -181,6 +182,7 @@ function Where({ rows }: { rows: { label: string; note: string; link: LinkOption
 // (Overview), then the briefs. Competitors and brand-wide facts stay on the
 // brand page, one link away.
 function BrandSection({ projectId, brandId }: { projectId: number; brandId: number | null }) {
+  const session = useSession();
   return (
     <div className="space-y-8">
       <Overview projectId={projectId} brandId={brandId} />
@@ -188,6 +190,9 @@ function BrandSection({ projectId, brandId }: { projectId: number; brandId: numb
         <h3 className="mb-4 font-heading text-lg font-semibold tracking-tight">Research</h3>
         <ResearchTab projectId={projectId} />
       </div>
+      {/* Brand-wide, not the project's: a festival or a rate change moves
+          every project. Recorded with a source so reports can cite it. */}
+      <MarketEvents canEdit={session.role !== "viewer"} />
     </div>
   );
 }

@@ -241,11 +241,11 @@ export function BriefView({ id }: { id: number }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Schedules, market events and the monthly comparative report live on the{" "}
+        Schedules, comparative reports and market events are below. The same brief is on the{" "}
         <Link to="/engine/research" className="underline underline-offset-4">
           engine's research screen
-        </Link>{" "}
-        until they're brought here.
+        </Link>
+        .
       </p>
     </div>
   );

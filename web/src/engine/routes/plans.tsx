@@ -499,7 +499,6 @@ export function VersionEditor({
   const save = useSavePlanVersion(planId);
   const accept = useAcceptPlanVersion(planId);
   const validate = useValidatePlan();
-  const importPlan = useImportPlan(planId);
   const validation: PlanValidation = dirty && validate.data ? validate.data : version.validation;
   const allocated = doc.allocations.reduce((s, a) => s + a.budgetMinor, 0);
   const runValidation = validate.mutate;
@@ -895,35 +894,54 @@ export function VersionEditor({
             Accept content (v{version.version})
           </Button>
         )}
-        <a href={`/api/plans/${planId}/versions/${version.version}/export?format=json`}>
-          <Button size="sm" variant="outline">
-            Export JSON
-          </Button>
-        </a>
-        <a href={`/api/plans/${planId}/versions/${version.version}/export?format=csv`}>
-          <Button size="sm" variant="outline">
-            Export CSV
-          </Button>
-        </a>
-        {editable && (
-          <label className="text-muted-foreground">
-            Import JSON as new version
-            <input
-              type="file"
-              accept="application/json,.json"
-              className="ml-2 text-xs"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) importPlan.mutate({ format: "json", file: f });
-              }}
-            />
-          </label>
-        )}
+        <PlanTransfer planId={planId} version={version.version} canImport={editable} />
         {save.error && <span className="text-destructive">{save.error.message}</span>}
         {accept.error && <span className="text-destructive">{accept.error.message}</span>}
-        {importPlan.error && <span className="text-destructive">{importPlan.error.message}</span>}
       </div>
     </div>
+  );
+}
+
+// PlanTransfer exports a version as JSON or CSV, and imports a JSON document
+// as the next version. The designed plan page uses it too.
+export function PlanTransfer({
+  planId,
+  version,
+  canImport,
+}: {
+  planId: number;
+  version: number;
+  canImport: boolean;
+}) {
+  const importPlan = useImportPlan(planId);
+  return (
+    <>
+      <a href={`/api/plans/${planId}/versions/${version}/export?format=json`}>
+        <Button size="sm" variant="outline">
+          Export JSON
+        </Button>
+      </a>
+      <a href={`/api/plans/${planId}/versions/${version}/export?format=csv`}>
+        <Button size="sm" variant="outline">
+          Export CSV
+        </Button>
+      </a>
+      {canImport && (
+        <label className="text-muted-foreground">
+          Import JSON as new version
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="ml-2 text-xs"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) importPlan.mutate({ format: "json", file: f });
+            }}
+          />
+        </label>
+      )}
+      {importPlan.error && <span className="text-destructive">{importPlan.error.message}</span>}
+    </>
   );
 }
 
