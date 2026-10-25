@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -132,6 +133,39 @@ func TestPrivateConnectionFormIncludesCoreAndDoesNotExposeTheToken(t *testing.T)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	responseBody(t, res)
 	assert.Zero(t, provider.exchanges)
+
+	// A location connected on purpose starts on. Switching it off hides it
+	// from /api/accounts and keeps it on the admin's full list.
+	res, err = srv.Client().Get(srv.URL + "/api/accounts")
+	require.NoError(t, err)
+	body = responseBody(t, res)
+	assert.Contains(t, body, `"enabled":true`)
+	var listed struct {
+		Accounts []struct{ ID int64 } `json:"accounts"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(body), &listed))
+	require.Len(t, listed.Accounts, 1)
+	put := func(path, body string) (*http.Response, string) {
+		req, _ := http.NewRequest(http.MethodPut, srv.URL+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		res, err := srv.Client().Do(req)
+		require.NoError(t, err)
+		return res, responseBody(t, res)
+	}
+	res, body = put(fmt.Sprintf("/api/accounts/%d/enabled", listed.Accounts[0].ID), `{"enabled":false}`)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
+	assert.Contains(t, body, `"enabled":false`)
+	res, _ = put("/api/accounts/999/enabled", `{"enabled":true}`)
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	res, _ = put("/api/accounts/x/enabled", `{"enabled":true}`)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
+	res, err = srv.Client().Get(srv.URL + "/api/accounts")
+	require.NoError(t, err)
+	assert.Equal(t, "{\"accounts\":[]}\n", responseBody(t, res))
+	res, err = srv.Client().Get(srv.URL + "/api/accounts?all=1")
+	require.NoError(t, err)
+	assert.Contains(t, responseBody(t, res), `"enabled":false`)
+
 	prod, _ := connectionServer(t, false)
 	res, err = prod.Client().PostForm(prod.URL+"/api/connections/crm/private", url.Values{
 		"locationId": {"loc-1"}, "token": {"private-token-secret"},

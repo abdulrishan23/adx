@@ -272,6 +272,15 @@ func TestRefreshValidation(t *testing.T) {
 	require.ErrorAs(t, err, &ce)
 	assert.Equal(t, core.KindNotFound, ce.Kind)
 
+	// An account the admin switched off is skipped, even by name.
+	_, err = e.db.Write.ExecContext(t.Context(), "UPDATE accounts SET disabled_at = ? WHERE id = ?", e.clock.Now(), e.googleAcc)
+	require.NoError(t, err)
+	_, _, err = e.reporting.StartRefresh(t.Context(), coretest.Marketer, e.runs, e.googleAcc, "2026-10-01", "2026-10-02")
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindConflict, ce.Kind)
+	_, err = e.db.Write.ExecContext(t.Context(), "UPDATE accounts SET disabled_at = NULL WHERE id = ?", e.googleAcc)
+	require.NoError(t, err)
+
 	unconfigured := reporting.New(e.db, nil, nil, evidence.New(e.db, e.clock), reporting.Config{Clock: e.clock})
 	run, _, err := unconfigured.StartRefresh(t.Context(), coretest.Marketer, e.runs, e.googleAcc, "2026-10-01", "2026-10-02")
 	require.NoError(t, err)

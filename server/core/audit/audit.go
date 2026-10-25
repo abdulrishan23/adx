@@ -25,6 +25,10 @@ const (
 	UserEnabled          Action = "user.enabled"
 	SignIn               Action = "sign_in"
 	SignInRefused        Action = "sign_in.refused"
+	// AccountEnabled and AccountDisabled are an admin choosing which of the
+	// accounts a credential reaches ADX reads (D-26).
+	AccountEnabled  Action = "account.enabled"
+	AccountDisabled Action = "account.disabled"
 )
 
 type Entry struct {

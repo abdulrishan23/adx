@@ -20,12 +20,44 @@ func (h *handlers) listAccounts(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, AccountsResponse{Accounts: []connections.Account{}})
 		return
 	}
-	list, err := h.connections.ListAccounts(r.Context(), actorFrom(r))
+	// ?all=1 is the admin's full list, including accounts that are off.
+	list := h.connections.ListAccounts
+	if r.URL.Query().Get("all") == "1" {
+		list = h.connections.ListAllAccounts
+	}
+	accounts, err := list(r.Context(), actorFrom(r))
 	if err != nil {
 		h.fail(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, AccountsResponse{Accounts: list})
+	writeJSON(w, http.StatusOK, AccountsResponse{Accounts: accounts})
+}
+
+// AccountEnabledInput is the body of PUT /api/accounts/{id}/enabled.
+type AccountEnabledInput struct {
+	Enabled bool `json:"enabled"`
+}
+
+func (h *handlers) setAccountEnabled(w http.ResponseWriter, r *http.Request) {
+	connectionHeaders(w)
+	if h.connections == nil {
+		h.fail(w, r, core.Conflict("connections are not configured on this server"))
+		return
+	}
+	id, ok := pathID(w, r, "id", "account")
+	if !ok {
+		return
+	}
+	var in AccountEnabledInput
+	if !readJSON(w, r, &in) {
+		return
+	}
+	account, err := h.connections.SetAccountEnabled(r.Context(), actorFrom(r), id, in.Enabled)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, account)
 }
 
 func (h *handlers) getPolicies(w http.ResponseWriter, r *http.Request) {

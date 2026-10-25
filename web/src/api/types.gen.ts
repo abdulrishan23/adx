@@ -20,6 +20,7 @@ export interface Account {
     scopes: string[];
     connectedAt: string;
     verifiedAt: string;
+    enabled: boolean;
     health: Health;
     capabilities: Capability[];
 }
@@ -36,12 +37,17 @@ export interface AccountComparison {
 }
 
 // From api/policies.go
+export interface AccountEnabledInput {
+    enabled: boolean;
+}
+
+// From api/policies.go
 export interface AccountsResponse {
     accounts: Account[];
 }
 
 // From audit/audit.go
-export type Action = "sign_in" | "sign_in.refused" | "user.added" | "user.disabled" | "user.enabled" | "user.password_link_sent" | "user.role_changed";
+export type Action = "account.disabled" | "account.enabled" | "sign_in" | "sign_in.refused" | "user.added" | "user.disabled" | "user.enabled" | "user.password_link_sent" | "user.role_changed";
 
 // From supervisor/supervisor.go
 export interface ActionInput {

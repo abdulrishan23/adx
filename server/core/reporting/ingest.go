@@ -186,6 +186,9 @@ func (r *Reporting) StartRefresh(ctx context.Context, actor core.Actor, rs *runs
 	if _, ok := r.providers[acct.Account.Type]; !ok && acct.Account.Type != "google_ads" && acct.Account.Type != "meta" {
 		return runs.Run{}, false, core.Invalid("account %d is not an ad account", accountID)
 	}
+	if acct.Account.DisabledAt.Valid {
+		return runs.Run{}, false, core.Conflict("account %d is off; an admin switches it on under Connections", accountID)
+	}
 	key := fmt.Sprintf("%s:%s/%s..%s/%s", acct.Account.Type, acct.Account.ExternalID, from, to, r.clock.Now().UTC().Format("2006-01-02"))
 	return rs.Start(ctx, actor, runs.StartInput{Kind: RefreshKind, OccurrenceKey: key, AccountID: accountID,
 		Params: RefreshParams{AccountID: accountID, From: from, To: to}})

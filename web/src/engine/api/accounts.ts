@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  Account,
   AccountsResponse,
   CapabilityMatrixResponse,
   KillSwitch,
@@ -10,10 +11,21 @@ import type {
 } from "@/api/types.gen";
 import { getJSON } from "./client";
 
-export function useAccounts() {
+// Enabled accounts for everyone; with all, the admin's full list including
+// the ones that are off. Only an admin may ask for all.
+export function useAccounts(all = false) {
   return useQuery({
-    queryKey: ["accounts"],
-    queryFn: () => getJSON<AccountsResponse>("/api/accounts"),
+    queryKey: ["accounts", all ? "all" : "enabled"],
+    queryFn: () => getJSON<AccountsResponse>(all ? "/api/accounts?all=1" : "/api/accounts"),
+  });
+}
+
+export function useSetAccountEnabled() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, enabled }: { accountId: number; enabled: boolean }) =>
+      putJSON<Account>(`/api/accounts/${accountId}/enabled`, { enabled }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["accounts"] }),
   });
 }
 

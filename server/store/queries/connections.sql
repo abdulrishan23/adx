@@ -24,10 +24,12 @@ ON CONFLICT (provider, subject) DO UPDATE SET
     connected_at = excluded.connected_at
 RETURNING *;
 
+-- A reconnect keeps disabled_at: whether ADX reads the account is the
+-- admin's choice, not the sign-in's.
 -- name: UpsertAccount :one
 INSERT INTO accounts
-    (workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at, disabled_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (workspace_id, type, external_id) DO UPDATE SET
     credential_id = excluded.credential_id,
     parent_id = excluded.parent_id,
@@ -55,15 +57,27 @@ ORDER BY accounts.external_id;
 SELECT sqlc.embed(accounts), sqlc.embed(credentials)
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
-WHERE accounts.workspace_id = ? AND accounts.type = ?
+WHERE accounts.workspace_id = ? AND accounts.type = ? AND accounts.disabled_at IS NULL
 ORDER BY accounts.external_id;
 
+-- Every account the workspace holds, on or off. Only the admin's connections
+-- screen wants this; everything else reads the enabled list.
 -- name: ListAccountsInWorkspace :many
 SELECT sqlc.embed(accounts), sqlc.embed(credentials)
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.workspace_id = ?
 ORDER BY accounts.type, accounts.external_id;
+
+-- name: ListEnabledAccountsInWorkspace :many
+SELECT sqlc.embed(accounts), sqlc.embed(credentials)
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.workspace_id = ? AND accounts.disabled_at IS NULL
+ORDER BY accounts.type, accounts.external_id;
+
+-- name: SetAccountDisabledAt :execrows
+UPDATE accounts SET disabled_at = ? WHERE id = ? AND workspace_id = ?;
 
 -- Updates only if nobody replaced the secret since it was read.
 -- name: UpdateCredentialSecret :execrows

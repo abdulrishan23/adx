@@ -13,10 +13,12 @@ SELECT * FROM account_capabilities ORDER BY account_id, capability;
 -- name: GetAccountCapability :one
 SELECT * FROM account_capabilities WHERE account_id = ? AND capability = ?;
 
+-- Every enabled account across workspaces, for jobs that run as ADX itself.
 -- name: ListAllAccounts :many
 SELECT sqlc.embed(accounts), sqlc.embed(credentials)
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.disabled_at IS NULL
 ORDER BY accounts.type, accounts.external_id;
 
 -- name: GetAccountByID :one

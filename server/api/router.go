@@ -206,6 +206,7 @@ func NewRouter(d Deps) http.Handler {
 		r.Put("/api/settings/industry", h.putIndustry)
 		r.Get("/api/settings/industry/versions/{version}", h.getIndustryVersion)
 		r.Get("/api/accounts", h.listAccounts)
+		r.Put("/api/accounts/{id}/enabled", h.setAccountEnabled)
 		r.Get("/api/connections/capabilities", h.capabilityMatrix)
 		if h.ops != nil {
 			r.Get("/api/ops/cost", h.opsCost)

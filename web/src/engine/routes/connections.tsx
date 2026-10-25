@@ -1,6 +1,6 @@
 import type { Account, ConnectorCapability, Freshness } from "@/api/types.gen";
 import { Button } from "@/components/ui/button";
-import { useAccounts, useCapabilityMatrix } from "@/engine/api/accounts";
+import { useAccounts, useCapabilityMatrix, useSetAccountEnabled } from "@/engine/api/accounts";
 import { useFreshness, useRefreshAnalytics } from "@/engine/api/analytics";
 import { useSession } from "@/engine/api/session";
 
@@ -40,11 +40,13 @@ function dayAgo(days: number): string {
 // from its last check and, for ad accounts, how fresh its figures are. An
 // empty list is empty: there are no sample accounts.
 export function ConnectionsPage() {
-  const accounts = useAccounts();
-  const freshness = useFreshness();
   const session = useSession();
-  const refresh = useRefreshAnalytics();
   const isAdmin = session.data?.role === "admin";
+  // Admins see the accounts that are off too, so they can switch them on.
+  const accounts = useAccounts(isAdmin);
+  const freshness = useFreshness();
+  const refresh = useRefreshAnalytics();
+  const setEnabled = useSetAccountEnabled();
   const canRefresh = isAdmin || session.data?.role === "marketer";
   const freshByAccount = new Map<number, Freshness>();
   for (const f of freshness.data?.accounts ?? []) freshByAccount.set(f.accountId, f);
@@ -74,11 +76,13 @@ export function ConnectionsPage() {
         )}
       </div>
       <p className="text-sm text-muted-foreground">
-        Connecting an ad platform reads its accounts, campaigns and figures. Nothing here publishes
-        or writes on its own: writes stay off until live writes are on and the policy allows them,
-        and ADX never publishes creative or posts. The matrix below says exactly what each connector
-        does and does not do on this server.
+        Connecting an ad platform lists every account the sign-in reaches. Each one starts off; an
+        admin switches on the ones that belong to this workspace, and only those are read. Nothing
+        here publishes or writes on its own: writes stay off until live writes are on and the policy
+        allows them, and ADX never publishes creative or posts. The matrix below says exactly what
+        each connector does and does not do on this server.
       </p>
+      {setEnabled.error && <p className="text-sm text-destructive">{setEnabled.error.message}</p>}
       {refresh.data && (
         <p className="text-sm text-muted-foreground">
           {refresh.data.created ? "Refresh started" : "Refresh already running"}: run{" "}
@@ -108,14 +112,30 @@ export function ConnectionsPage() {
                       {providerLabel[a.provider] ?? a.provider} · {a.externalId} · {a.authMethod}
                     </span>
                   </span>
-                  <span className={healthClass[a.health]}>{healthLabel[a.health]}</span>
+                  <span className="flex items-center gap-3">
+                    {a.enabled ? (
+                      <span className={healthClass[a.health]}>{healthLabel[a.health]}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Off: not read</span>
+                    )}
+                    {isAdmin && isAds && (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        disabled={setEnabled.isPending}
+                        onClick={() => setEnabled.mutate({ accountId: a.id, enabled: !a.enabled })}
+                      >
+                        {a.enabled ? "Switch off" : "Switch on"}
+                      </Button>
+                    )}
+                  </span>
                 </div>
                 <div className="text-sm text-muted-foreground">
                   Verified {new Date(a.verifiedAt).toLocaleString()}
                   {a.timeZone ? ` · ${a.timeZone}` : ""}
                   {a.currency ? ` · ${a.currency}` : ""}
                 </div>
-                {isAds && (
+                {isAds && a.enabled && (
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <FreshnessLine fresh={fresh} />
                     {canRefresh && (

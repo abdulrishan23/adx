@@ -88,7 +88,7 @@ ORDER BY la.lead_id, la.is_first DESC, la.id;
 -- name: ListAdAccounts :many
 SELECT sqlc.embed(accounts), sqlc.embed(credentials)
 FROM accounts JOIN credentials ON credentials.id = accounts.credential_id
-WHERE accounts.type IN ('google_ads', 'meta')
+WHERE accounts.type IN ('google_ads', 'meta') AND accounts.disabled_at IS NULL
 ORDER BY accounts.type, accounts.external_id;
 
 -- name: ListAllAdCampaigns :many

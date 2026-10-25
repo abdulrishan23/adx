@@ -167,11 +167,14 @@ func (c *Connections) FinishAds(ctx context.Context, actor core.Actor, provider 
 			if err := claim(ctx, q, actor.WorkspaceID, provider, a.ExternalID); err != nil {
 				return err
 			}
+			// A sign-in reaches every account the person can see, not only
+			// the client's, so a newly discovered account starts off and
+			// an admin switches it on. A reconnect keeps the earlier choice.
 			acct, err := q.UpsertAccount(ctx, store.UpsertAccountParams{
 				WorkspaceID: actor.WorkspaceID,
 				Type:        provider, ExternalID: a.ExternalID, CredentialID: cred.ID, ParentID: nullString(a.ParentID), Name: nullString(a.Name),
 				Currency: nullString(a.Currency), TimeZone: nullString(a.TimeZone), Details: fmt.Sprintf(`{"status":%q}`, a.Status),
-				ConnectedAt: now, VerifiedAt: now,
+				ConnectedAt: now, VerifiedAt: now, DisabledAt: sql.NullTime{Time: now, Valid: true},
 			})
 			if err != nil {
 				return err

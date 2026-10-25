@@ -4,10 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/WokeWorks/adx/server/core"
+	"github.com/WokeWorks/adx/server/core/audit"
 	"github.com/WokeWorks/adx/server/store"
 )
 
@@ -46,22 +48,27 @@ type Capability struct {
 // Account is any connected provider account, whatever the provider, as the
 // accounts screen shows it. It never carries the credential.
 type Account struct {
-	ID           int64        `json:"id"`
-	Provider     string       `json:"provider"`
-	ExternalID   string       `json:"externalId"`
-	ParentID     *string      `json:"parentId"`
-	Name         *string      `json:"name"`
-	Currency     *string      `json:"currency"`
-	TimeZone     *string      `json:"timeZone"`
-	AuthMethod   string       `json:"authMethod"`
-	Scopes       []string     `json:"scopes"`
-	ConnectedAt  time.Time    `json:"connectedAt"`
-	VerifiedAt   time.Time    `json:"verifiedAt"`
+	ID          int64     `json:"id"`
+	Provider    string    `json:"provider"`
+	ExternalID  string    `json:"externalId"`
+	ParentID    *string   `json:"parentId"`
+	Name        *string   `json:"name"`
+	Currency    *string   `json:"currency"`
+	TimeZone    *string   `json:"timeZone"`
+	AuthMethod  string    `json:"authMethod"`
+	Scopes      []string  `json:"scopes"`
+	ConnectedAt time.Time `json:"connectedAt"`
+	VerifiedAt  time.Time `json:"verifiedAt"`
+	// Enabled is whether ADX reads the account (D-26). A sign-in can reach
+	// accounts that aren't the client's, so discovered ad accounts start off
+	// and an admin switches on the ones that belong. Only ListAllAccounts
+	// returns an account that is off.
+	Enabled      bool         `json:"enabled"`
 	Health       Health       `json:"health"`
 	Capabilities []Capability `json:"capabilities"`
 }
 
-// ListAccounts returns every connected account with its health. Health is
+// ListAccounts returns every enabled account with its health. Health is
 // derived, never stored: failed if any capability failed, needs_permission if
 // one needs permission, stale if the last verification is older than a day,
 // else connected. No account is ever invented: an empty list is empty.
@@ -69,10 +76,81 @@ func (c *Connections) ListAccounts(ctx context.Context, actor core.Actor) ([]Acc
 	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
 		return nil, core.ErrForbidden
 	}
+	rows, err := c.db.Reader().ListEnabledAccountsInWorkspace(ctx, actor.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	pairs := make([]accountRow, 0, len(rows))
+	for _, r := range rows {
+		pairs = append(pairs, accountRow{r.Account, r.Credential})
+	}
+	return c.withHealth(ctx, pairs)
+}
+
+// ListAllAccounts is ListAccounts plus the accounts that are off, for the
+// admin who decides which ones ADX reads.
+func (c *Connections) ListAllAccounts(ctx context.Context, actor core.Actor) ([]Account, error) {
+	if !actor.AtLeast(core.RoleAdmin) || actor.WorkspaceID == 0 {
+		return nil, core.ErrForbidden
+	}
 	rows, err := c.db.Reader().ListAccountsInWorkspace(ctx, actor.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}
+	pairs := make([]accountRow, 0, len(rows))
+	for _, r := range rows {
+		pairs = append(pairs, accountRow{r.Account, r.Credential})
+	}
+	return c.withHealth(ctx, pairs)
+}
+
+// SetAccountEnabled switches an account on or off. Off means hidden from
+// every list and skipped by every sync, report and alert, with its stored
+// figures kept so switching it back on restores them. Admin only, within
+// the admin's own workspace, and logged.
+func (c *Connections) SetAccountEnabled(ctx context.Context, actor core.Actor, accountID int64, enabled bool) (Account, error) {
+	if !actor.AtLeast(core.RoleAdmin) || actor.WorkspaceID == 0 {
+		return Account{}, core.ErrForbidden
+	}
+	var disabledAt sql.NullTime
+	if !enabled {
+		disabledAt = sql.NullTime{Time: c.now().UTC(), Valid: true}
+	}
+	err := c.db.Tx(ctx, func(_ *sql.Tx, q *store.Queries) error {
+		n, err := q.SetAccountDisabledAt(ctx, store.SetAccountDisabledAtParams{DisabledAt: disabledAt, ID: accountID, WorkspaceID: actor.WorkspaceID})
+		if err != nil {
+			return err
+		}
+		if n == 0 {
+			return core.NotFound("account %d is not connected", accountID)
+		}
+		action := audit.AccountDisabled
+		if enabled {
+			action = audit.AccountEnabled
+		}
+		return audit.Record(ctx, q, actor, audit.Entry{Action: action, Detail: map[string]string{"account": strconv.FormatInt(accountID, 10)}})
+	})
+	if err != nil {
+		return Account{}, err
+	}
+	all, err := c.ListAllAccounts(ctx, actor)
+	if err != nil {
+		return Account{}, err
+	}
+	for _, a := range all {
+		if a.ID == accountID {
+			return a, nil
+		}
+	}
+	return Account{}, core.NotFound("account %d is not connected", accountID)
+}
+
+type accountRow struct {
+	Account    store.Account
+	Credential store.Credential
+}
+
+func (c *Connections) withHealth(ctx context.Context, rows []accountRow) ([]Account, error) {
 	caps, err := c.db.Reader().ListAccountCapabilities(ctx)
 	if err != nil {
 		return nil, err
@@ -149,7 +227,7 @@ func accountFromRow(a store.Account, cred store.Credential) Account {
 	return Account{
 		ID: a.ID, Provider: a.Type, ExternalID: a.ExternalID, ParentID: nullStr(a.ParentID), Name: nullStr(a.Name),
 		Currency: nullStr(a.Currency), TimeZone: nullStr(a.TimeZone), AuthMethod: cred.Kind, Scopes: strings.Fields(cred.Scopes),
-		ConnectedAt: a.ConnectedAt.UTC(), VerifiedAt: a.VerifiedAt.UTC(),
+		ConnectedAt: a.ConnectedAt.UTC(), VerifiedAt: a.VerifiedAt.UTC(), Enabled: !a.DisabledAt.Valid,
 	}
 }
 

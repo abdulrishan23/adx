@@ -22,6 +22,7 @@ type Account struct {
 	Details      string
 	ConnectedAt  time.Time
 	VerifiedAt   time.Time
+	DisabledAt   sql.NullTime
 }
 
 type AccountCapability struct {

@@ -46,7 +46,7 @@ func (q *Queries) CreatePolicy(ctx context.Context, arg CreatePolicyParams) (Pol
 }
 
 const getAccountByID = `-- name: GetAccountByID :one
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.id = ?
@@ -73,6 +73,7 @@ func (q *Queries) GetAccountByID(ctx context.Context, id int64) (GetAccountByIDR
 		&i.Account.Details,
 		&i.Account.ConnectedAt,
 		&i.Account.VerifiedAt,
+		&i.Account.DisabledAt,
 		&i.Credential.ID,
 		&i.Credential.Provider,
 		&i.Credential.Kind,
@@ -188,9 +189,10 @@ func (q *Queries) ListAccountCapabilities(ctx context.Context) ([]AccountCapabil
 }
 
 const listAllAccounts = `-- name: ListAllAccounts :many
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.disabled_at IS NULL
 ORDER BY accounts.type, accounts.external_id
 `
 
@@ -199,6 +201,7 @@ type ListAllAccountsRow struct {
 	Credential Credential
 }
 
+// Every enabled account across workspaces, for jobs that run as ADX itself.
 func (q *Queries) ListAllAccounts(ctx context.Context) ([]ListAllAccountsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAllAccounts)
 	if err != nil {
@@ -221,6 +224,7 @@ func (q *Queries) ListAllAccounts(ctx context.Context) ([]ListAllAccountsRow, er
 			&i.Account.Details,
 			&i.Account.ConnectedAt,
 			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
 			&i.Credential.ID,
 			&i.Credential.Provider,
 			&i.Credential.Kind,

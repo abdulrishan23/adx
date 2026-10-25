@@ -81,7 +81,7 @@ func (q *Queries) DeleteExpiredConnectionOAuthAttempts(ctx context.Context, expi
 }
 
 const getAccount = `-- name: GetAccount :one
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.type = ? AND accounts.external_id = ?
@@ -113,6 +113,7 @@ func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAcco
 		&i.Account.Details,
 		&i.Account.ConnectedAt,
 		&i.Account.VerifiedAt,
+		&i.Account.DisabledAt,
 		&i.Credential.ID,
 		&i.Credential.Provider,
 		&i.Credential.Kind,
@@ -128,7 +129,7 @@ func (q *Queries) GetAccount(ctx context.Context, arg GetAccountParams) (GetAcco
 }
 
 const listAccounts = `-- name: ListAccounts :many
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.type = ?
@@ -162,6 +163,7 @@ func (q *Queries) ListAccounts(ctx context.Context, type_ string) ([]ListAccount
 			&i.Account.Details,
 			&i.Account.ConnectedAt,
 			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
 			&i.Credential.ID,
 			&i.Credential.Provider,
 			&i.Credential.Kind,
@@ -187,7 +189,7 @@ func (q *Queries) ListAccounts(ctx context.Context, type_ string) ([]ListAccount
 }
 
 const listAccountsByCredential = `-- name: ListAccountsByCredential :many
-SELECT id, workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at FROM accounts WHERE credential_id = ? ORDER BY external_id
+SELECT id, workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at, disabled_at FROM accounts WHERE credential_id = ? ORDER BY external_id
 `
 
 func (q *Queries) ListAccountsByCredential(ctx context.Context, credentialID int64) ([]Account, error) {
@@ -212,6 +214,7 @@ func (q *Queries) ListAccountsByCredential(ctx context.Context, credentialID int
 			&i.Details,
 			&i.ConnectedAt,
 			&i.VerifiedAt,
+			&i.DisabledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -227,7 +230,7 @@ func (q *Queries) ListAccountsByCredential(ctx context.Context, credentialID int
 }
 
 const listAccountsInWorkspace = `-- name: ListAccountsInWorkspace :many
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
 WHERE accounts.workspace_id = ?
@@ -239,6 +242,8 @@ type ListAccountsInWorkspaceRow struct {
 	Credential Credential
 }
 
+// Every account the workspace holds, on or off. Only the admin's connections
+// screen wants this; everything else reads the enabled list.
 func (q *Queries) ListAccountsInWorkspace(ctx context.Context, workspaceID int64) ([]ListAccountsInWorkspaceRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccountsInWorkspace, workspaceID)
 	if err != nil {
@@ -261,6 +266,7 @@ func (q *Queries) ListAccountsInWorkspace(ctx context.Context, workspaceID int64
 			&i.Account.Details,
 			&i.Account.ConnectedAt,
 			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
 			&i.Credential.ID,
 			&i.Credential.Provider,
 			&i.Credential.Kind,
@@ -286,10 +292,10 @@ func (q *Queries) ListAccountsInWorkspace(ctx context.Context, workspaceID int64
 }
 
 const listAccountsOfType = `-- name: ListAccountsOfType :many
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts
 JOIN credentials ON credentials.id = accounts.credential_id
-WHERE accounts.workspace_id = ? AND accounts.type = ?
+WHERE accounts.workspace_id = ? AND accounts.type = ? AND accounts.disabled_at IS NULL
 ORDER BY accounts.external_id
 `
 
@@ -325,6 +331,7 @@ func (q *Queries) ListAccountsOfType(ctx context.Context, arg ListAccountsOfType
 			&i.Account.Details,
 			&i.Account.ConnectedAt,
 			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
 			&i.Credential.ID,
 			&i.Credential.Provider,
 			&i.Credential.Kind,
@@ -347,6 +354,84 @@ func (q *Queries) ListAccountsOfType(ctx context.Context, arg ListAccountsOfType
 		return nil, err
 	}
 	return items, nil
+}
+
+const listEnabledAccountsInWorkspace = `-- name: ListEnabledAccountsInWorkspace :many
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+FROM accounts
+JOIN credentials ON credentials.id = accounts.credential_id
+WHERE accounts.workspace_id = ? AND accounts.disabled_at IS NULL
+ORDER BY accounts.type, accounts.external_id
+`
+
+type ListEnabledAccountsInWorkspaceRow struct {
+	Account    Account
+	Credential Credential
+}
+
+func (q *Queries) ListEnabledAccountsInWorkspace(ctx context.Context, workspaceID int64) ([]ListEnabledAccountsInWorkspaceRow, error) {
+	rows, err := q.db.QueryContext(ctx, listEnabledAccountsInWorkspace, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListEnabledAccountsInWorkspaceRow{}
+	for rows.Next() {
+		var i ListEnabledAccountsInWorkspaceRow
+		if err := rows.Scan(
+			&i.Account.ID,
+			&i.Account.WorkspaceID,
+			&i.Account.Type,
+			&i.Account.ExternalID,
+			&i.Account.CredentialID,
+			&i.Account.ParentID,
+			&i.Account.Name,
+			&i.Account.Currency,
+			&i.Account.TimeZone,
+			&i.Account.Details,
+			&i.Account.ConnectedAt,
+			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
+			&i.Credential.ID,
+			&i.Credential.Provider,
+			&i.Credential.Kind,
+			&i.Credential.Subject,
+			&i.Credential.EncryptedSecret,
+			&i.Credential.KeyVersion,
+			&i.Credential.Scopes,
+			&i.Credential.TokenExpiresAt,
+			&i.Credential.ConnectedBy,
+			&i.Credential.ConnectedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const setAccountDisabledAt = `-- name: SetAccountDisabledAt :execrows
+UPDATE accounts SET disabled_at = ? WHERE id = ? AND workspace_id = ?
+`
+
+type SetAccountDisabledAtParams struct {
+	DisabledAt  sql.NullTime
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) SetAccountDisabledAt(ctx context.Context, arg SetAccountDisabledAtParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, setAccountDisabledAt, arg.DisabledAt, arg.ID, arg.WorkspaceID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateAccountVerification = `-- name: UpdateAccountVerification :execrows
@@ -417,8 +502,8 @@ func (q *Queries) UpdateCredentialSecret(ctx context.Context, arg UpdateCredenti
 
 const upsertAccount = `-- name: UpsertAccount :one
 INSERT INTO accounts
-    (workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at, disabled_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (workspace_id, type, external_id) DO UPDATE SET
     credential_id = excluded.credential_id,
     parent_id = excluded.parent_id,
@@ -427,7 +512,7 @@ ON CONFLICT (workspace_id, type, external_id) DO UPDATE SET
     time_zone = excluded.time_zone,
     details = excluded.details,
     verified_at = excluded.verified_at
-RETURNING id, workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at
+RETURNING id, workspace_id, type, external_id, credential_id, parent_id, name, currency, time_zone, details, connected_at, verified_at, disabled_at
 `
 
 type UpsertAccountParams struct {
@@ -442,8 +527,11 @@ type UpsertAccountParams struct {
 	Details      string
 	ConnectedAt  time.Time
 	VerifiedAt   time.Time
+	DisabledAt   sql.NullTime
 }
 
+// A reconnect keeps disabled_at: whether ADX reads the account is the
+// admin's choice, not the sign-in's.
 func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) (Account, error) {
 	row := q.db.QueryRowContext(ctx, upsertAccount,
 		arg.WorkspaceID,
@@ -457,6 +545,7 @@ func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) (A
 		arg.Details,
 		arg.ConnectedAt,
 		arg.VerifiedAt,
+		arg.DisabledAt,
 	)
 	var i Account
 	err := row.Scan(
@@ -472,6 +561,7 @@ func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) (A
 		&i.Details,
 		&i.ConnectedAt,
 		&i.VerifiedAt,
+		&i.DisabledAt,
 	)
 	return i, err
 }

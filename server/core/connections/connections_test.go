@@ -611,6 +611,7 @@ func TestAdsConnectDiscoversAccountsAndRefreshesTokens(t *testing.T) {
 	assert.Equal(t, "Asia/Dubai", *accounts[0].TimeZone)
 	assert.Equal(t, "9876543210", *accounts[0].ParentID)
 	assert.Equal(t, connections.HealthConnected, accounts[0].Health)
+	assert.False(t, accounts[0].Enabled, "a discovered account starts off")
 	assert.Equal(t, "g-access", ads.lastToken)
 	assert.Equal(t, 1, f.credentialCount(t))
 
@@ -619,10 +620,56 @@ func TestAdsConnectDiscoversAccountsAndRefreshesTokens(t *testing.T) {
 	assert.NotContains(t, string(sealed), "g-access")
 	assert.NotContains(t, string(sealed), "g-refresh")
 
+	// Off means nobody but the admin's full list sees it, until the admin
+	// switches it on.
 	listed, err := f.service.ListAccounts(t.Context(), viewer)
 	require.NoError(t, err)
+	assert.Empty(t, listed, "an account that is off is hidden")
+	_, err = f.service.ListAllAccounts(t.Context(), viewer)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	all, err := f.service.ListAllAccounts(t.Context(), admin)
+	require.NoError(t, err)
+	require.Len(t, all, 1)
+	assert.False(t, all[0].Enabled)
+	_, err = f.service.SetAccountEnabled(t.Context(), viewer, all[0].ID, true)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	_, err = f.service.SetAccountEnabled(t.Context(), core.Actor{UserID: 1, Role: core.RoleAdmin, Via: core.ViaWeb, WorkspaceID: 2}, all[0].ID, true)
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindNotFound, ce.Kind, "another client's admin can't switch it on")
+	switched, err := f.service.SetAccountEnabled(t.Context(), admin, all[0].ID, true)
+	require.NoError(t, err)
+	assert.True(t, switched.Enabled)
+	listed, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
 	require.Len(t, listed, 1)
+	assert.True(t, listed[0].Enabled)
 	assert.Equal(t, connections.CapabilityReadReporting, listed[0].Capabilities[0].Name)
+	var audited int
+	require.NoError(t, f.db.Read.QueryRowContext(t.Context(), "SELECT count(*) FROM audit_log WHERE action = 'account.enabled'").Scan(&audited))
+	assert.Equal(t, 1, audited, "the switch is logged")
+
+	// Signing in again keeps the admin's choice.
+	start, err = f.service.StartAds(t.Context(), admin, connections.ProviderGoogleAds, binding)
+	require.NoError(t, err)
+	u2, _ := url.Parse(start.AuthorizationURL)
+	_, err = f.service.FinishAds(t.Context(), admin, connections.ProviderGoogleAds, connections.FinishInput{State: u2.Query().Get("state"), BrowserBinding: binding, Code: "code"})
+	require.NoError(t, err)
+	listed, err = f.service.ListAccounts(t.Context(), viewer)
+	require.NoError(t, err)
+	require.Len(t, listed, 1, "a reconnect doesn't switch the account off again")
+
+	// Switching off hides it from the job-side list too, and keeps the row.
+	_, err = f.service.SetAccountEnabled(t.Context(), admin, all[0].ID, false)
+	require.NoError(t, err)
+	adAccounts, err := f.db.Reader().ListAdAccounts(t.Context())
+	require.NoError(t, err)
+	assert.Empty(t, adAccounts, "jobs skip an account that is off")
+	all, err = f.service.ListAllAccounts(t.Context(), admin)
+	require.NoError(t, err)
+	require.Len(t, all, 1)
+	assert.False(t, all[0].Enabled)
+	_, err = f.service.SetAccountEnabled(t.Context(), admin, all[0].ID, true)
+	require.NoError(t, err)
 
 	// Token still fresh: handed out as is. Near expiry: refreshed and resealed.
 	token, err := f.service.ProviderToken(t.Context(), core.System(core.ViaJob), listed[0].ID)

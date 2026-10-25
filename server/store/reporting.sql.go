@@ -109,9 +109,9 @@ func (q *Queries) ListAccountFreshness(ctx context.Context, workspaceID int64) (
 }
 
 const listAdAccounts = `-- name: ListAdAccounts :many
-SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
+SELECT accounts.id, accounts.workspace_id, accounts.type, accounts.external_id, accounts.credential_id, accounts.parent_id, accounts.name, accounts.currency, accounts.time_zone, accounts.details, accounts.connected_at, accounts.verified_at, accounts.disabled_at, credentials.id, credentials.provider, credentials.kind, credentials.subject, credentials.encrypted_secret, credentials.key_version, credentials.scopes, credentials.token_expires_at, credentials.connected_by, credentials.connected_at
 FROM accounts JOIN credentials ON credentials.id = accounts.credential_id
-WHERE accounts.type IN ('google_ads', 'meta')
+WHERE accounts.type IN ('google_ads', 'meta') AND accounts.disabled_at IS NULL
 ORDER BY accounts.type, accounts.external_id
 `
 
@@ -142,6 +142,7 @@ func (q *Queries) ListAdAccounts(ctx context.Context) ([]ListAdAccountsRow, erro
 			&i.Account.Details,
 			&i.Account.ConnectedAt,
 			&i.Account.VerifiedAt,
+			&i.Account.DisabledAt,
 			&i.Credential.ID,
 			&i.Credential.Provider,
 			&i.Credential.Kind,
