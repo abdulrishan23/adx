@@ -107,9 +107,10 @@ export function ProjectSectionPage({
         }
       />
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        {/* The sidebar carries the same five; this row is for the phone, where
-            the sidebar is a drawer. It scrolls sideways rather than clipping. */}
-        <div className="no-scrollbar max-w-full overflow-x-auto md:hidden">
+        {/* The same five as the sidebar, inside the page at every width, so a
+            section is one click away wherever the eye is. It scrolls
+            sideways on a phone rather than clipping. */}
+        <div className="no-scrollbar max-w-full overflow-x-auto">
           <Segmented
             label="Project sections"
             value={section}
@@ -123,9 +124,6 @@ export function ProjectSectionPage({
             }))}
           />
         </div>
-        <h2 className="hidden font-heading text-xl font-semibold tracking-tight md:block">
-          {current.label}
-        </h2>
         {section === "campaigns" && canEdit && (
           <Link to="/campaigns/new" search={{ project: projectId }} className={buttonVariants()}>
             <Plus /> New campaign
