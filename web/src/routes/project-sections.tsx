@@ -3,18 +3,22 @@ import { ArrowLeft, ArrowUpRight, Plus } from "lucide-react";
 import { useEffect } from "react";
 import { useBrand } from "@/api/brands";
 import { useProjectCampaigns, useProjectProgress } from "@/api/campaigns";
-import { usePages } from "@/api/pages";
+import { useCreativeOverview, useCreativeProject } from "@/api/creative";
+import { usePlans } from "@/api/plans";
 import type { ProgressItem } from "@/api/types.gen";
 import { PROJECT_SECTIONS, type ProjectSection, projectSectionPath } from "@/app/nav";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { buttonVariants } from "@/components/ui/button";
-import { type Status, StatusMark } from "@/components/ui/status-chip";
+import { type Status, StatusChip, StatusMark } from "@/components/ui/status-chip";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { useProjects } from "@/engine/api/projects";
+import { formatRelative } from "@/lib/format";
 import { released } from "@/lib/release";
-import { STATE } from "./campaign";
-import { Overview, PagesTab, ResearchTab } from "./project";
+import { ConceptsTab, ReviewLinkButtons } from "./creative-project";
+import { Overview, PagesTab, ResearchTab, SetUpStudio } from "./project";
+import { PLAN_STATE } from "./studio/plans";
 import { CampaignsTab } from "./studio-campaigns";
 
 const LAST_PROJECT_KEY = "adx-last-project";
@@ -187,112 +191,128 @@ function BrandSection({ projectId, brandId }: { projectId: number; brandId: numb
   );
 }
 
-// Media: each campaign's plan stage, and the engine's plans screen for a
-// plan's frame and versions.
+// Media: the project's plans, each at its latest version and state. A plan
+// opens on the designed plan page (versions, the check, allocations,
+// Accept, Draft). Creating a plan's frame by hand stays on the engine.
 function MediaSection({ projectId }: { projectId: number }) {
+  const plans = usePlans();
   const campaigns = useProjectCampaigns(projectId);
-  const list = campaigns.data?.campaigns ?? [];
+  const mine = new Set((campaigns.data?.campaigns ?? []).map((c) => c.id));
+  const nameOf = new Map((campaigns.data?.campaigns ?? []).map((c) => [c.id, c.name]));
+  const list = (plans.data?.plans ?? []).filter(
+    (p) => p.projectId === projectId || (p.campaignId !== null && mine.has(p.campaignId)),
+  );
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
-      <Panel
-        title="Plans by campaign"
-        description="A plan is made for one push. Open a campaign at its plan stage to draft, check and accept it."
-        bodyClassName="p-0"
-      >
-        {campaigns.isPending && <LoadingRows rows={3} />}
-        {campaigns.data && list.length === 0 && (
-          <EmptyState title="No campaigns yet">
-            A plan needs a push to belong to.{" "}
+    <div className="space-y-6">
+      {plans.isPending && <LoadingRows rows={4} />}
+      {plans.error && <ErrorNote error={plans.error} />}
+      {plans.data && list.length === 0 && (
+        <Panel>
+          <EmptyState title="No plan for this project yet">
+            A plan is made for one push: start a campaign and Adx drafts its plan from the research.{" "}
             <Link
               to="/campaigns/new"
               search={{ project: projectId }}
               className="underline underline-offset-4"
             >
               Start a campaign
-            </Link>{" "}
-            and Adx drafts its plan from the research.
+            </Link>
+            , or set up a plan's frame on the{" "}
+            <Link to="/engine/plans" className="underline underline-offset-4">
+              engine's plans screen
+            </Link>
+            .
           </EmptyState>
-        )}
-        {list.length > 0 && (
-          <Where
-            rows={list.map((c) => ({
-              label: c.name,
-              note: `${STATE[c.state]?.label ?? c.state} · plan stage`,
-              link: {
-                link: { to: "/projects/$projectId/campaigns/$campaignId" },
-                params: { projectId: String(projectId), campaignId: String(c.id) },
-                search: { stage: "plan" },
-              },
-            }))}
-          />
-        )}
-      </Panel>
-      <Panel title="Elsewhere" bodyClassName="p-0">
-        <Where
-          rows={[
-            {
-              label: "Plans on the engine",
-              note: "A plan's frame (brand, budget, dates), its versions and the check.",
-              link: { to: "/engine/plans" },
-            },
-          ]}
-        />
-      </Panel>
+        </Panel>
+      )}
+      {list.length > 0 && (
+        <Panel bodyClassName="p-0">
+          <Table>
+            <THead>
+              <TR>
+                <TH>Plan</TH>
+                <TH>Campaign</TH>
+                <TH>Latest</TH>
+                <TH>Standing</TH>
+                <TH>Updated</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {list.map((p) => {
+                const st = PLAN_STATE[p.latestState];
+                return (
+                  <TR key={p.id}>
+                    <TD>
+                      <Link
+                        to="/studio/plans/$planId"
+                        params={{ planId: String(p.id) }}
+                        className="font-medium hover:underline"
+                      >
+                        {p.title}
+                      </Link>
+                    </TD>
+                    <TD className="text-muted-foreground">
+                      {p.campaignId !== null ? (nameOf.get(p.campaignId) ?? "") : "Project-wide"}
+                    </TD>
+                    <TD>v{p.latestVersion}</TD>
+                    <TD>
+                      <StatusChip status={p.accepted ? "ready" : st.status}>
+                        {p.accepted ? "Accepted" : st.label}
+                      </StatusChip>
+                    </TD>
+                    <TD className="text-muted-foreground">{formatRelative(p.updatedAt)}</TD>
+                  </TR>
+                );
+              })}
+            </TBody>
+          </Table>
+        </Panel>
+      )}
+      <p className="text-xs text-muted-foreground">
+        A plan's frame (brand, budget, dates) and hand-saved versions are made on the{" "}
+        <Link to="/engine/plans" className="underline underline-offset-4">
+          engine's plans screen
+        </Link>
+        . Accepting a plan is content only; it authorizes no spend.
+      </p>
     </div>
   );
 }
 
-// Studio: the project's creatives live in Creative, filtered to it; its
-// pages are the campaign pages plus any unfiled ones.
+// Studio: the project's concepts and ads with their review state, and its
+// landing pages with what's live against the latest draft. Both open on
+// the designed screens; the Creative door keeps the cross-project view.
 function StudioSection({ projectId, brandId }: { projectId: number; brandId: number | null }) {
-  const pages = usePages();
-  const pageCount = (pages.data?.pages ?? []).filter((p) => p.projectId === projectId).length;
+  const session = useSession();
+  const canEdit = session.role !== "viewer";
+  const overview = useCreativeOverview();
+  const setUp = overview.data?.projects.some((p) => p.projectId === projectId) ?? false;
+  const creative = useCreativeProject(setUp ? projectId : 0);
   return (
-    <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2">
-        <Panel
-          title="Creatives"
-          description="Concepts, pictures and ads for this project."
-          bodyClassName="p-0"
-        >
-          <Where
-            rows={[
-              {
-                label: "Concepts",
-                note: "Every idea for this project and the ads built from it.",
-                link: { to: "/creative/concepts" },
-              },
-              {
-                label: "Library",
-                note: "Pictures, logos, fonts and colours.",
-                link: { to: "/creative/library", search: { project: projectId } },
-              },
-              {
-                label: "Producer",
-                note: "What needs changes, what's awaiting review, what's approved.",
-                link: { to: "/creative/producer" },
-              },
-            ]}
-          />
-        </Panel>
-        <Panel
-          title="Landing pages"
-          description={`${pageCount} page${pageCount === 1 ? "" : "s"} for this project.`}
-          bodyClassName="p-0"
-        >
-          <Where
-            rows={[
-              {
-                label: "Pages on the engine",
-                note: "Each page's live version, drafts, readiness and submissions.",
-                link: { to: "/engine/pages" },
-              },
-            ]}
-          />
-        </Panel>
+    <div className="space-y-10">
+      <div>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
+          <h3 className="font-heading text-lg font-semibold tracking-tight">Creatives</h3>
+          <span className="flex items-center gap-3 text-xs text-muted-foreground">
+            {creative.data && <ReviewLinkButtons settings={creative.data.settings} />}
+            <Link
+              to="/creative/library"
+              search={{ project: projectId }}
+              className="hover:text-foreground"
+            >
+              Pictures and brand kit
+            </Link>
+          </span>
+        </div>
+        {overview.isPending && <LoadingRows rows={3} />}
+        {overview.error && <ErrorNote error={overview.error} />}
+        {overview.data && !setUp && <SetUpStudio projectId={projectId} canEdit={canEdit} />}
+        {setUp && creative.isPending && <LoadingRows rows={4} />}
+        {setUp && creative.error && <ErrorNote error={creative.error} />}
+        {creative.data && <ConceptsTab project={creative.data} canEdit={canEdit} />}
       </div>
       <div>
-        <h3 className="mb-4 font-heading text-lg font-semibold tracking-tight">Unfiled pages</h3>
+        <h3 className="mb-4 font-heading text-lg font-semibold tracking-tight">Landing pages</h3>
         <PagesTab projectId={projectId} brandId={brandId} />
       </div>
     </div>

@@ -4,10 +4,12 @@ import { type FormEvent, type ReactNode, useId, useState } from "react";
 import { useAssignProject, useBrands, useCreateBrand } from "@/api/brands";
 import type { Analyst } from "@/api/create";
 import { useCreateBrief } from "@/api/research";
+import { useSession } from "@/app/session";
 import { FieldError, Form } from "@/components/form";
 import { ErrorNote, PageHeader, Panel } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { StatusMark } from "@/components/ui/status-chip";
 import { postJSON } from "@/engine/api/client";
 import { useCreateProject } from "@/engine/api/projects";
@@ -36,9 +38,13 @@ const TEXTAREA =
 export function StartBrandPage() {
   const navigate = useNavigate();
   const brands = useBrands();
-  // Our side has one developer; a new project goes under it. Only the very
-  // first project also names the developer.
-  const developer = brands.data?.brands.find((b) => b.kind === "own") ?? null;
+  const session = useSession();
+  // A new project goes under Reportage, the developer. Only the very first
+  // project also names the developer; with more than one of ours, an admin
+  // picks which.
+  const own = brands.data?.brands.filter((b) => b.kind === "own") ?? [];
+  const [brandId, setBrandId] = useState<number | null>(null);
+  const developer = own.find((b) => b.id === brandId) ?? own[0] ?? null;
   const createBrand = useCreateBrand();
   const createProject = useCreateProject();
   const assign = useAssignProject();
@@ -108,7 +114,7 @@ export function StartBrandPage() {
     });
     // Start the run and move on; the brand page shows items as they're fetched.
     await postJSON(`/api/research/briefs/${brief.brief.id}/runs`, {});
-    navigate({ to: "/projects/$projectId", params: { projectId: String(p.id) } });
+    navigate({ to: "/projects/$projectId/brand", params: { projectId: String(p.id) } });
   }
 
   return (
@@ -137,6 +143,16 @@ export function StartBrandPage() {
             }
           >
             <div className="grid gap-4">
+              {session.role === "admin" && own.length > 1 && developer && (
+                <Field id={ids.name} label="Developer">
+                  <Select
+                    aria-label="Developer"
+                    value={String(developer.id)}
+                    onValueChange={(v) => setBrandId(Number(v))}
+                    options={own.map((b) => ({ value: String(b.id), label: b.name }))}
+                  />
+                </Field>
+              )}
               {!developer && (
                 <Field id={ids.name} label="Developer">
                   <Input

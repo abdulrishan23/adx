@@ -28,7 +28,7 @@ const route = getRouteApi("/app/studio/plans/$planId");
 
 // "Ready" is ready for acceptance; accepted is content only and authorizes
 // no spend. That stays separate on purpose (handover B2.4).
-const STATE: Record<PlanState, { status: Status; label: string }> = {
+export const PLAN_STATE: Record<PlanState, { status: Status; label: string }> = {
   draft: { status: "pending", label: "Draft" },
   validating: { status: "pending", label: "Validating" },
   needs_input: { status: "caution", label: "Needs input" },
@@ -63,6 +63,14 @@ export function PlanPage() {
         >
           <ArrowLeft className="size-4" /> Campaign
         </Link>
+      ) : d.plan.projectId !== null ? (
+        <Link
+          to="/projects/$projectId/media"
+          params={{ projectId: String(d.plan.projectId) }}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Media
+        </Link>
       ) : (
         <Link
           to="/projects"
@@ -86,7 +94,7 @@ export function PlanPage() {
               onValueChange={(x) => setPicked(Number(x))}
               options={versions.map((x) => ({
                 value: String(x.version),
-                label: `v${x.version} · ${STATE[x.state].label}`,
+                label: `v${x.version} · ${PLAN_STATE[x.state].label}`,
               }))}
             />
           )
@@ -128,7 +136,7 @@ function VersionView({
   const accept = useAcceptPlanVersion(planId);
   const doc = v.document;
   const label = (key: string) => channels.find((c) => c.key === key)?.label ?? key;
-  const st = STATE[v.state];
+  const st = PLAN_STATE[v.state];
   const unproven = doc.assumptions.filter((a) => a.class !== "cited").length;
   const canAccept = session.role === "admin" && v.state === "ready" && latest;
   return (
