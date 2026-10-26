@@ -39,4 +39,5 @@ Run limit: 3 attempts per node, 3 parallel subagents.
 
 ## Rules proved
 
-- (filled after the run)
+- The needs list and the section states must come from the same counts, or the strip and the marks disagree; both read `brandCounts`, `mediaCounts` and `studioCounts`.
+- An accepted plan is a need for launch authorization, not for acceptance; the stage pair (plan ready, approvals pending) says which.

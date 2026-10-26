@@ -321,7 +321,7 @@ func briefFinished(d research.BriefDetail) bool {
 
 // mediaCounts is what Media's state, next step and needs are read from.
 type mediaCounts struct {
-	plans, accepted, ready, unauthorized int
+	plans, accepted, ready int
 }
 
 func (m mediaCounts) state() SectionState {
@@ -473,6 +473,10 @@ func (c *Campaigns) measurementProgress(ctx context.Context, actor core.Actor, p
 		}
 	}
 	switch {
+	case len(items) == 0:
+		// A plan exists but readiness produced no measurement line for it
+		// yet, for example before it names a page or an account.
+		return SectionState{ID: "measurement", Status: "pending", Note: "No measurement lines yet"}, items, false, nil
 	case blocked > 0:
 		return SectionState{ID: "measurement", Status: "error", Note: plural(blocked, "blocker", "blockers")}, items, true, nil
 	case warned > 0:

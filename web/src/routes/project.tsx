@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Plus } from "lucide-react";
 import { useState } from "react";
-import { useBrand } from "@/api/brands";
+import { useBrand, useOffer } from "@/api/brands";
 import { useProjectCampaigns } from "@/api/campaigns";
 import { useSetUpCreative } from "@/api/creative";
 import { usePages } from "@/api/pages";
@@ -248,6 +248,7 @@ export function Overview({ projectId, brandId }: { projectId: number; brandId: n
                         {o.current.document.headlineAr}
                       </p>
                     )}
+                    <OfferImpact offerId={o.id} />
                   </div>
                   <span className="text-xs text-muted-foreground capitalize">
                     {o.current.state}
@@ -272,6 +273,47 @@ export function Overview({ projectId, brandId }: { projectId: number; brandId: n
           }))}
         />
       </div>
+    </div>
+  );
+}
+
+// OfferImpact says which creatives were built on an older version of the
+// offer, so a changed offer isn't silently out of step with its ads. The
+// list opens on demand. Redrafting is the concept's generate action, done
+// per creative; there is no batch here. The ids are the engine's creatives
+// (core/creative), which no designed route takes, so each links to the
+// engine's creatives screen.
+function OfferImpact({ offerId }: { offerId: number }) {
+  const history = useOffer(offerId);
+  const [open, setOpen] = useState(false);
+  const affected = history.data?.affected ?? [];
+  if (affected.length === 0) return null;
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="text-xs text-muted-foreground hover:text-foreground"
+      >
+        {affected.length} {affected.length === 1 ? "creative" : "creatives"} built on an older
+        version
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1 text-xs">
+          {affected.map((c) => (
+            <li key={c.id} className="flex flex-wrap items-center gap-x-2">
+              <Link to="/engine/creatives" className="font-medium hover:underline">
+                {c.name}
+              </Link>
+              <span className="text-muted-foreground">
+                {c.format} · {c.language === "ar" ? "Arabic" : "English"} · v{c.offerVersion} ·{" "}
+                <span className="capitalize">{c.reviewState.replace("_", " ")}</span>
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

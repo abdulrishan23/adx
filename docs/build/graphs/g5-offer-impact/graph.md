@@ -24,4 +24,4 @@ Run limit: 3 attempts per node, 3 parallel subagents.
 
 ## Rules proved
 
-- (filled after the run)
+- `AffectedCreative.id` is an engine creative id, not a studio ad id; a link from the Brand section must go where the id resolves. Two creative stores still exist (`core/creative`, `core/studio`), which BD-59 folds later.

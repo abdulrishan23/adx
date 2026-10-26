@@ -222,6 +222,14 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 		t.Fatalf("an accepted plan waits for authorization, not acceptance: %+v", p.Needs)
 	}
 
+	// A plan whose readiness has no measurement line yet is not "checks pass".
+	rd.items = nil
+	p, _ = e.c.Progress(ctx, viewer, e.project)
+	if s := section(p, "measurement"); s.Status != "pending" || s.Note != "No measurement lines yet" {
+		t.Fatalf("no lines: %+v", s)
+	}
+	rd.items = []measurement.LaunchItem{{Area: "measurement", Code: "form_submit", State: "ok", Message: "test submission arrived"}}
+
 	// Every project in one call, in project order.
 	all, err := e.c.ProgressAll(ctx, viewer)
 	if err != nil {

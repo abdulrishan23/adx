@@ -27,4 +27,5 @@ Run limit: 3 attempts per node, 3 parallel subagents.
 
 ## Rules proved
 
-- (filled after the run)
+- The server doesn't know the web release phase, so anything that counts released sections is computed on the screen from `PROJECT_SECTIONS` and `released()`; the server supplies facts (states, blocker), not the summary.
+- One request for every project's progress keeps the Projects page at one round trip, at the cost of running every project's readiness checks on each poll.

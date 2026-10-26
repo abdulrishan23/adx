@@ -5,7 +5,7 @@ import { useBrand } from "@/api/brands";
 import { useProjectCampaigns, useProjectProgress } from "@/api/campaigns";
 import { useCreativeOverview, useCreativeProject } from "@/api/creative";
 import { usePlans } from "@/api/plans";
-import type { ProgressItem } from "@/api/types.gen";
+import type { ProgressItem, ProjectNeed } from "@/api/types.gen";
 import { PROJECT_SECTIONS, type ProjectSection, projectSectionPath } from "@/app/nav";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
@@ -130,6 +130,7 @@ export function ProjectSectionPage({
           </Link>
         )}
       </div>
+      <NeedsStrip projectId={projectId} />
       {!released(current.phase) ? (
         <Panel>
           <EmptyState title="Not started">
@@ -151,6 +152,47 @@ export function ProjectSectionPage({
         </>
       )}
     </section>
+  );
+}
+
+// needLink sends a need to the section that clears it. Authorizing a launch
+// happens on the engine's launch screen until the designed one lands.
+function needLink(need: ProjectNeed, projectId: number): LinkOptions {
+  if (need.kind === "launch_authorize") return { to: "/engine/launch" };
+  const section = PROJECT_SECTIONS.find((s) => s.segment === need.section);
+  return {
+    to: projectSectionPath(section?.segment ?? "brand"),
+    params: { projectId: String(projectId) },
+  };
+}
+
+// NeedsStrip sits under the section row on every section: what waits on a
+// person right now, the signed-in role's items first. Nothing shows while
+// progress loads or when nothing waits.
+function NeedsStrip({ projectId }: { projectId: number }) {
+  const progress = useProjectProgress(projectId);
+  const session = useSession();
+  const needs = progress.data?.needs ?? [];
+  if (needs.length === 0) return null;
+  const mine = needs.filter((n) => n.role === session.role);
+  const rest = needs.filter((n) => n.role !== session.role);
+  return (
+    <Panel title="Needs you" className="mb-6" bodyClassName="p-0">
+      <ul className="divide-y">
+        {[...mine, ...rest].map((n) => (
+          <li key={`${n.kind}-${n.section}-${n.role}`}>
+            <Link
+              {...needLink(n, projectId)}
+              className="flex items-center gap-3 px-6 py-3 text-sm transition-colors hover:bg-accent"
+            >
+              <StatusMark status={n.kind === "measurement_blocked" ? "error" : "caution"} />
+              <span className="min-w-0 flex-1">{n.label}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">· {n.role}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Panel>
   );
 }
 
@@ -349,18 +391,27 @@ const ITEM_STATUS: Record<string, { label: string; status: Status }> = {
   unsupported: { label: "Not available", status: "pending" },
 };
 
-// fixFor links a measurement line to the screen that fixes it, by what the
-// line points at.
+// checkId names one measurement line, so a link can land on its row.
+function checkId(item: ProgressItem): string {
+  return `${item.planId}-${item.code}-${item.refId}`;
+}
+
+// fixFor links a measurement line to the thing that fixes it: the page or
+// plan it names, or the connections list for an account (that route takes no
+// search param, so the account can't be picked out).
 function fixFor(item: ProgressItem, projectId: number): LinkOptions {
   switch (item.refKind) {
     case "account":
       return { to: "/settings/connections" };
     case "page":
-      return { to: "/engine/pages" };
+      return {
+        to: "/projects/$projectId/pages/$pageId",
+        params: { projectId: String(projectId), pageId: String(item.refId) },
+      };
     case "plan":
       return {
-        to: "/projects/$projectId/media",
-        params: { projectId: String(projectId) },
+        to: "/projects/$projectId/plans/$planId",
+        params: { projectId: String(projectId), planId: String(item.planId) },
       };
     default:
       return { to: "/engine/launch" };
@@ -397,7 +448,11 @@ function MeasurementChecks({ projectId }: { projectId: number }) {
       {items.map((it) => {
         const s = ITEM_STATUS[it.state] ?? { label: it.state, status: "pending" as const };
         return (
-          <li key={`${it.planId}-${it.code}-${it.refId}`} className="px-6 py-3.5 text-sm">
+          <li
+            key={checkId(it)}
+            id={checkId(it)}
+            className="scroll-mt-4 px-6 py-3.5 text-sm target:bg-accent"
+          >
             <div className="flex items-start gap-3">
               <StatusMark status={s.status} className="mt-1.5" />
               <span className="min-w-0 flex-1">
@@ -424,7 +479,8 @@ function MeasurementChecks({ projectId }: { projectId: number }) {
 }
 
 // MeasurementGate sits at the top of Campaigns while measurement has a
-// blocker: a launch can't run until it's fixed.
+// blocker: a launch can't run until it's fixed. Each row lands on its line
+// in Measurement by hash, since the section routes take no search param.
 function MeasurementGate({ projectId }: { projectId: number }) {
   const progress = useProjectProgress(projectId);
   if (!progress.data?.blocked) return null;
@@ -447,15 +503,20 @@ function MeasurementGate({ projectId }: { projectId: number }) {
     >
       <ul className="divide-y">
         {blockers.map((it) => (
-          <li
-            key={`${it.planId}-${it.code}-${it.refId}`}
-            className="flex items-center gap-3 px-6 py-3 text-sm"
-          >
-            <StatusMark status="error" />
-            <span className="min-w-0 flex-1">{it.message}</span>
-            {it.campaignName && (
-              <span className="text-xs text-muted-foreground">{it.campaignName}</span>
-            )}
+          <li key={checkId(it)}>
+            <Link
+              to="/projects/$projectId/measurement"
+              params={{ projectId: String(projectId) }}
+              hash={checkId(it)}
+              className="flex items-center gap-3 px-6 py-3 text-sm transition-colors hover:bg-accent"
+            >
+              <StatusMark status="error" />
+              <span className="min-w-0 flex-1">{it.message}</span>
+              {it.campaignName && (
+                <span className="text-xs text-muted-foreground">{it.campaignName}</span>
+              )}
+              <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" />
+            </Link>
           </li>
         ))}
       </ul>

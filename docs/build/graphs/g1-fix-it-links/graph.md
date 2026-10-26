@@ -23,4 +23,5 @@ Run limit: 3 attempts per node, 3 parallel subagents.
 
 ## Rules proved
 
-- (filled after the run)
+- A section route without search parameters can still land on a row: a URL hash plus a row id and `target:` styling, no router change.
+- A Fix link is only as exact as the line's ref: `page` and `plan` refs carry ids the designed routes take; `account` doesn't, so it opens the screen.

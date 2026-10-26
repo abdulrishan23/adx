@@ -47,4 +47,5 @@ The next step is the first section, in order, that isn't done, read with what it
 
 ## Rules proved
 
-- (filled after the run)
+- gentypes keeps one TypeScript namespace across core packages, so a new exported struct needs a name no other package uses (`ProjectNext`, not `NextStep`).
+- A section that is pending because there is nothing to check yet is not a next step; the rule table falls through to the push.
