@@ -1,14 +1,20 @@
 import { Link } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useBrands } from "@/api/brands";
-import { useCampaigns } from "@/api/campaigns";
+import { healthOf, useCampaigns, useProjectsProgress } from "@/api/campaigns";
 import { useCreativeOverview } from "@/api/creative";
+import { PROJECT_SECTIONS } from "@/app/nav";
 import { useSession } from "@/app/session";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { StatusMark } from "@/components/ui/status-chip";
 import { useProjects } from "@/engine/api/projects";
+import { released } from "@/lib/release";
+import { cn } from "@/lib/utils";
 import { STATE } from "./campaign";
+
+// Only released sections count towards a project's health.
+const RELEASED_SECTIONS = PROJECT_SECTIONS.filter((s) => released(s.phase)).map((s) => s.segment);
 
 // Projects is where Studio starts: each development Reportage markets, with
 // its campaigns at a glance. Competitors sit in each project's Research.
@@ -17,6 +23,8 @@ export function ProjectsPage() {
   const brands = useBrands();
   const creative = useCreativeOverview();
   const campaigns = useCampaigns();
+  // Health is a second read; the page stands without it while it loads or fails.
+  const progress = useProjectsProgress();
   const session = useSession();
   const own = new Set(brands.data?.brands.filter((b) => b.kind === "own").map((b) => b.id) ?? []);
   const all = projects.data?.projects ?? [];
@@ -54,6 +62,8 @@ export function ProjectsPage() {
                 const leadState = lead
                   ? (STATE[lead.state] ?? { label: lead.state, status: "pending" as const })
                   : null;
+                const pr = progress.data?.projects.find((x) => x.projectId === p.id);
+                const health = pr ? healthOf(pr, RELEASED_SECTIONS) : null;
                 return (
                   <Link
                     key={p.id}
@@ -78,7 +88,35 @@ export function ProjectsPage() {
                     <h2 className="mt-4 font-heading text-xl font-semibold tracking-tight">
                       {p.name}
                     </h2>
-                    <p className="mt-3 text-sm text-muted-foreground">
+                    {pr && health && (
+                      <>
+                        {/* Health: released sections ready, or what blocks the project. */}
+                        <p className="mt-3 flex items-center gap-2 text-sm">
+                          <StatusMark status={health.status} />
+                          {pr.blocked ? (
+                            <span className="truncate text-destructive">{pr.blocker}</span>
+                          ) : (
+                            <span>
+                              {health.ready} of {health.total}
+                            </span>
+                          )}
+                        </p>
+                        {/* The next step, and whose it is. */}
+                        <p className="mt-1 truncate text-sm">
+                          <span
+                            className={
+                              pr.next.label === "Nothing waiting" ? "text-muted-foreground" : ""
+                            }
+                          >
+                            {pr.next.label}
+                          </span>
+                          {pr.next.role && (
+                            <span className="text-muted-foreground"> · {pr.next.role}</span>
+                          )}
+                        </p>
+                      </>
+                    )}
+                    <p className={cn("text-sm text-muted-foreground", health ? "mt-1" : "mt-3")}>
                       {cs.length === 0
                         ? "No campaigns yet"
                         : `${cs.length} ${cs.length === 1 ? "campaign" : "campaigns"}`}

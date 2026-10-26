@@ -3383,6 +3383,22 @@ export interface ProjectCampaign {
     spendDays: number;
 }
 
+// From campaigns/progress.go
+export interface ProjectNeed {
+    kind: string;
+    count: number;
+    role: string;
+    section: string;
+    label: string;
+}
+
+// From campaigns/progress.go
+export interface ProjectNext {
+    section: string;
+    label: string;
+    role: string;
+}
+
 // From api/brands.go
 export interface ProjectOffersResponse {
     brandId: number;
@@ -3395,6 +3411,9 @@ export interface ProjectProgress {
     sections: SectionState[];
     measurement: ProgressItem[];
     blocked: boolean;
+    blocker: string;
+    next: ProjectNext;
+    needs: ProjectNeed[];
 }
 
 // From studio/studio.go
@@ -3412,6 +3431,11 @@ export interface ProjectSummary {
     unpublished: number;
     logo: string | null;
     updatedAt: string;
+}
+
+// From api/campaigns.go
+export interface ProjectsProgressResponse {
+    projects: ProjectProgress[];
 }
 
 // From api/projects.go

@@ -1,7 +1,7 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Menu, PanelLeftClose, PanelLeftOpen, Search, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useProjectProgress } from "@/api/campaigns";
+import { healthOf, useProjectProgress, useProjectsProgress } from "@/api/campaigns";
 import { needsYou, useHomeDesk } from "@/api/fronts";
 import { AdxMark, AdxWordmark } from "@/components/brand";
 import { CommandPalette, useCommandPaletteHotkey } from "@/components/command-palette";
@@ -242,6 +242,8 @@ function ProjectSections({ pathname }: { pathname: string }) {
   const projectId = projectIdFrom(pathname);
   const projects = useProjects();
   const progress = useProjectProgress(projectId);
+  // Every project's health, for the switcher's labels.
+  const all = useProjectsProgress();
   const navigate = useNavigate();
   const list = projects.data?.projects ?? [];
   const remembered = lastProject();
@@ -265,6 +267,16 @@ function ProjectSections({ pathname }: { pathname: string }) {
   const sections = PROJECT_SECTIONS.filter((s) => released(s.phase));
   const stateOf = (segment: string) =>
     progress.data?.sections.find((s) => s.id === segment) ?? null;
+  const releasedIds = sections.map((s) => s.segment);
+  // healthLabel suffixes a project's name with "n of m" ready sections, or
+  // "blocked"; nothing while the progress read is pending or failed.
+  const healthLabel = (id: number) => {
+    const pr = all.data?.projects.find((x) => x.projectId === id);
+    if (!pr) return "";
+    if (pr.blocked) return " · blocked";
+    const h = healthOf(pr, releasedIds);
+    return ` · ${h.ready} of ${h.total}`;
+  };
   return (
     <div className="my-1 ml-3 space-y-0.5 border-l pl-1.5">
       {list.length > 0 && (
@@ -274,7 +286,10 @@ function ProjectSections({ pathname }: { pathname: string }) {
           onValueChange={(v) =>
             navigate({ to: projectSectionPath("brand"), params: { projectId: v } })
           }
-          options={list.map((p) => ({ value: String(p.id), label: p.name }))}
+          options={list.map((p) => ({
+            value: String(p.id),
+            label: `${p.name}${healthLabel(p.id)}`,
+          }))}
         />
       )}
       <ul className="space-y-0.5">
