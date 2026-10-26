@@ -78,6 +78,9 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	if section(p, "measurement").Note != "Nothing to check until a campaign has a plan" {
 		t.Fatalf("measurement with no plan: %+v", section(p, "measurement"))
 	}
+	if p.Next.Label != "Record the first fact" || p.Next.Role != "marketer" || len(p.Needs) != 0 {
+		t.Fatalf("empty project's next step and needs: %+v %+v", p.Next, p.Needs)
+	}
 
 	// A fact for the other project changes nothing here; one for this
 	// project needs review until approved, and a running brief is not done.
@@ -100,6 +103,12 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	if s := section(p, "brand"); s.Status != "caution" || s.Note != "1 fact needs review" {
 		t.Fatalf("unapproved fact: %+v", s)
 	}
+	if p.Next.Label != "Approve 1 fact" || p.Next.Role != "admin" {
+		t.Fatalf("a fact needing review is the admin's next step: %+v", p.Next)
+	}
+	if len(p.Needs) != 1 || p.Needs[0].Kind != "facts_review" || p.Needs[0].Count != 1 || p.Needs[0].Section != "brand" {
+		t.Fatalf("needs: %+v", p.Needs)
+	}
 	if _, err := e.brands.ApproveFact(ctx, admin, mine.Fact.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -113,6 +122,9 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	p, _ = e.c.Progress(ctx, viewer, e.project)
 	if s := section(p, "brand"); s.Status != "ready" {
 		t.Fatalf("approved fact and finished brief: %+v", s)
+	}
+	if p.Next.Section != "media" || p.Next.Label != "Draft a plan" {
+		t.Fatalf("brand done, media next: %+v", p.Next)
 	}
 
 	// A campaign with a page and a plan moves Studio, Media and Campaigns.
@@ -154,6 +166,16 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	if p.Blocked || section(p, "measurement").Status != "caution" {
 		t.Fatalf("a warning is not a blocker: %+v", p)
 	}
+	if p.Next.Section != "media" || p.Next.Label != "Accept the plan" || p.Next.Role != "admin" {
+		t.Fatalf("a ready plan is the admin's next step: %+v", p.Next)
+	}
+	kinds := map[string]int{}
+	for _, n := range p.Needs {
+		kinds[n.Kind] = n.Count
+	}
+	if kinds["plans_accept"] != 1 || kinds["pages_publish"] != 1 || kinds["facts_review"] != 0 {
+		t.Fatalf("needs with a ready plan and a drafted page: %+v", p.Needs)
+	}
 
 	// A blocked measurement line gates Campaigns.
 	rd.items = append(rd.items, measurement.LaunchItem{Area: "accounts", Code: "conversion_action_missing", State: "blocked", Message: "no conversion action", RefKind: "account", RefID: 3})
@@ -163,6 +185,16 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	}
 	if s := section(p, "campaigns"); s.Status != "error" || s.Note != "Blocked by measurement" {
 		t.Fatalf("campaigns not gated: %+v", s)
+	}
+	if p.Blocker != "no conversion action" {
+		t.Fatalf("blocker names the first blocked line: %q", p.Blocker)
+	}
+	kinds = map[string]int{}
+	for _, n := range p.Needs {
+		kinds[n.Kind] = n.Count
+	}
+	if kinds["measurement_blocked"] != 1 {
+		t.Fatalf("a blocker is a need: %+v", p.Needs)
 	}
 
 	// Accepting the plan finishes Media, and clean checks finish Measurement.
@@ -174,8 +206,32 @@ func TestProgressFollowsTheProjectThroughItsSections(t *testing.T) {
 	if s := section(p, "media"); s.Status != "ready" || s.Note != "1 plan accepted" {
 		t.Fatalf("accepted plan: %+v", s)
 	}
-	if s := section(p, "measurement"); s.Status != "ready" || p.Blocked {
+	if s := section(p, "measurement"); s.Status != "ready" || p.Blocked || p.Blocker != "" {
 		t.Fatalf("clean checks: %+v", s)
+	}
+	// With the plan accepted, Studio is next (no ad approved yet) and the
+	// accepted plan waits for launch authorization.
+	if p.Next.Section != "studio" {
+		t.Fatalf("studio next once media is done: %+v", p.Next)
+	}
+	kinds = map[string]int{}
+	for _, n := range p.Needs {
+		kinds[n.Kind] = n.Count
+	}
+	if kinds["plans_accept"] != 0 || kinds["launch_authorize"] != 1 {
+		t.Fatalf("an accepted plan waits for authorization, not acceptance: %+v", p.Needs)
+	}
+
+	// Every project in one call, in project order.
+	all, err := e.c.ProgressAll(ctx, viewer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(all) != 2 || all[0].ProjectID != e.project || all[1].ProjectID != e.other {
+		t.Fatalf("progress for every project: %+v", all)
+	}
+	if _, err := e.c.ProgressAll(ctx, core.Actor{}); err != core.ErrForbidden {
+		t.Fatalf("outsider on all: %v", err)
 	}
 
 	// The other project has none of this.

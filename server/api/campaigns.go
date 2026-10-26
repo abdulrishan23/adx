@@ -32,6 +32,21 @@ func (h *handlers) projectCampaigns(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, CampaignsResponse{Campaigns: list})
 }
 
+// ProjectsProgressResponse is every project's progress, for the Projects
+// page and the switcher.
+type ProjectsProgressResponse struct {
+	Projects []campaigns.ProjectProgress `json:"projects"`
+}
+
+func (h *handlers) projectsProgress(w http.ResponseWriter, r *http.Request) {
+	list, err := h.campaigns.ProgressAll(r.Context(), actorFrom(r))
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, ProjectsProgressResponse{Projects: list})
+}
+
 func (h *handlers) projectProgress(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(w, r, "projectID", "project")
 	if !ok {
