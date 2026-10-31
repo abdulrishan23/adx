@@ -94,7 +94,7 @@ Three kinds of work are queued, in this order of nearness.
 
 ### Finishing the app on the engine
 
-The designed screens are being rewired from sample fixtures to the engine's endpoints and types, one screen at a time, with the engine twin removed after each. Screens still carrying a Sample chip today: Home, Inbox, Project, Start a brand, Brand knowledge, Research, Media plans, Landing pages, Launch. Perform and Convert screens are wired. Also open from the pilot gate: pixel export (PNG or JPG) instead of SVG, the canvas drag editor, and a browser pass over the five phase 2 pages.
+The designed screens are being rewired from sample fixtures to the engine's endpoints and types, one screen at a time, with the engine twin removed after each. Since 2026-10-19 Projects became the main section, with Brand, Media, Studio, Measurement and Campaigns per project, each showing its state, health, next step, what waits on a person and a Fix link; Launch runs on the launch API over the plan's period; Creative is its own door; Perform and Convert screens are wired. Screens still carrying a Sample chip: Home and Inbox, whose cards wait on the project progress and Needs-you data the server already computes; Analytics shows the label only while its mock flag is on. Connect GHL and the stage table still import legacy types, and the engine's plain screens stay under /engine until each designed screen is rewired. Also open from the pilot gate: pixel export (PNG or JPG) instead of SVG and the canvas drag editor. Perform and Convert have not yet moved under the project frame.
 
 ### Going live
 
