@@ -82,7 +82,7 @@ Grouped by door. "Local" means proven by tests in `make test`. "Live needs" is t
 
 | Capability | Local | Live needs |
 |---|---|---|
-| Sign-in through authentik OIDC, memberships per workspace, sessions end on disable, dev admin only in dev mode | Yes | `adx-auth` client from WokeWorks |
+| Sign-in through authentik OIDC, memberships per workspace, sessions end on disable, dev admin only in dev mode | Yes | `adx-auth` client from IT |
 | Workspaces: full client isolation, same-named projects and provider ids across clients, workspace switching, versioned industry configuration | Yes | authentik for two memberships in a browser |
 | Deployment, readiness, encrypted credentials with the key outside the database, backup and linked-state restore, retention pruning, release script that rolls back if readiness fails | Yes | Server access, hosting approval, a retention period |
 | Metered model cap server-wide, cost view against budgets, model release evaluation with regression-blocked promotion, load harness | Yes | A model key to have anything to meter |
@@ -102,13 +102,13 @@ The largest item, and none of it is code. Each row needs a person outside the co
 
 | Input | Who | Unblocks |
 |---|---|---|
-| Hosting approval naming the server location; server access | Reportage, WokeWorks | Deployment |
-| authentik client, redirect URI, groups scope | WokeWorks | Sign-in |
+| Hosting approval naming the server location; server access | Reportage IT | Deployment |
+| authentik client, redirect URI, groups scope | IT | Sign-in |
 | GoHighLevel private token for the test location; the status field and stage table | Reportage GHL admin, Abdul | Lead import, stages, qualified leads |
-| Google Cloud OAuth client with Google Ads API access; Meta Business app | Reportage, WokeWorks | Live reads, keyword ideas, conversion-action checks |
+| Google Cloud OAuth client with Google Ads API access; Meta Business app | Reportage IT | Live reads, keyword ideas, conversion-action checks |
 | Caps and write privileges per account; a test account; written approval; `ADX_LIVE_WRITES=1` | Abdul, CMO | Any external write, the launch journey |
 | Model API key and data-use approval | Abdul | Assistant, plan drafting, call readings, workflows |
-| SMTP host and sender; recipients; anomaly thresholds | WokeWorks, Abdul | Reports, alerts, email outreach |
+| SMTP host and sender; recipients; anomaly thresholds | IT, Abdul | Reports, alerts, email outreach |
 | Messaging policy and WhatsApp Cloud credentials | Reportage | Sending approved drafts |
 | A UAE telecom route and the written reversal on automated calls; ElevenLabs key | Reportage | Qualification calls |
 | Excel media-plan template | Reportage | Exact-template export |
