@@ -10,13 +10,12 @@ import { useMemo } from "react";
 import { useScope } from "@/app/scope";
 import { campaignRows, scopeWindow } from "@/lib/campaign-rows";
 import { ENGINE_PLATFORM } from "@/lib/coverage";
-import { ApiError, getJSON, postForm, postJSON } from "./client";
+import { ApiError, getJSON, postJSON } from "./client";
 import { useCampaignCoverage } from "./launch";
 import { isLive, mockResponse, USE_MOCK } from "./mock";
 import * as actions from "./mock/actions";
 import * as ask from "./mock/ask";
 import * as briefMock from "./mock/brief";
-import * as crm from "./mock/crm";
 import { PROJECTS } from "./mock/data";
 import * as enrich from "./mock/enrich";
 import * as more from "./mock/more";
@@ -59,14 +58,7 @@ import type {
   SourceDetail,
   WriteAction,
 } from "./models";
-import type { ReportingResult } from "./types.gen";
-import type {
-  ConnectionsResponse,
-  Connection as CrmConnection,
-  LeadList,
-  LeadSync,
-  ProjectsResponse,
-} from "./types.legacy";
+import type { ConnectionsResponse, ProjectsResponse, ReportingResult } from "./types.gen";
 
 function qs(scope: Scope) {
   return new URLSearchParams({
@@ -229,7 +221,7 @@ export function useConnections() {
     queryKey: ["connections"],
     queryFn: async () => {
       const list = await get<Connection[]>("/api/connections", () => mock.connections());
-      return isLive("crm") ? Promise.all(list.map(withLiveCrm)) : list;
+      return Promise.all(list.map(withLiveCrm));
     },
   });
 }
@@ -537,73 +529,6 @@ export function useProposal(id: string) {
         `/api/proposals/${id}`,
         () => mock.proposals().find((p) => p.id === id) ?? null,
       ),
-  });
-}
-
-// GoHighLevel workspaces, served by the Go server (core/connections).
-export function useCrmConnections() {
-  return useQuery({
-    queryKey: ["crm-connections"],
-    queryFn: async () =>
-      isLive("crm")
-        ? (await getJSON<ConnectionsResponse>("/api/connections/crm")).connections
-        : mockResponse(() => crm.listCrm()),
-  });
-}
-
-export function useConnectCrm() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: { locationId: string; token: string }) =>
-      isLive("crm")
-        ? postForm<CrmConnection>("/api/connections/crm/private", input)
-        : mockResponse(() => crm.connectPrivate(input.locationId, input.token), 900),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-connections"] });
-      queryClient.invalidateQueries({ queryKey: ["connections"] });
-    },
-  });
-}
-
-export function useCheckCrm() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (locationId: string) =>
-      isLive("crm")
-        ? postJSON<CrmConnection>(
-            `/api/connections/crm/${encodeURIComponent(locationId)}/check`,
-            {},
-          )
-        : mockResponse(() => crm.checkCrm(locationId), 700),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["crm-connections"] });
-      queryClient.invalidateQueries({ queryKey: ["connections"] });
-    },
-  });
-}
-
-// The local copy of a workspace's GoHighLevel leads (core/leads).
-export function useCrmLeads(locationId: string) {
-  return useQuery({
-    queryKey: ["crm-leads", locationId],
-    queryFn: () =>
-      isLive("crm")
-        ? getJSON<LeadList>(`/api/leads?location=${encodeURIComponent(locationId)}&limit=25`)
-        : mockResponse(() => crm.listLeads(locationId)),
-    // Poll while a sync runs, so its result shows when it finishes.
-    refetchInterval: (q) => (q.state.data?.lastSync?.state === "running" ? 1500 : false),
-  });
-}
-
-export function useSyncCrmLeads() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (locationId: string) =>
-      isLive("crm")
-        ? postJSON<LeadSync>(`/api/connections/crm/${encodeURIComponent(locationId)}/sync`, {})
-        : mockResponse(() => crm.startLeadSync(locationId), 300),
-    onSuccess: (_, locationId) =>
-      queryClient.invalidateQueries({ queryKey: ["crm-leads", locationId] }),
   });
 }
 

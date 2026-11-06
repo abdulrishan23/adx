@@ -32,7 +32,7 @@ import {
   Users,
   UsersRound,
 } from "lucide-react";
-import type { Role } from "@/api/types.legacy";
+import type { Role } from "@/api/types.gen";
 import { type Phase, released } from "@/lib/release";
 
 export type RoutePath = keyof RegisteredRouter["routesByPath"];

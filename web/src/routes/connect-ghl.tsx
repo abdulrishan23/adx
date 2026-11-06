@@ -1,45 +1,40 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, Check, RefreshCw } from "lucide-react";
 import { type FormEvent, useId, useState } from "react";
-import {
-  useCheckCrm,
-  useConnectCrm,
-  useCrmConnections,
-  useCrmLeads,
-  useSyncCrmLeads,
-} from "@/api/adx";
 import { ApiError } from "@/api/client";
-import { REQUIRED_SCOPES } from "@/api/mock/crm";
-import type { Connection as CrmConnection, LeadSync } from "@/api/types.legacy";
+import { REQUIRED_SCOPES, useCheckCrm, useConnectCrm, useCrmConnections } from "@/api/gohighlevel";
+import { useImportLeads, useLeadCoverage } from "@/api/leads";
+import type { Account, Connection, Run } from "@/api/types.gen";
+import { useSession } from "@/app/session";
 import { Form } from "@/components/form";
 import { EmptyState, ErrorNote, Eyebrow, LoadingRows, PageHeader, Panel } from "@/components/page";
-import { SourceName } from "@/components/platform";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { StatusChip, StatusMark } from "@/components/ui/status-chip";
-import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { formatDate, formatNumber, formatRelative } from "@/lib/format";
+import { useAccounts } from "@/engine/api/accounts";
+import { useRuns } from "@/engine/api/runs";
+import { formatDate, formatNumber, formatRelative, NOT_AVAILABLE } from "@/lib/format";
 
 const AUTH_LABEL: Record<string, string> = {
   private_token: "Private integration token",
   oauth: "Marketplace app",
 };
 
-// Replaces the server's stopgap HTML form at /api/connections/crm/connect.
-// The server answers 409 with this when it has no connection key.
+// The server answers 409 while it has no connection key, so there is
+// nowhere to keep a token encrypted.
 const notConfigured = (e: Error | null) => e instanceof ApiError && e.status === 409;
 
+// The GoHighLevel connection (core/connections): the workspaces connected
+// with a private integration token, each with its scopes and a check, the
+// form that connects another, and for each workspace the state of its lead
+// copy (core/leads): what the last import did and how much of the copy
+// carries a status and a project.
 export function ConnectGhlPage() {
   const list = useCrmConnections();
   if (notConfigured(list.error)) return <SetupNeeded />;
   return (
     <>
-      <Link
-        to="/settings/connections"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Connections
-      </Link>
+      <BackLink />
       <PageHeader title="GoHighLevel" />
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <div className="space-y-4">
@@ -48,7 +43,9 @@ export function ConnectGhlPage() {
           {list.error && <ErrorNote error={list.error} />}
           {list.data?.length === 0 && (
             <Panel>
-              <EmptyState title="No workspace connected yet" />
+              <EmptyState title="No workspace connected yet">
+                Connect one with the form. Leads arrive once a workspace is connected and imported.
+              </EmptyState>
             </Panel>
           )}
           {list.data?.map((c) => (
@@ -64,7 +61,18 @@ export function ConnectGhlPage() {
   );
 }
 
-function WorkspaceCard({ connection: c }: { connection: CrmConnection }) {
+function BackLink() {
+  return (
+    <Link
+      to="/settings/connections"
+      className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+    >
+      <ArrowLeft className="size-4" /> Connections
+    </Link>
+  );
+}
+
+function WorkspaceCard({ connection: c }: { connection: Connection }) {
   const check = useCheckCrm();
   const missing = REQUIRED_SCOPES.filter((s) => !c.scopes.includes(s));
   return (
@@ -127,116 +135,165 @@ function WorkspaceCard({ connection: c }: { connection: CrmConnection }) {
   );
 }
 
-// Adx's copy of the workspace's leads. GoHighLevel stays the source of truth;
-// the copy keeps the source each lead first came in with.
+const IMPORT_KIND = "ghl.import";
+
+// Adx's copy of the workspace's contacts. GoHighLevel stays the source of
+// truth; an import reads every contact again, keeps each raw status and
+// source verbatim, and marks contacts it no longer sees as removed.
 function LeadCopy({ locationId }: { locationId: string }) {
-  const leads = useCrmLeads(locationId);
-  const sync = useSyncCrmLeads();
-  const last = leads.data?.lastSync ?? null;
-  const running = sync.isPending || last?.state === "running";
+  const accounts = useAccounts();
+  const account = accounts.data?.accounts.find(
+    (a: Account) => a.provider === "gohighlevel" && a.externalId === locationId,
+  );
   return (
-    <Panel
-      title="Leads"
-      action={
-        <Button
-          size="sm"
-          variant="outline"
-          disabled={running}
-          onClick={() => sync.mutate(locationId)}
-        >
-          <RefreshCw className={running ? "animate-spin" : undefined} />
-          {running ? "Syncing" : "Sync now"}
-        </Button>
-      }
-      bodyClassName="p-0"
-    >
-      <div className="space-y-2 border-b px-5 py-3 text-sm empty:hidden">
-        {leads.data && <SyncLine sync={last} total={leads.data.total} />}
-        {last && !last.statusFieldFound && last.state !== "running" && (
-          <p className="flex items-baseline gap-2">
-            <StatusMark status="caution" className="translate-y-[-1px]" />
-            This workspace has no "Lead Status" field, so statuses weren't updated.
-          </p>
-        )}
-        {sync.error && <ErrorNote error={sync.error} />}
-      </div>
-      {leads.isPending && (
+    <Panel title="Leads" bodyClassName="p-0">
+      {accounts.isPending && (
         <div className="p-5">
-          <LoadingRows rows={4} />
+          <LoadingRows rows={3} />
         </div>
       )}
-      {leads.error && (
+      {accounts.error && (
         <div className="p-5">
-          <ErrorNote error={leads.error} />
+          <ErrorNote error={accounts.error} />
         </div>
       )}
-      {leads.data && leads.data.leads.length > 0 && (
-        <Table>
-          <THead>
-            <TR>
-              <TH>Name</TH>
-              <TH>Status</TH>
-              <TH>Source</TH>
-              <TH numeric>Added</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {leads.data.leads.map((l) => (
-              <TR key={l.id}>
-                <TD className="font-medium">{l.name || l.email || l.phone || "No name"}</TD>
-                <TD>{l.status ?? <span className="text-muted-foreground">Blank</span>}</TD>
-                <TD>
-                  {l.source ? (
-                    <SourceName name={l.source} />
-                  ) : (
-                    <span className="text-muted-foreground">Blank</span>
-                  )}
-                  {l.originalSource !== l.source && (
-                    <span className="block text-xs text-muted-foreground">
-                      First came in as {l.originalSource || "blank"}
-                    </span>
-                  )}
-                </TD>
-                <TD numeric className="text-muted-foreground">
-                  {formatRelative(l.createdAt)}
-                </TD>
-              </TR>
-            ))}
-          </TBody>
-        </Table>
+      {accounts.data && !account && (
+        <p className="p-5 text-sm text-muted-foreground">
+          This workspace has no account on the server yet, so nothing can be imported. Reconnect it
+          with the form.
+        </p>
       )}
+      {account && <LeadCopyBody account={account} />}
     </Panel>
   );
 }
 
-function SyncLine({ sync, total }: { sync: LeadSync | null; total: number | undefined }) {
-  if (!sync) return <p className="text-muted-foreground">Not synced yet.</p>;
-  if (sync.state === "running") {
-    return <p className="text-muted-foreground">Reading every contact from GoHighLevel.</p>;
+function LeadCopyBody({ account }: { account: Account }) {
+  const coverage = useLeadCoverage(account.id);
+  const runs = useRuns();
+  const importLeads = useImportLeads();
+  const session = useSession();
+  const canImport = session.role === "admin" || session.role === "marketer";
+  const last = lastImport(runs.data?.runs ?? [], account.id);
+  const running = importLeads.isPending || last?.state === "queued" || last?.state === "running";
+  const c = coverage.data;
+  return (
+    <>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-3 text-sm">
+        <div className="space-y-1">
+          <ImportLine run={last} />
+          {importLeads.data && (
+            <p className="text-muted-foreground" role="status">
+              {importLeads.data.created ? "Import started" : "An import is already running"}: run{" "}
+              <span className="font-mono text-xs">{importLeads.data.run.id}</span>.
+            </p>
+          )}
+          {importLeads.error && <ErrorNote error={importLeads.error} />}
+        </div>
+        {canImport && (
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={running}
+            onClick={() => importLeads.mutate({ accountId: account.id, mode: "full", since: null })}
+          >
+            <RefreshCw className={running ? "animate-spin" : undefined} />
+            {running ? "Importing" : "Import now"}
+          </Button>
+        )}
+      </div>
+      <div className="px-5 py-4 text-sm">
+        {coverage.isPending && <LoadingRows rows={2} />}
+        {coverage.error && <ErrorNote error={coverage.error} />}
+        {c && c.total === 0 && (
+          <p className="text-muted-foreground">No leads copied yet. Import the workspace once.</p>
+        )}
+        {c && c.total > 0 && (
+          <dl className="grid gap-x-6 gap-y-2.5 sm:grid-cols-3">
+            <Row label="Leads">{formatNumber(c.total)}</Row>
+            <Row label="With a status">{share(c.withStatus, c.total)}</Row>
+            <Row label="With a project">{share(c.withProject, c.total)}</Row>
+            <Row label="With a stage">
+              {c.funnelConfigured ? share(c.withStage, c.total) : "No table saved"}
+            </Row>
+            <Row label="With a phone">{share(c.withPhone, c.total)}</Row>
+            <Row label="Phones shared by several leads">{formatNumber(c.sharedPhones)}</Row>
+          </dl>
+        )}
+        {c && c.statusMissingOnLastScan > 0 && (
+          <p className="mt-3 flex items-baseline gap-2">
+            <StatusMark status="caution" className="translate-y-[-1px]" />
+            <span>
+              {c.statusMissingOnLastScan === 1
+                ? "1 lead came without the status field on the last scan"
+                : `${formatNumber(c.statusMissingOnLastScan)} leads came without the status field on the last scan`}
+              , so the last known status is kept. Check which field holds the status in{" "}
+              <Link to="/settings/lists" className="underline underline-offset-4">
+                Stages and lists
+              </Link>
+              .
+            </span>
+          </p>
+        )}
+        {c && c.total > 0 && (
+          <p className="mt-3">
+            <Link to="/leads" className="text-sm underline underline-offset-4">
+              Open leads
+            </Link>
+          </p>
+        )}
+      </div>
+    </>
+  );
+}
+
+// The newest import run for this account, whatever its state.
+export function lastImport(runs: Run[], accountId: number): Run | null {
+  return (
+    runs
+      .filter((r) => r.kind === IMPORT_KIND && r.accountId === accountId)
+      .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0] ?? null
+  );
+}
+
+function ImportLine({ run }: { run: Run | null }) {
+  if (!run) return <p className="text-muted-foreground">Not imported yet.</p>;
+  const progress = run.progress as { contacts?: number; pages?: number } | null;
+  const contacts = progress?.contacts;
+  if (run.state === "queued" || run.state === "running") {
+    return (
+      <p className="text-muted-foreground">
+        Reading every contact from GoHighLevel
+        {contacts !== undefined ? `: ${formatNumber(contacts)} so far` : ""}.
+      </p>
+    );
   }
-  if (sync.state === "failed") {
+  if (run.state === "failed") {
     return (
       <p className="flex items-baseline gap-2">
         <StatusMark status="error" className="translate-y-[-1px]" />
         <span>
-          Last sync failed {formatRelative(sync.finishedAt ?? sync.startedAt)}: {sync.error}
+          Last import failed {formatRelative(run.finishedAt ?? run.createdAt)}
+          {run.error ? `: ${run.error}` : ""}
+          {run.completeness === "partial" ? " (the pages read before it failed are kept)" : ""}
         </span>
       </p>
     );
   }
-  const changes = [
-    sync.created && `${formatNumber(sync.created)} new`,
-    sync.changed && `${formatNumber(sync.changed)} changed`,
-    sync.removed && `${formatNumber(sync.removed)} removed`,
-  ].filter(Boolean);
   return (
     <p>
-      {formatNumber(total ?? sync.seen)} leads · synced{" "}
-      {formatRelative(sync.finishedAt ?? sync.startedAt)}
-      {changes.length > 0 && <span className="text-muted-foreground"> · {changes.join(", ")}</span>}
+      Imported {formatRelative(run.finishedAt ?? run.createdAt)}
+      <span className="text-muted-foreground">
+        {" · "}
+        {contacts !== undefined ? `${formatNumber(contacts)} contacts read` : NOT_AVAILABLE}
+        {run.completeness === "partial" ? " · partial" : ""}
+      </span>
     </p>
   );
 }
+
+const share = (part: number, total: number) =>
+  total === 0 ? NOT_AVAILABLE : `${Math.round((part / total) * 100)}%`;
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -249,6 +306,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function ConnectForm() {
   const connect = useConnectCrm();
+  const session = useSession();
   const [locationId, setLocationId] = useState("");
   const [token, setToken] = useState("");
   const idField = useId();
@@ -259,11 +317,20 @@ function ConnectForm() {
     connect.mutate({ locationId: locationId.trim(), token }, { onSuccess: () => setToken("") });
   }
 
+  if (session.role !== "admin") {
+    return (
+      <Panel title="Connect a workspace">
+        <p className="text-sm text-muted-foreground">
+          An admin connects a workspace with a private integration token.
+        </p>
+      </Panel>
+    );
+  }
   return (
     <Panel title="Connect a workspace">
       <ol className="mb-5 list-decimal space-y-1.5 pl-5 text-sm text-muted-foreground">
         <li>Open the workspace in GoHighLevel and copy its ID from the URL, after /location/.</li>
-        <li>Go to Settings → Private Integrations → Create new integration.</li>
+        <li>Go to Settings, then Private Integrations, then Create new integration.</li>
         <li>
           Name it "ADX" and give it read access to contacts, opportunities, locations and custom
           fields.
@@ -326,15 +393,13 @@ function ConnectForm() {
 function SetupNeeded() {
   return (
     <>
-      <Link
-        to="/settings/connections"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" /> Connections
-      </Link>
+      <BackLink />
       <PageHeader title="GoHighLevel" />
       <Panel title="The server has no connection key">
-        <p className="text-sm">Create one, then restart make dev.</p>
+        <p className="text-sm">
+          Nothing is connected and nothing can be: tokens are kept encrypted with a key the server
+          has not got. Create one, then restart make dev.
+        </p>
         <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-3 font-mono text-xs leading-relaxed">
           {`mkdir -p ~/.config/adx && chmod 700 ~/.config/adx
 python3 -c "import os; open(os.path.expanduser('~/.config/adx/connections.key'),'xb').write(os.urandom(32))"

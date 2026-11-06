@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getJSON, postJSON } from "./client";
 import { isLive, mockResponse } from "./mock";
 import { daysAgo, PROJECTS } from "./mock/data";
-import type { CreateInput, Project, ProjectsResponse } from "./types.legacy";
+import type { CreateInput, Project, ProjectsResponse } from "./types.gen";
 
 // The project list is a real endpoint. Mocks mirror its rules (core/projects):
 // a name is required, 100 characters at most, and unique.
 const mockProjects: Project[] = PROJECTS.map((p, i) => ({
   id: p.id,
   name: p.name,
+  brandId: null,
   createdAt: daysAgo(40 - i),
 }));
 
@@ -21,6 +22,7 @@ function mockCreate(input: CreateInput): Project {
   const p = {
     id: Math.max(0, ...mockProjects.map((x) => x.id)) + 1,
     name,
+    brandId: null,
     createdAt: new Date().toISOString(),
   };
   mockProjects.push(p);

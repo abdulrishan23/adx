@@ -1,4 +1,4 @@
-import type { Role } from "@/api/types.legacy";
+import type { Role } from "@/api/types.gen";
 
 // useSession says who is signed in. Sign-in isn't built yet (D-24), and the
 // dev server treats every request as an admin (server/api/actor.go), so this
@@ -13,6 +13,9 @@ export const ROLE_LABEL: Record<Role, string> = {
   admin: "Admin",
   marketer: "Marketer",
   viewer: "Viewer",
+  // The engine's own actors; nobody signs in as them.
+  assistant: "Assistant",
+  user: "User",
 };
 
 export function initials(name: string): string {

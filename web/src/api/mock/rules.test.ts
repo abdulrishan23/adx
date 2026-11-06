@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { dailyBudget, proposeChange } from "./actions";
-import { connectPrivate, listCrm, listLeads, startLeadSync } from "./crm";
 import { CAMPAIGNS } from "./data";
 import { countCandidates, startJob } from "./enrich";
 import { ads, guardrails, updateGuardrails } from "./ops";
@@ -103,20 +102,6 @@ describe("proposal lifecycle", () => {
   });
 });
 
-describe("GoHighLevel connect", () => {
-  it("rejects workspace IDs the server would reject", () => {
-    expect(() => connectPrivate("bad id!", "pit-abc")).toThrow(/workspace ID/);
-    expect(() => connectPrivate("abc", "pit with space")).toThrow(/token/);
-  });
-
-  it("replaces a reconnected workspace instead of adding a second copy", () => {
-    const before = listCrm().length;
-    const id = listCrm()[0]?.locationId ?? "x";
-    connectPrivate(id, "pit-new-token");
-    expect(listCrm()).toHaveLength(before);
-  });
-});
-
 describe("enrichment batches", () => {
   const filter = {
     temperature: "any",
@@ -133,24 +118,5 @@ describe("enrichment batches", () => {
   it("refuses an empty batch", () => {
     expect(() => startJob({ ...filter, projectId: 999 }, 10, "nobody")).toThrow(/No leads match/);
     expect(countCandidates({ ...filter, projectId: 999 })).toBe(0);
-  });
-});
-
-describe("lead copy", () => {
-  it("refuses a second sync while one runs, then finishes", () => {
-    vi.useFakeTimers();
-    try {
-      const id = "rPq7xK2mV9aLtB4wZ8nD";
-      expect(startLeadSync(id).state).toBe("running");
-      expect(() => startLeadSync(id)).toThrow(/already running/);
-      vi.advanceTimersByTime(3000);
-      expect(listLeads(id).lastSync?.state).toBe("done");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it("refuses a workspace that isn't connected", () => {
-    expect(() => startLeadSync("nope")).toThrow(/not connected/);
   });
 });

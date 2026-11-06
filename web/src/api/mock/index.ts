@@ -10,10 +10,11 @@ const raw =
 export const MOCK_MODE: MockMode = raw === "all" || raw === "none" ? raw : "partial";
 
 // Features the Go server serves today. Add one here when its endpoints land.
-export type Feature = "projects" | "campaigns" | "crm" | "fronts";
+export type Feature = "projects" | "campaigns" | "fronts";
 // Only features whose endpoints the engine server serves in the shape our
-// screens expect. GoHighLevel leads and Creative Studio come back here as
-// each is rewired to the engine's API (see docs/build/decisions.md).
+// screens expect. Convert (leads, the stage table, the GoHighLevel
+// connection) always reads the server, like Home and Inbox, so it is not
+// listed here.
 // "campaigns" is Perform › Campaigns: its rows join the launch coverage
 // list with the analytics grouped by campaign (lib/campaign-rows.ts).
 // "fronts" is Home, Inbox and Present on core/fronts.

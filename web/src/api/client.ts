@@ -1,4 +1,4 @@
-import type { ErrorResponse } from "./types.legacy";
+import type { ErrorResponse } from "./types.gen";
 
 export class ApiError extends Error {
   constructor(
