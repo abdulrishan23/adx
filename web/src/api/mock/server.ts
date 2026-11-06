@@ -3,7 +3,6 @@
 // exercise real filtering and maths instead of hard-coded tiles.
 
 import type {
-  Campaign,
   DailyPoint,
   Funnel,
   FunnelRow,
