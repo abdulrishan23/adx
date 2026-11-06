@@ -75,3 +75,13 @@ RETURNING *;
 UPDATE alerts SET state = 'resolved', resolved_at = ?
 WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
 RETURNING *;
+
+-- name: SnoozeAlert :one
+UPDATE alerts SET snoozed_until = ?
+WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
+RETURNING *;
+
+-- name: DismissAlert :one
+UPDATE alerts SET state = 'resolved', resolved_at = ?, dismiss_reason = ?
+WHERE id = ? AND workspace_id = ? AND state IN ('open', 'acknowledged')
+RETURNING *;

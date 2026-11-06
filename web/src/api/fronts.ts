@@ -1,14 +1,25 @@
-// Home is a composed front: the server decides what earns a place and in what
-// order, and the web app only draws the blocks it is given. The same block
-// model tells Home as a Focus story on a wall. Per-door fronts come back in
-// phases 2 and 3, when Create and Convert have something to compose. Until
-// the Go side has a metrics engine, api/mock/fronts.ts plays the server.
+// Home, the Inbox and Present are composed fronts: the server decides what
+// earns a place and in what order, and the web app only draws the cards it
+// is given. The cards come from GET /api/fronts and GET /api/inbox, built in
+// core/fronts from the alerts, the supervisor's inbox, the figures, plans and
+// their launch, runs and the review board. Per-door fronts come back in
+// phases 2 and 3, when Create and Convert have something to compose.
 
 import { useQuery } from "@tanstack/react-query";
 import type { RoutePath } from "@/app/nav";
 import type { Status } from "@/components/ui/status-chip";
-import { mockResponse } from "./mock";
-import * as mock from "./mock/fronts";
+import { NOT_AVAILABLE } from "@/lib/format";
+import { getJSON } from "./client";
+import type {
+  Card as CardWire,
+  Desk as DeskWire,
+  Inbox as InboxWire,
+  Picture,
+  Template as TemplateWire,
+  WorkItem,
+} from "./types.gen";
+
+export type { Counts, WorkItem } from "./types.gen";
 
 export type Door = "studio" | "perform" | "convert";
 
@@ -85,9 +96,14 @@ export type Card = {
   id: string;
   door: Door;
   status: Status;
+  // A card needs a person when something is wrong or waiting on them; the
+  // rest are updates: work Adx finished, figures worth a look. The server
+  // decides which is which.
+  needsYou: boolean;
   title: string;
   // One line on why it's here today.
   why: string;
+  // A missing figure says "Not available" and never counts up.
   figure?: { value: string; count?: number; unit?: string; change?: string };
   evidence?: Evidence | { kind: "pie"; slices: { label: string; value: number }[] };
   // What "Talk about this" asks.
@@ -100,31 +116,31 @@ export type Card = {
   alertId?: string;
 };
 
-// A card needs a person when something is wrong or waiting on them; the rest
-// are updates: work Adx finished, figures worth a look.
-export const needsYou = (c: Card) => c.status === "error" || c.status === "caution";
+export const needsYou = (c: Card) => c.needsYou;
 
 // Ready-to-fire prompts, the way a marketer would ask them.
 // Icons a template can carry. The web app maps each name to its glyph.
-export type TemplateIcon =
-  | "changes"
-  | "cost"
-  | "waste"
-  | "call"
-  | "pace"
-  | "compare"
-  | "budget"
-  | "exclude"
-  | "revive"
-  | "reasons"
-  | "sources"
-  | "forms"
-  | "launch"
-  | "fatigue"
-  | "review"
-  | "plan"
-  | "report"
-  | "summary";
+export const TEMPLATE_ICONS = [
+  "changes",
+  "cost",
+  "waste",
+  "call",
+  "pace",
+  "compare",
+  "budget",
+  "exclude",
+  "revive",
+  "reasons",
+  "sources",
+  "forms",
+  "launch",
+  "fatigue",
+  "review",
+  "plan",
+  "report",
+  "summary",
+] as const;
+export type TemplateIcon = (typeof TEMPLATE_ICONS)[number];
 
 export type Template = {
   id: string;
@@ -135,22 +151,106 @@ export type Template = {
   prompt: string;
 };
 
-// Work Adx has under way. Nobody needs to watch it; the Inbox shows a count
-// and what each job is, and the result arrives as a card when it's done.
-export type WorkItem = { id: string; title: string; detail: string; to: RoutePath };
-
 export type HomeDesk = {
   checkedAt: string;
   // One line under the greeting: what Adx checked and what needs you.
   summary: string;
-  // True while the desk is drawn from sample data rather than connected
-  // accounts. Home says so, so sample figures never pass for real ones.
-  sample: boolean;
   cards: Card[];
   working: WorkItem[];
   templates: Template[];
 };
 
+export type InboxShow = "all" | "needs" | "updates";
+
+export type InboxPage = {
+  summary: string;
+  counts: { all: number; needsYou: number; updates: number };
+  cards: Card[];
+  working: WorkItem[];
+};
+
+// pictureOf narrows the server's one picture shape to the union the
+// components draw. An unknown kind draws nothing rather than crashing.
+function pictureOf(p: Picture | null): Card["evidence"] {
+  if (!p) return undefined;
+  switch (p.kind) {
+    case "bars":
+      return { kind: "bars", values: p.values ?? [], labels: p.labels ?? [] };
+    case "pie":
+      return { kind: "pie", slices: p.slices ?? [] };
+    case "rows":
+      return { kind: "rows", rows: p.rows ?? [] };
+    case "pace":
+      return { kind: "pace", rows: p.rows ?? [], trend: p.trend ?? [] };
+    case "leads":
+      return { kind: "leads", items: p.leads ?? [] };
+    case "ads":
+      return { kind: "ads", projectId: p.projectId ?? 0, items: p.ads ?? [] };
+    default:
+      return undefined;
+  }
+}
+
+export function toCard(c: CardWire): Card {
+  const card: Card = {
+    id: c.id,
+    door: c.door === "any" ? "perform" : c.door,
+    status: c.status,
+    needsYou: c.needsYou,
+    title: c.title,
+    why: c.why,
+    question: c.question,
+    at: c.at,
+  };
+  if (c.figure) {
+    card.figure =
+      c.figure.value === null
+        ? { value: NOT_AVAILABLE }
+        : {
+            value: c.figure.value,
+            count: c.figure.count ?? undefined,
+            unit: c.figure.unit || undefined,
+            change: c.figure.change || undefined,
+          };
+  }
+  const evidence = pictureOf(c.picture);
+  if (evidence) card.evidence = evidence;
+  if (c.action) {
+    card.action = {
+      label: c.action.label,
+      to: c.action.to as RoutePath,
+      primary: c.action.primary,
+    };
+  }
+  if (c.alertId !== null) card.alertId = String(c.alertId);
+  return card;
+}
+
+const isIcon = (s: string): s is TemplateIcon => (TEMPLATE_ICONS as readonly string[]).includes(s);
+
+function toTemplate(t: TemplateWire): Template {
+  return { ...t, icon: isIcon(t.icon) ? t.icon : "changes" };
+}
+
 export function useHomeDesk() {
-  return useQuery({ queryKey: ["home-desk"], queryFn: () => mockResponse(mock.desk) });
+  return useQuery({
+    queryKey: ["home-desk"],
+    queryFn: async (): Promise<HomeDesk> => {
+      const d = await getJSON<DeskWire>("/api/fronts");
+      return { ...d, cards: d.cards.map(toCard), templates: d.templates.map(toTemplate) };
+    },
+    refetchInterval: 60_000,
+  });
+}
+
+export function useInbox(show: InboxShow, door: Door | "any") {
+  return useQuery({
+    queryKey: ["home-desk", "inbox", show, door],
+    queryFn: async (): Promise<InboxPage> => {
+      const q = new URLSearchParams({ show, door });
+      const i = await getJSON<InboxWire>(`/api/inbox?${q}`);
+      return { ...i, cards: i.cards.map(toCard) };
+    },
+    refetchInterval: 60_000,
+  });
 }

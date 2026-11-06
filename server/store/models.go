@@ -87,6 +87,8 @@ type Alert struct {
 	AcknowledgedBy sql.NullInt64
 	AcknowledgedAt sql.NullTime
 	ResolvedAt     sql.NullTime
+	SnoozedUntil   sql.NullTime
+	DismissReason  sql.NullString
 }
 
 type AlertConfig struct {

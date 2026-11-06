@@ -36,6 +36,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/evaluation"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/execution"
+	"github.com/WokeWorks/adx/server/core/fronts"
 	"github.com/WokeWorks/adx/server/core/identity"
 	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/leads"
@@ -461,6 +462,7 @@ func run() error {
 	// model the runner is absent and ready tasks are held with the reason.
 	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
 	supervisorService := supervisor.New(db, supervisor.Config{Proposals: proposalService, Execution: executionService, Calls: callService, Qualification: qualificationService, Outreach: outreachService, CRM: crmService, Policies: policyService})
+	frontsService := fronts.New(fronts.Config{Alerts: alertsService, Supervisor: supervisorService, Reporting: reportingService, Runs: runsService, Plans: planService, Execution: executionService, Studio: studioService, Leads: leadsService})
 	workflowDispatch := &workflows.CoreDispatcher{Proposals: proposalService, Recommender: supervisorService, Reads: workflowReads(reportingService, leadsService, alertsService, connections)}
 	var workflowRunner workflows.Runner
 	if model != nil {
@@ -652,6 +654,7 @@ func run() error {
 			Research:      researchService,
 			Plans:         planService,
 			Launch:        launchService,
+			Fronts:        frontsService,
 			Pages:         pageService,
 			Measurement:   measurementService,
 			Proposals:     proposalService,

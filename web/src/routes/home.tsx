@@ -37,12 +37,11 @@ import { ErrorNote, LoadingRows } from "@/components/page";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Composer } from "./ask";
-import { inboxOrder } from "./inbox";
-import { SampleChip } from "./studio/shared";
 
 // Home is a desk: a greeting, the cards that deserve attention today (any
 // door, any shape, each with a question ready to ask about it), the chat bar,
-// and ready-to-fire prompts below.
+// and ready-to-fire prompts below. The cards arrive in the Inbox's order:
+// what needs a person first, worst first, then updates, newest first.
 export function HomePage() {
   const desk = useHomeDesk();
   const navigate = useNavigate();
@@ -61,10 +60,7 @@ export function HomePage() {
             <div className="mb-5 flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <Greeting />
-                <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground">
-                  {desk.data.summary}
-                  {desk.data.sample && <SampleChip />}
-                </p>
+                <p className="mt-1.5 text-muted-foreground">{desk.data.summary}</p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Link to="/inbox" className={buttonVariants({ variant: "ghost", size: "sm" })}>
@@ -84,7 +80,7 @@ export function HomePage() {
               )}
             >
               <div className="min-h-0 overflow-hidden">
-                <Carousel cards={inboxOrder(desk.data.cards)} onAsk={ask} paused={catalog} />
+                <Carousel cards={desk.data.cards} onAsk={ask} paused={catalog} />
               </div>
             </div>
           </section>

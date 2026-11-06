@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
 	"github.com/WokeWorks/adx/server/core"
@@ -33,6 +34,17 @@ func readJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
 		return false
 	}
 	return true
+}
+
+// decodeJSON is readJSON for handlers that answer through fail: the body's
+// problem comes back as a core.Invalid, so it reads as a 400.
+func decodeJSON(r *http.Request, dst any) error {
+	dec := json.NewDecoder(io.LimitReader(r.Body, 1<<20))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(dst); err != nil {
+		return core.Invalid("invalid JSON body: %s", err.Error())
+	}
+	return nil
 }
 
 // fail writes err as a response. A core.Error keeps its message. Anything

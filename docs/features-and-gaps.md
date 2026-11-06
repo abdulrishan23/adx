@@ -18,10 +18,10 @@ Grouped by door. "Local" means proven by tests in `make test`. "Live needs" is t
 
 | Capability | Local | Live needs |
 |---|---|---|
-| Home desk: greeting, summary line, attention cards picked by the server, "Talk about this" questions, prompt pills | Yes, cards still from sample fixtures | Metrics engine and model wired to the fronts endpoint |
+| Home desk: greeting, summary line, attention cards picked by the server, "Talk about this" questions, prompt pills | Yes, composed by `core/fronts` from the engine's alerts, inbox, figures, plans, jobs and review board | Cards the engine cannot compute yet (search-term waste, platform rejections, hot leads, lost leads, outcome matching, drafts, research moves) arrive with those capabilities |
 | Ask ADX: read-only grounded assistant over allowlisted tools; every number from a calculation, a write-shaped request refused; model outage returns a retryable state | Yes | Anthropic API key and the data-use approval for sending aggregated figures to a model |
 | Spoken turns: browser speech to transcript, previewed before sending, actions named but never executed | Yes | Nothing |
-| Inbox: everything that needs a person, worst first, then updates; snooze and dismiss; Present mode plays the same cards on a wall | Yes, on sample data | Same as Home |
+| Inbox: everything that needs a person, worst first, then updates; snooze and dismiss; Present mode plays the same cards on a wall | Yes, on the same endpoint, filtered by the server | Same as Home |
 
 ### Create
 
@@ -94,7 +94,7 @@ Three kinds of work are queued, in this order of nearness.
 
 ### Finishing the app on the engine
 
-The designed screens are being rewired from sample fixtures to the engine's endpoints and types, one screen at a time, with the engine twin removed after each. Since 2026-10-19 Projects became the main section, with Brand, Media, Studio, Measurement and Campaigns per project, each showing its state, health, next step, what waits on a person and a Fix link; Launch runs on the launch API over the plan's period; Creative is its own door; Perform and Convert screens are wired. Screens still carrying a Sample chip: Home and Inbox, whose cards wait on the project progress and Needs-you data the server already computes; Analytics shows the label only while its mock flag is on. Connect GHL and the stage table still import legacy types, and the engine's plain screens stay under /engine until each designed screen is rewired. Also open from the pilot gate: pixel export (PNG or JPG) instead of SVG and the canvas drag editor. Perform and Convert have not yet moved under the project frame.
+The designed screens are being rewired from sample fixtures to the engine's endpoints and types, one screen at a time, with the engine twin removed after each. Since 2026-10-19 Projects became the main section, with Brand, Media, Studio, Measurement and Campaigns per project, each showing its state, health, next step, what waits on a person and a Fix link; Launch runs on the launch API over the plan's period; Creative is its own door; Perform and Convert screens are wired. Home, Inbox and Present run on the fronts API since 2026-10-21, so no main screen carries a Sample chip; Analytics shows the label only while its mock flag is on. Connect GHL and the stage table still import legacy types, and the engine's plain screens stay under /engine until each designed screen is rewired. Also open from the pilot gate: pixel export (PNG or JPG) instead of SVG and the canvas drag editor. Perform and Convert have not yet moved under the project frame.
 
 ### Going live
 

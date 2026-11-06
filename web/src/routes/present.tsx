@@ -9,6 +9,7 @@ import { ErrorNote } from "@/components/page";
 import { Button } from "@/components/ui/button";
 import { StatusMark } from "@/components/ui/status-chip";
 import { AUTO_ADVANCE_MS, type Deck, jump, next, onKey, previous } from "@/lib/deck";
+import { NOT_AVAILABLE } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 // Focus plays the same briefing Home streams, on a wall: one beat per slide,
@@ -147,7 +148,12 @@ function SlideView({ card: c }: { card: Card }) {
         {c.title}
       </h1>
       <p className="max-w-[60ch] text-lg text-muted-foreground md:text-xl">{c.why}</p>
-      {c.figure && (
+      {c.figure && c.figure.value === NOT_AVAILABLE && (
+        <p className="font-heading text-3xl font-semibold text-muted-foreground md:text-4xl">
+          {NOT_AVAILABLE}
+        </p>
+      )}
+      {c.figure && c.figure.value !== NOT_AVAILABLE && (
         <p className="flex items-baseline gap-3 font-heading text-[6rem] font-semibold leading-none tracking-[-0.04em] tabular-nums md:text-[8rem]">
           <CountUp value={c.figure.value} to={c.figure.count} />
           {c.figure.unit && (

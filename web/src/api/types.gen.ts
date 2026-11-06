@@ -107,6 +107,13 @@ export interface AdHocReportInput {
     params: ReportParams;
 }
 
+// From fronts/fronts.go
+export interface AdItem {
+    code: string;
+    status: CardStatus;
+    note: string;
+}
+
 // From campaigns/campaigns.go
 export interface AdTally {
     total: number;
@@ -190,6 +197,8 @@ export interface Alert {
     acknowledgedBy: number | null;
     acknowledgedAt: string | null;
     resolvedAt: string | null;
+    snoozedUntil: string | null;
+    dismissReason: string | null;
 }
 
 // From alerts/alerts.go
@@ -392,6 +401,13 @@ export type AutonomyMode = "allowed" | "approval_required" | "recommend";
 export interface AutonomyRule {
     mode: AutonomyMode;
     maxPerDay: number;
+}
+
+// From fronts/fronts.go
+export interface BarRow {
+    label: string;
+    value: string;
+    share: number;
 }
 
 // From studio/review.go
@@ -846,6 +862,32 @@ export const CapabilityReadLeads = "read.leads";
 // From connections/ads.go
 export const CapabilityReadReporting = "read.reporting";
 
+// From fronts/fronts.go
+export interface Card {
+    id: string;
+    door: Door;
+    status: CardStatus;
+    needsYou: boolean;
+    title: string;
+    why: string;
+    figure: Figure | null;
+    picture: Picture | null;
+    question: string;
+    action: CardAction | null;
+    at: string;
+    alertId: number | null;
+}
+
+// From fronts/fronts.go
+export interface CardAction {
+    label: string;
+    to: string;
+    primary: boolean;
+}
+
+// From fronts/fronts.go
+export type CardStatus = "caution" | "error" | "pending" | "ready";
+
 // From reporting/metrics.go
 export interface Change {
     absolute: number | null;
@@ -1159,6 +1201,13 @@ export interface CostSpikeConfig {
     minBaselineDays: number;
 }
 
+// From fronts/fronts.go
+export interface Counts {
+    all: number;
+    needsYou: number;
+    updates: number;
+}
+
 // From leads/leads.go
 export interface Coverage {
     total: number;
@@ -1289,6 +1338,15 @@ export interface DeriveResponse {
     derived: number;
 }
 
+// From fronts/fronts.go
+export interface Desk {
+    checkedAt: string;
+    summary: string;
+    cards: Card[];
+    working: WorkItem[];
+    templates: Template[];
+}
+
 // From users/users.go
 export const DevEmail = "dev@adx.localhost";
 
@@ -1297,6 +1355,11 @@ export interface DiffChange {
     path: string;
     before: string;
     after: string;
+}
+
+// From api/fronts.go
+export interface DismissAlertInput {
+    reason: string;
 }
 
 // From api/outreach.go
@@ -1315,6 +1378,9 @@ export interface Document {
     image: Image | null;
     layers: Layer[];
 }
+
+// From fronts/fronts.go
+export type Door = "any" | "convert" | "perform" | "studio";
 
 // From outreach/outreach.go
 export interface DraftInput {
@@ -1597,6 +1663,14 @@ export interface FieldWriteState {
 // From api/outreach.go
 export interface FieldWritesResponse {
     writes: FieldWrite[];
+}
+
+// From fronts/fronts.go
+export interface Figure {
+    value: string | null;
+    count: number | null;
+    unit: string;
+    change: string;
 }
 
 // From studio/studio.go
@@ -1940,6 +2014,14 @@ export interface ImportRow {
 // From api/pipeline.go
 export interface ImportsResponse {
     imports: ImportBatch[];
+}
+
+// From fronts/fronts.go
+export interface Inbox {
+    summary: string;
+    counts: Counts;
+    cards: Card[];
+    working: WorkItem[];
 }
 
 // From supervisor/supervisor.go
@@ -2303,6 +2385,14 @@ export interface Lead {
     firstSeenAt: string;
     lastSeenAt: string;
     evidenceId: number | null;
+}
+
+// From fronts/fronts.go
+export interface LeadItem {
+    id: number;
+    name: string;
+    detail: string;
+    waited: string;
 }
 
 // From api/leads.go
@@ -3133,6 +3223,19 @@ export interface PickInput {
     concept: string;
     render: string;
     name: string;
+}
+
+// From fronts/fronts.go
+export interface Picture {
+    kind: string;
+    values?: number[];
+    labels?: string[];
+    slices?: Slice[];
+    rows?: BarRow[];
+    trend?: number[];
+    leads?: LeadItem[];
+    projectId?: number;
+    ads?: AdItem[];
 }
 
 // From pipeline/pipeline.go
@@ -4543,6 +4646,17 @@ export interface SkillDocument {
     maxTokens: number;
 }
 
+// From fronts/fronts.go
+export interface Slice {
+    label: string;
+    value: number;
+}
+
+// From api/fronts.go
+export interface SnoozeAlertInput {
+    days: number;
+}
+
 // From voice/voice.go
 export type SpeechEventKind = "audio" | "end" | "interruption" | "transcript";
 
@@ -4745,6 +4859,16 @@ export interface TaskInput {
 // From api/pipeline.go
 export interface TasksResponse {
     tasks: FollowUpTask[];
+}
+
+// From fronts/templates.go
+export interface Template {
+    id: string;
+    door: Door;
+    icon: string;
+    title: string;
+    description: string;
+    prompt: string;
 }
 
 // From plans/plans.go
@@ -4962,6 +5086,14 @@ export interface WebhookResponse {
     ignored: string;
     duplicate: boolean;
     eventId: number;
+}
+
+// From fronts/fronts.go
+export interface WorkItem {
+    id: string;
+    title: string;
+    detail: string;
+    to: string;
 }
 
 // From registry/registry.go

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/WokeWorks/adx/server/core"
@@ -88,6 +89,18 @@ type Alert struct {
 	AcknowledgedBy *int64          `json:"acknowledgedBy"`
 	AcknowledgedAt *time.Time      `json:"acknowledgedAt"`
 	ResolvedAt     *time.Time      `json:"resolvedAt"`
+	// SnoozedUntil hides the alert from the fronts until then. It stays
+	// open: the check firing again adds an occurrence without surfacing it.
+	SnoozedUntil *time.Time `json:"snoozedUntil"`
+	// DismissReason is kept when a person dismissed the alert from the
+	// Inbox, which resolves it. The check firing on a later day opens a new
+	// alert.
+	DismissReason *string `json:"dismissReason"`
+}
+
+// Snoozed says whether the alert is hidden from the fronts at now.
+func (a Alert) Snoozed(now time.Time) bool {
+	return a.SnoozedUntil != nil && a.SnoozedUntil.After(now)
 }
 
 // AlertEvaluation is what one run of the checks did.
@@ -309,7 +322,7 @@ func (a *Alerts) Evaluate(ctx context.Context, actor core.Actor, day reporting.D
 				if avg > 0 && float64(spend) > avg*(1+float64(*doc.CostSpike.ThresholdPct)/100) {
 					pct := int((float64(spend)/avg - 1) * 100)
 					msg := fmt.Sprintf("%s spent %s on %s, %d%% above its average of %s over the %d days it ran in the last %d. No change was made.", row.Label, fmtMoney(spend, row.Metrics.Spend.Currency), day, pct, fmtMoney(int64(avg), row.Metrics.Spend.Currency), b.days, baselineDays)
-					fired, err := a.raise(ctx, actor, cur.Version, CheckCostSpike, row.Key, row.Label, "warning", msg, map[string]any{"day": day, "spendMinor": spend, "baselineAvgMinor": int64(avg), "baselineDays": b.days, "pctAbove": pct})
+					fired, err := a.raise(ctx, actor, cur.Version, CheckCostSpike, row.Key, row.Label, "warning", msg, map[string]any{"day": day, "spendMinor": spend, "currency": row.Metrics.Spend.Currency, "baselineAvgMinor": int64(avg), "baselineDays": b.days, "pctAbove": pct})
 					if err != nil {
 						return ev, err
 					}
@@ -323,7 +336,7 @@ func (a *Alerts) Evaluate(ctx context.Context, actor core.Actor, day reporting.D
 				continue
 			}
 			msg := fmt.Sprintf("%s spent %s on %s and no lead reached GoHighLevel. No change was made.", row.Label, fmtMoney(spend, row.Metrics.Spend.Currency), day)
-			fired, err := a.raise(ctx, actor, cur.Version, CheckZeroLeads, row.Key, row.Label, "warning", msg, map[string]any{"day": day, "spendMinor": spend, "matchedLeads": today.Coverage.MatchedCount, "eligibleLeads": today.Coverage.EligibleCount})
+			fired, err := a.raise(ctx, actor, cur.Version, CheckZeroLeads, row.Key, row.Label, "warning", msg, map[string]any{"day": day, "spendMinor": spend, "currency": row.Metrics.Spend.Currency, "matchedLeads": today.Coverage.MatchedCount, "eligibleLeads": today.Coverage.EligibleCount})
 			if err != nil {
 				return ev, err
 			}
@@ -433,6 +446,47 @@ func (a *Alerts) Resolve(ctx context.Context, actor core.Actor, id int64) (Alert
 	return alertFromRow(row), nil
 }
 
+// Snooze hides an open alert from Home and the Inbox for days. The alert
+// stays open, so the check firing again meanwhile adds an occurrence
+// instead of opening a second alert, and it comes back when the days end.
+func (a *Alerts) Snooze(ctx context.Context, actor core.Actor, id int64, days int) (Alert, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return Alert{}, core.ErrForbidden
+	}
+	if days < 1 || days > 90 {
+		return Alert{}, core.Invalid("snooze for 1 to 90 days")
+	}
+	until := a.clock.Now().UTC().AddDate(0, 0, days)
+	row, err := a.db.Writer().SnoozeAlert(ctx, store.SnoozeAlertParams{SnoozedUntil: sql.NullTime{Time: until, Valid: true}, ID: id, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Alert{}, core.NotFound("alert %d is not open", id)
+	}
+	if err != nil {
+		return Alert{}, err
+	}
+	return alertFromRow(row), nil
+}
+
+// Dismiss ends an open alert with the person's reason kept. The same check
+// firing for the same subject on a later day is a new alert.
+func (a *Alerts) Dismiss(ctx context.Context, actor core.Actor, id int64, reason string) (Alert, error) {
+	if !actor.AtLeast(core.RoleMarketer) || actor.WorkspaceID == 0 {
+		return Alert{}, core.ErrForbidden
+	}
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return Alert{}, core.Invalid("a dismissal needs a reason")
+	}
+	row, err := a.db.Writer().DismissAlert(ctx, store.DismissAlertParams{ResolvedAt: sql.NullTime{Time: a.clock.Now().UTC(), Valid: true}, DismissReason: nullString(reason), ID: id, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return Alert{}, core.NotFound("alert %d is not open", id)
+	}
+	if err != nil {
+		return Alert{}, err
+	}
+	return alertFromRow(row), nil
+}
+
 // EvaluateAll runs yesterday's checks for the default workspace as ADX. The
 // daily job calls it.
 func (a *Alerts) EvaluateAll(ctx context.Context) (AlertEvaluation, error) {
@@ -501,6 +555,13 @@ func alertFromRow(r store.Alert) Alert {
 	if r.ResolvedAt.Valid {
 		t := r.ResolvedAt.Time.UTC()
 		out.ResolvedAt = &t
+	}
+	if r.SnoozedUntil.Valid {
+		t := r.SnoozedUntil.Time.UTC()
+		out.SnoozedUntil = &t
+	}
+	if r.DismissReason.Valid {
+		out.DismissReason = &r.DismissReason.String
 	}
 	return out
 }
