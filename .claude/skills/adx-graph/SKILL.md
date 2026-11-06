@@ -58,6 +58,8 @@ Keep edits inside the allowed changes. Writes to outside systems (GitHub comment
 
 Every edge that carries risky work has a gate. Open it on evidence in this order: deterministic checks first (tests, `make check`, typecheck), then the node's report, then the model's confidence last. Never weaken a gate to get a pass.
 
+A risky edge (a core function other nodes build on, a screen a person will act from, a write to the database) gets a verifier that never shared the worker's context: a fresh subagent that runs the check itself against the saved artifact and reports a real signal (the test ran and passed, the page opened, the figure matches the source), not "the worker said done". The lead reads both reports and decides. This follows the global graph-engineering skill in `~/.claude/skills/graph-engineering`.
+
 Record each gate in `checks.md`, one row per requirement:
 
 ```
