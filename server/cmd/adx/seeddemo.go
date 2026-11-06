@@ -126,7 +126,8 @@ var demoProjects = []demoProject{
 }
 
 // runSeedDemo fills a dev database with Reportage and its developments to
-// try the studio on. Each project gets approved facts (price, handover,
+// try the studio on, four WhatsApp threads, and a GoHighLevel workspace of
+// leads in every state the Convert screens show (seedleads.go). Each project gets approved facts (price, handover,
 // payment plan, units, location, maximum discount), an approved offer, and a
 // creative project with two placeholder renders and a concept with copy in
 // both languages and a picture prompt. Projects that already exist are left
@@ -228,11 +229,15 @@ func runSeedDemo(args []string) error {
 	if err != nil {
 		return fmt.Errorf("conversations: %w", err)
 	}
-	if added == 0 && logos == 0 && camps == 0 && !filled && threads == 0 {
-		slog.Info("seed-demo: every demo project, campaign, logo and conversation is already there, nothing done")
+	leadsAdded, err := seedLeads(ctx, db, admin, marketer)
+	if err != nil {
+		return fmt.Errorf("leads: %w", err)
+	}
+	if added == 0 && logos == 0 && camps == 0 && !filled && threads == 0 && leadsAdded == 0 {
+		slog.Info("seed-demo: every demo project, campaign, logo, conversation and lead is already there, nothing done")
 		return nil
 	}
-	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos, "filled", filled, "conversations", threads)
+	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos, "filled", filled, "conversations", threads, "leads", leadsAdded)
 	return nil
 }
 
