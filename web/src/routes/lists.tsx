@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useLists } from "@/api/adx";
 import type { CatalogueEntry } from "@/api/models";
-import { useStageOverview } from "@/api/stages";
+import { useFunnelSettings } from "@/api/stages";
 import { EmptyState, ErrorNote, LoadingRows, PageHeader, Panel } from "@/components/page";
 import { Segmented } from "@/components/segmented";
 import { StatusChip } from "@/components/ui/status-chip";
@@ -13,9 +13,9 @@ type Tab = "stages" | "aliases" | "pages";
 
 export function ListsPage() {
   const lists = useLists();
-  const stages = useStageOverview();
+  const stages = useFunnelSettings();
   const [tab, setTab] = useState<Tab>("stages");
-  const unmapped = stages.data?.statuses.filter((st) => st.currentStage === null).length ?? 0;
+  const unmapped = stages.data?.unmapped.length ?? 0;
   const unconfirmed = lists.data?.catalogue.filter((c) => !c.confirmed).length ?? 0;
   const pages = released(4);
 

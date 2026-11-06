@@ -1,28 +1,28 @@
-// The status-to-stage table. Always the Go server: a mocked table would look
-// like Reportage's real definitions.
+// The status-to-stage table (core/leads: the funnel settings). Always the Go
+// server: a mocked table would look like Reportage's real definitions.
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getJSON, postJSON, putJSON, request } from "./client";
-import type { StageMap, StageMapInput, StageOverview } from "./types.legacy";
+import { getJSON, putJSON } from "./client";
+import type { FunnelDocument, FunnelMapping, FunnelState } from "./types.gen";
 
 const KEY = ["stages"] as const;
 
-export function useStageOverview() {
-  return useQuery({ queryKey: KEY, queryFn: () => getJSON<StageOverview>("/api/stages") });
+export function useFunnelSettings() {
+  return useQuery({
+    queryKey: KEY,
+    queryFn: () => getJSON<FunnelState>("/api/settings/funnel"),
+  });
 }
 
-function useStageMutation<I, O>(fn: (input: I) => Promise<O>) {
+// Saving writes the next version and re-stages every lead from it, so the
+// leads and their coverage are read again.
+export function useSaveFunnel() {
   const qc = useQueryClient();
-  return useMutation({ mutationFn: fn, onSettled: () => qc.invalidateQueries({ queryKey: KEY }) });
+  return useMutation({
+    mutationFn: (document: FunnelDocument) =>
+      putJSON<FunnelMapping>("/api/settings/funnel", { document }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEY });
+      qc.invalidateQueries({ queryKey: ["leads"] });
+    },
+  });
 }
-
-export const useStartStageDraft = () =>
-  useStageMutation(() => postJSON<StageMap>("/api/stages/draft", {}));
-
-export const useSaveStageDraft = () =>
-  useStageMutation((input: StageMapInput) => putJSON<StageMap>("/api/stages/draft", input));
-
-export const useConfirmStageDraft = () =>
-  useStageMutation(() => postJSON<StageMap>("/api/stages/draft/confirm", {}));
-
-export const useDiscardStageDraft = () =>
-  useStageMutation(() => request<void>("/api/stages/draft", { method: "DELETE" }));

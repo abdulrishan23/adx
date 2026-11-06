@@ -7,7 +7,6 @@ import { CallsPage } from "@/engine/routes/calls";
 import { ConnectionsPage } from "@/engine/routes/connections";
 import { CreativesPage } from "@/engine/routes/creatives";
 import { EvaluationPage } from "@/engine/routes/evaluation";
-import { FunnelPage } from "@/engine/routes/funnel";
 import { LaunchPage } from "@/engine/routes/launch";
 import { LearningPage } from "@/engine/routes/learning";
 import { OpsPage } from "@/engine/routes/ops";
@@ -52,7 +51,6 @@ export const ENGINE_SCREENS: { path: string; label: string; group: string }[] = 
   { path: "/engine/evaluation", label: "Evaluation", group: "Agents" },
   { path: "/engine/connections", label: "Connections", group: "Workspace" },
   { path: "/engine/settings/policies", label: "Policies", group: "Workspace" },
-  { path: "/engine/settings/funnel", label: "Funnel", group: "Workspace" },
   { path: "/engine/settings/outreach", label: "Outreach", group: "Workspace" },
   { path: "/engine/settings/scoring", label: "Scoring", group: "Workspace" },
   { path: "/engine/settings/workspaces", label: "Workspaces", group: "Workspace" },
@@ -71,7 +69,6 @@ export const ENGINE_PAGES = {
   connections: ConnectionsPage,
   creatives: CreativesPage,
   evaluation: EvaluationPage,
-  funnel: FunnelPage,
   launch: LaunchPage,
   learning: LearningPage,
   ops: OpsPage,

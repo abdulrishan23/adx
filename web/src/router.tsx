@@ -665,7 +665,6 @@ const routeTree = rootRoute.addChildren([
     page("/engine/evaluation", E.evaluation),
     page("/engine/connections", E.connections),
     page("/engine/settings/policies", E.policies),
-    page("/engine/settings/funnel", E.funnel),
     page("/engine/settings/outreach", E.outreach),
     page("/engine/settings/scoring", E.scoring),
     page("/engine/settings/workspaces", E.workspaces),
