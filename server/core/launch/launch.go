@@ -114,12 +114,16 @@ type LaunchResolution struct {
 	Note      string                      `json:"note"`
 }
 
-// PlanCoverage says whether a campaign has an accepted plan behind it.
+// PlanCoverage says whether a campaign has an accepted plan behind it, and
+// which line of which version updates or resumes it when one does.
 type PlanCoverage struct {
 	UnderPlan   bool   `json:"underPlan"`
 	PlanID      *int64 `json:"planId"`
 	PlanVersion *int64 `json:"planVersion"`
-	Reason      string `json:"reason"`
+	Line        *int   `json:"line"`
+	// Kind is update or resume: what the line does to the campaign.
+	Kind   string `json:"kind"`
+	Reason string `json:"reason"`
 }
 
 type Config struct{ Clock core.Clock }
@@ -201,39 +205,16 @@ func (s *Service) Coverage(ctx context.Context, workspaceID, accountID int64, ex
 		return PlanCoverage{}, err
 	}
 	if !row.ProjectID.Valid {
-		return PlanCoverage{Reason: "the campaign is assigned to no project, so no plan can match it"}, nil
+		return PlanCoverage{Reason: reasonNoProject}, nil
 	}
-	versions, err := s.db.Reader().ListAcceptedPlanVersionsForProject(ctx, store.ListAcceptedPlanVersionsForProjectParams{WorkspaceID: workspaceID, ProjectID: row.ProjectID})
+	hits, err := s.coverageHits(ctx, workspaceID, row.ProjectID.Int64, s.clock.Now())
 	if err != nil {
 		return PlanCoverage{}, err
 	}
-	today := string(reporting.DayOf(s.clock.Now().In(reporting.ReportingZone)))
-	actor := core.SystemIn(core.ViaJob, workspaceID)
-	seen := map[int64]bool{}
-	for _, v := range versions {
-		if seen[v.Plan.ID] {
-			continue // the latest accepted version of each plan speaks for it
-		}
-		seen[v.Plan.ID] = true
-		pv, err := plans.VersionFromRow(v.PlanVersion)
-		if err != nil {
-			return PlanCoverage{}, err
-		}
-		if pv.Document.PeriodFrom == "" || pv.Document.PeriodTo == "" || today > pv.Document.PeriodTo {
-			continue
-		}
-		res, err := s.resolve(ctx, actor, v.Plan.ID, pv.Version, s.clock.Now())
-		if err != nil {
-			return PlanCoverage{}, err
-		}
-		for _, line := range res.Lines {
-			if (line.Kind == KindUpdate || line.Kind == KindResume) && line.Campaign != nil && line.Campaign.ID == row.ID {
-				pid, pver := v.Plan.ID, pv.Version
-				return PlanCoverage{UnderPlan: true, PlanID: &pid, PlanVersion: &pver, Reason: fmt.Sprintf("plan %d version %d (%s to %s) line %d %ss it", pid, pver, pv.Document.PeriodFrom, pv.Document.PeriodTo, line.Line.Index, line.Kind)}, nil
-			}
-		}
+	if h, ok := hits[row.ID]; ok {
+		return h.coverage(), nil
 	}
-	return PlanCoverage{Reason: "no accepted plan whose period has not ended resolves to this campaign"}, nil
+	return PlanCoverage{Reason: reasonNoPlan}, nil
 }
 
 // UnderPlan is Coverage as proposals ask it.

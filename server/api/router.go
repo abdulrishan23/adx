@@ -424,6 +424,7 @@ func NewRouter(d Deps) http.Handler {
 		}
 		if h.launch != nil {
 			r.Get("/api/launch/resolution", h.launchResolution)
+			r.Get("/api/launch/coverage", h.launchCoverage)
 			r.Post("/api/launch/picks", h.launchPick)
 			r.Post("/api/launch/submit", h.launchSubmit)
 		}

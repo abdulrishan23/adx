@@ -17,15 +17,16 @@ import (
 	"github.com/WokeWorks/adx/server/core/proposals"
 )
 
-// Writes. Four actions, implemented from the v26 REST reference and the
+// Writes. Five actions, implemented from the v26 REST reference and the
 // notes in docs/build/api-notes/google-ads.md: create a paused search
 // campaign with its own budget, raise or lower a campaign budget, pause a
-// campaign. Nothing else is claimed. Every object ADX creates carries the
-// marker in its name so a lost response can be found again.
+// campaign, resume a paused campaign (with its daily budget when the
+// intent carries one). Nothing else is claimed. Every object ADX creates
+// carries the marker in its name so a lost response can be found again.
 
 // Capabilities is the honest list.
 func (c *Client) Capabilities() []policies.WriteAction {
-	return []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause}
+	return []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause, policies.CampaignResume}
 }
 
 type createCampaign struct {
@@ -36,6 +37,13 @@ type createCampaign struct {
 
 type budgetChange struct {
 	DailyBudgetMinor int64 `json:"dailyBudgetMinor"`
+}
+
+// resumeChange is what a campaign.resume proposes: the status to set, which
+// can only be ENABLED, and the daily budget to run at, zero to leave it.
+type resumeChange struct {
+	Status           string `json:"status"`
+	DailyBudgetMinor int64  `json:"dailyBudgetMinor"`
 }
 
 // Apply performs one action. A network failure after the request left, or a
@@ -124,12 +132,60 @@ func (c *Client) Apply(ctx context.Context, req execution.ApplyRequest) (executi
 			return execution.ApplyResult{}, err
 		}
 		return execution.ApplyResult{Refs: []proposals.ProviderRef{{Platform: "google_ads", Kind: "campaign", ExternalID: req.TargetRef, At: time.Now().UTC()}}, Detail: "campaign paused"}, nil
+	case policies.CampaignResume:
+		// The status and the budget go in one googleAds:mutate, which Google
+		// applies as a whole (partialFailure is off): a campaign is never
+		// resumed at its old budget because the second request failed.
+		var in resumeChange
+		if err := json.Unmarshal(req.Proposed, &in); err != nil || in.DailyBudgetMinor < 0 {
+			return execution.ApplyResult{}, core.Invalid("a resume needs the status to set and, when it changes, dailyBudgetMinor")
+		}
+		if s := strings.ToUpper(strings.TrimSpace(in.Status)); s != "" && s != "ENABLED" {
+			return execution.ApplyResult{}, core.Invalid("a resume sets a campaign to ENABLED, not %s", in.Status)
+		}
+		if !digits(req.TargetRef) {
+			return execution.ApplyResult{}, core.Invalid("the target must be a campaign id")
+		}
+		cid := req.AccountExternalID
+		rn := "customers/" + cid + "/campaigns/" + req.TargetRef
+		ops := []map[string]any{{"campaignOperation": map[string]any{"update": map[string]any{"resourceName": rn, "status": "ENABLED"}, "updateMask": "status"}}}
+		refs := []proposals.ProviderRef{{Platform: "google_ads", Kind: "campaign", ExternalID: req.TargetRef, At: time.Now().UTC()}}
+		detail := "campaign resumed"
+		if in.DailyBudgetMinor > 0 {
+			rows, err := c.search(ctx, req.Token, cid, c.loginCustomerID, "SELECT campaign.id, campaign.campaign_budget FROM campaign WHERE campaign.id = "+req.TargetRef)
+			if err != nil {
+				return execution.ApplyResult{}, err
+			}
+			if len(rows) == 0 || rows[0].Campaign == nil || rows[0].Campaign.CampaignBudget == "" {
+				return execution.ApplyResult{}, core.NotFound("campaign %s has no budget resource in this account", req.TargetRef)
+			}
+			budget := rows[0].Campaign.CampaignBudget
+			ops = append(ops, map[string]any{"campaignBudgetOperation": map[string]any{"update": map[string]any{"resourceName": budget, "amountMicros": strconv.FormatInt(in.DailyBudgetMinor*10000, 10)}, "updateMask": "amount_micros"}})
+			refs = append(refs, proposals.ProviderRef{Platform: "google_ads", Kind: "campaign_budget", ExternalID: lastSegment(budget), At: time.Now().UTC()})
+			detail = fmt.Sprintf("campaign resumed at %d minor units a day", in.DailyBudgetMinor)
+		}
+		body, _ := json.Marshal(map[string]any{"mutateOperations": ops})
+		var out struct {
+			Responses []struct {
+				CampaignResult       *struct{ ResourceName string } `json:"campaignResult"`
+				CampaignBudgetResult *struct{ ResourceName string } `json:"campaignBudgetResult"`
+			} `json:"mutateOperationResponses"`
+		}
+		if err := c.doWrite(ctx, req.Token, http.MethodPost, "/"+Version+"/customers/"+cid+"/googleAds:mutate", body, &out); err != nil {
+			return execution.ApplyResult{}, err
+		}
+		if len(out.Responses) != len(ops) {
+			return execution.ApplyResult{}, &execution.UncertainError{Cause: fmt.Errorf("mutate answered %d results for %d operations", len(out.Responses), len(ops))}
+		}
+		return execution.ApplyResult{Refs: refs, Detail: detail}, nil
 	}
 	return execution.ApplyResult{}, core.Invalid("action %s is not implemented for Google Ads", req.Action)
 }
 
 // Lookup finds a campaign created with the marker, or checks the target of
-// an update. Updates are idempotent on their own; only creates can duplicate.
+// an update. A resume is found once the campaign reads ENABLED, so a retry
+// after a lost answer sends nothing a second time; other updates are
+// idempotent on their own, and only creates can duplicate.
 func (c *Client) Lookup(ctx context.Context, token, customerID, marker string, action policies.WriteAction, targetRef string) (execution.LookupResult, error) {
 	if action != policies.CampaignCreatePaus {
 		if !digits(targetRef) {
@@ -142,9 +198,16 @@ func (c *Client) Lookup(ctx context.Context, token, customerID, marker string, a
 		if len(rows) == 0 || rows[0].Campaign == nil {
 			return execution.LookupResult{Found: false, Detail: "campaign not found"}, nil
 		}
+		status := rows[0].Campaign.Status
+		if action == policies.CampaignResume {
+			if status == "ENABLED" {
+				return execution.LookupResult{Found: true, Status: status, Detail: "campaign " + targetRef + " reads ENABLED; the resume landed", Refs: []proposals.ProviderRef{{Platform: "google_ads", Kind: "campaign", ExternalID: targetRef, At: time.Now().UTC()}}}, nil
+			}
+			return execution.LookupResult{Found: false, Status: status, Detail: "campaign " + targetRef + " still reads " + status + "; the resume did not land and is safe to resend"}, nil
+		}
 		// An update either applied or not; the dispatcher resends it, which
 		// is safe for budgets and status.
-		return execution.LookupResult{Found: false, Status: rows[0].Campaign.Status, Detail: "update outcome unknown; resend is safe"}, nil
+		return execution.LookupResult{Found: false, Status: status, Detail: "update outcome unknown; resend is safe"}, nil
 	}
 	rows, err := c.search(ctx, token, customerID, c.loginCustomerID, "SELECT campaign.id, campaign.name, campaign.status FROM campaign WHERE campaign.name LIKE '%["+strings.ReplaceAll(marker, "'", "")+"]%'")
 	if err != nil {

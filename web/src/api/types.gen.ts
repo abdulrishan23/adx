@@ -734,6 +734,19 @@ export interface Campaign {
     updatedAt: string;
 }
 
+// From launch/coverage.go
+export interface CampaignCoverage extends PlanCoverage {
+    id: number;
+    accountId: number;
+    platform: string;
+    externalId: string;
+    name: string;
+    status: string;
+    running: boolean;
+    projectId: number | null;
+    launch: LaunchState;
+}
+
 // From campaigns/campaigns.go
 export interface CampaignDetail extends CampaignSummary {
     offer: Offer | null;
@@ -1157,6 +1170,11 @@ export interface Coverage {
     sharedPhones: number;
     matchLevels: Record<string, number> | null;
     funnelConfigured: boolean;
+}
+
+// From api/launch.go
+export interface CoverageResponse {
+    campaigns: CampaignCoverage[];
 }
 
 // From projects/projects.go
@@ -2131,6 +2149,18 @@ export type Lang = "ar" | "en";
 // From assets/assets.go
 export type Language = "ar" | "en";
 
+// From launch/coverage.go
+export const LaunchConfirmed = "confirmed";
+
+// From launch/coverage.go
+export const LaunchDelivering = "delivering";
+
+// From launch/coverage.go
+export const LaunchFailed = "failed";
+
+// From launch/coverage.go
+export const LaunchInReview = "in_review";
+
 // From measurement/measurement.go
 export interface LaunchItem {
     area: string;
@@ -2153,6 +2183,9 @@ export interface LaunchLine {
     objective: string;
     geography: string;
 }
+
+// From launch/coverage.go
+export const LaunchNone = "none";
 
 // From launch/launch.go
 export interface LaunchPick {
@@ -2195,6 +2228,17 @@ export interface LaunchResolution {
     note: string;
 }
 
+// From launch/coverage.go
+export interface LaunchState {
+    state: string;
+    action: string;
+    proposalId: number | null;
+    intentId: number | null;
+    intentState: string;
+    deliveryDay: Day | null;
+    note: string;
+}
+
 // From execution/execution.go
 export interface LaunchStatus {
     planId: number;
@@ -2204,6 +2248,9 @@ export interface LaunchStatus {
     delivered: boolean;
     note: string;
 }
+
+// From launch/coverage.go
+export const LaunchSubmitted = "submitted";
 
 // From assets/assets.go
 export interface Layer {
@@ -3135,6 +3182,8 @@ export interface PlanCoverage {
     underPlan: boolean;
     planId: number | null;
     planVersion: number | null;
+    line: number | null;
+    kind: string;
     reason: string;
 }
 

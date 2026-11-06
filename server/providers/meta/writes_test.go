@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,7 +53,7 @@ func TestMetaWritesSendTheDocumentedShapes(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	c := meta.New(meta.Config{BaseURL: srv.URL})
-	assert.ElementsMatch(t, []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause}, c.Capabilities())
+	assert.ElementsMatch(t, []policies.WriteAction{policies.CampaignCreatePaus, policies.BudgetRaise, policies.BudgetLower, policies.CampaignPause, policies.CampaignResume}, c.Capabilities())
 
 	res, err := c.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignCreatePaus, Marker: "adx:7", Proposed: []byte(`{"name":"Wadi","dailyBudgetMinor":50000,"objective":"outcome_leads"}`)})
 	require.NoError(t, err)
@@ -93,4 +94,81 @@ func TestMetaWritesSendTheDocumentedShapes(t *testing.T) {
 	_, err = c.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignPause, TargetRef: "120330000000001"})
 	require.Error(t, err)
 	assert.False(t, errors.As(err, &ue))
+}
+
+// Catches: a resume sent as two requests (status, then budget), where a
+// failure between them resumes the campaign at its old budget; a resume
+// sent twice after a lost answer, because Lookup cannot see that the first
+// one landed; the budget sent in anything but minor units; a status other
+// than ACTIVE accepted; a timeout treated as a refusal rather than left
+// uncertain.
+func TestMetaResumeIsOnePostAndIsFoundOnceItLanded(t *testing.T) {
+	status := "PAUSED"
+	posts := 0
+	var lastForm url.Values
+	slow := false
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v26.0/120330000000001":
+			if slow {
+				select {
+				case <-time.After(500 * time.Millisecond):
+				case <-r.Context().Done():
+				}
+				return
+			}
+			posts++
+			lastForm, _ = url.ParseQuery(string(raw))
+			status = "ACTIVE"
+			_, _ = w.Write([]byte(`{"success":true}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/v26.0/120330000000001":
+			_, _ = w.Write([]byte(`{"id":"120330000000001","status":"` + status + `","effective_status":"` + status + `"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":{"message":"Unsupported get request.","type":"GraphMethodException","code":100,"error_subcode":33}}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	c := meta.New(meta.Config{BaseURL: srv.URL})
+
+	found, err := c.Lookup(t.Context(), "tok", "act_42", "adx:9", policies.CampaignResume, "120330000000001")
+	require.NoError(t, err)
+	assert.False(t, found.Found)
+	assert.Equal(t, "PAUSED", found.Status)
+	assert.Equal(t, 0, posts)
+
+	res, err := c.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignResume, TargetRef: "120330000000001", Marker: "adx:9", Proposed: []byte(`{"status":"ACTIVE","dailyBudgetMinor":56000}`)})
+	require.NoError(t, err)
+	assert.Equal(t, 1, posts, "status and budget travel in one POST")
+	assert.Equal(t, "ACTIVE", lastForm.Get("status"))
+	assert.Equal(t, "56000", lastForm.Get("daily_budget"), "Meta budgets are minor units")
+	require.Len(t, res.Refs, 1)
+	assert.Equal(t, "120330000000001", res.Refs[0].ExternalID)
+	assert.Contains(t, res.Detail, "56000")
+
+	found, err = c.Lookup(t.Context(), "tok", "act_42", "adx:9", policies.CampaignResume, "120330000000001")
+	require.NoError(t, err)
+	assert.True(t, found.Found)
+	assert.Equal(t, "ACTIVE", found.Status)
+	require.Len(t, found.Refs, 1)
+	assert.Equal(t, 1, posts, "a lookup sends no second resume")
+	v, err := c.Verify(t.Context(), "tok", "act_42", res.Refs)
+	require.NoError(t, err)
+	assert.True(t, v.Exists)
+	assert.Equal(t, "ACTIVE", v.Status)
+
+	_, err = c.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignResume, TargetRef: "120330000000001", Proposed: []byte(`{"status":"ACTIVE"}`)})
+	require.NoError(t, err)
+	assert.Empty(t, lastForm.Get("daily_budget"), "no budget in the intent, none sent")
+	_, err = c.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignResume, TargetRef: "120330000000001", Proposed: []byte(`{"status":"ARCHIVED"}`)})
+	require.Error(t, err, "a resume only sets ACTIVE")
+	assert.Equal(t, 2, posts)
+
+	slow = true
+	quick := meta.New(meta.Config{BaseURL: srv.URL, HTTPClient: &http.Client{Timeout: 50 * time.Millisecond}})
+	_, err = quick.Apply(t.Context(), execution.ApplyRequest{Token: "tok", AccountExternalID: "act_42", Action: policies.CampaignResume, TargetRef: "120330000000001", Proposed: []byte(`{"status":"ACTIVE","dailyBudgetMinor":56000}`)})
+	var ue *execution.UncertainError
+	assert.True(t, errors.As(err, &ue), "a timeout leaves the intent uncertain: %v", err)
 }

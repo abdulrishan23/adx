@@ -1,6 +1,7 @@
 package launch_test
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -12,6 +13,8 @@ import (
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/coretest"
 	"github.com/WokeWorks/adx/server/core/evidence"
+	"github.com/WokeWorks/adx/server/core/execution"
+	"github.com/WokeWorks/adx/server/core/execution/executiontest"
 	"github.com/WokeWorks/adx/server/core/launch"
 	"github.com/WokeWorks/adx/server/core/plans"
 	"github.com/WokeWorks/adx/server/core/policies"
@@ -31,6 +34,7 @@ type env struct {
 	plans     *plans.Plans
 	brands    *brands.Brands
 	launch    *launch.Service
+	policies  *policies.Policies
 	reportage int64
 	wadi      int64
 	verdana   int64
@@ -484,7 +488,14 @@ func (e *env) writes(t *testing.T) *proposals.Proposals {
 	require.NoError(t, err)
 	props := proposals.New(e.db, pol, e.plans, proposals.Config{Clock: e.clock, Coverage: e.launch})
 	e.launch.AttachProposals(props)
+	e.policies = pol
 	return props
+}
+
+type fakeTokens struct{}
+
+func (fakeTokens) ProviderToken(context.Context, core.Actor, int64) (string, error) {
+	return "tok", nil
 }
 
 func (e *env) accounts() map[string]int64 {
@@ -743,4 +754,141 @@ func TestSubmitIsAllOrNothingOnCoverage(t *testing.T) {
 	assert.Equal(t, launch.StateDenied, res.Lines[0].State)
 	assert.Equal(t, launch.StateDenied, res.Lines[1].State)
 	assert.Contains(t, res.Lines[1].Note, policies.ReasonKillSwitch)
+}
+
+// Catches: a campaign under a plan listed as not under one, or the other
+// way round; the wrong line or kind named; another project's campaign
+// leaking into a project's list; a launch reported before the version was
+// submitted; a proposal waiting for approval reported as none; a submitted
+// intent reported as delivering before the platform's figures show
+// impressions; impressions from before the launch counted as delivery; a
+// Launching state kept after delivery is observed; a refused intent shown
+// as launching.
+func TestCampaignsNameThePlanLineAndWhereTheLaunchStands(t *testing.T) {
+	e := setup(t)
+	ctx := t.Context()
+	props := e.writes(t)
+	// Search runs at 1,000 a day under a line that leaves far more: a raise,
+	// which a marketer cannot approve alone.
+	g := e.campaign(t, e.googleAcc, "google_ads", "g1", "Search | Wadi", "SEARCH", "ENABLED", e.wadi, nil)
+	_, err := e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.googleAcc, Platform: "google_ads", ExternalID: "g1", Name: "Search | Wadi", Status: "ENABLED",
+		ChannelType: sql.NullString{String: "SEARCH", Valid: true}, BudgetMinor: sql.NullInt64{Int64: 1_000_00, Valid: true}, BudgetPeriod: sql.NullString{String: "daily", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	// Leads is paused and alone of its type: the line resumes it.
+	e.campaign(t, e.metaAcc, "meta", "m1", "Wadi | Leads", "OUTCOME_LEADS", "PAUSED", e.wadi, nil)
+	// Verdana has no plan; the orphan has no project.
+	v := e.campaign(t, e.googleAcc, "google_ads", "v1", "Search | Verdana", "SEARCH", "ENABLED", e.verdana, nil)
+	_, err = e.db.Writer().UpsertAdCampaign(ctx, store.UpsertAdCampaignParams{WorkspaceID: 1, AccountID: e.googleAcc, Platform: "google_ads", ExternalID: "x1", Name: "Search | Nobody's", Status: "ENABLED",
+		ChannelType: sql.NullString{String: "SEARCH", Valid: true}, FirstSeenAt: e.clock.Now(), LastSeenAt: e.clock.Now()})
+	require.NoError(t, err)
+	plan := e.plan(t, alloc("google_search", 152_000_00), alloc("meta_lead_form", 40_000_00))
+
+	_, err = e.launch.Campaigns(ctx, core.Actor{}, 0)
+	assert.ErrorIs(t, err, core.ErrForbidden)
+	list := func(project int64) map[string]launch.CampaignCoverage {
+		t.Helper()
+		rows, err := e.launch.Campaigns(ctx, coretest.Viewer, project)
+		require.NoError(t, err)
+		by := map[string]launch.CampaignCoverage{}
+		for _, r := range rows {
+			by[r.ExternalID] = r
+		}
+		return by
+	}
+	by := list(0)
+	require.Len(t, by, 4)
+	g1, m1, v1, x1 := by["g1"], by["m1"], by["v1"], by["x1"]
+	assert.True(t, g1.UnderPlan)
+	assert.Equal(t, plan, *g1.PlanID)
+	assert.Equal(t, int64(1), *g1.PlanVersion)
+	assert.Equal(t, 0, *g1.Line)
+	assert.Equal(t, launch.KindUpdate, g1.Kind)
+	assert.True(t, g1.Running)
+	assert.Equal(t, launch.LaunchNone, g1.Launch.State, "nothing submitted yet")
+	assert.True(t, m1.UnderPlan)
+	assert.Equal(t, 1, *m1.Line)
+	assert.Equal(t, launch.KindResume, m1.Kind)
+	assert.False(t, m1.Running)
+	assert.False(t, v1.UnderPlan)
+	assert.Contains(t, v1.Reason, "no accepted plan")
+	assert.Equal(t, e.verdana, *v1.ProjectID)
+	assert.False(t, x1.UnderPlan)
+	assert.Contains(t, x1.Reason, "no project")
+	assert.Nil(t, x1.ProjectID)
+	assert.Len(t, list(e.wadi), 2, "a project's list holds its campaigns only")
+	assert.Len(t, list(e.verdana), 1)
+
+	// An admin opens the envelopes; a marketer submits. The raise waits for
+	// approval, the resume is the marketer's own and goes to the outbox.
+	_, err = props.OpenEnvelopes(ctx, coretest.Admin, plan, 1, e.accounts())
+	require.NoError(t, err)
+	res, err := e.launch.Submit(ctx, coretest.Marketer, launch.SubmitInput{PlanID: plan, PlanVersion: 1})
+	require.NoError(t, err)
+	require.Equal(t, launch.StateAwaitingApproval, res.Lines[0].State, res.Lines[0].Note)
+	require.Equal(t, launch.StateSubmitted, res.Lines[1].State, res.Lines[1].Note)
+	by = list(0)
+	assert.Equal(t, launch.LaunchInReview, by["g1"].Launch.State)
+	assert.Equal(t, string(policies.BudgetRaise), by["g1"].Launch.Action)
+	assert.Equal(t, res.Lines[0].Proposal.ID, *by["g1"].Launch.ProposalID)
+	assert.Nil(t, by["g1"].Launch.IntentID)
+	assert.Equal(t, launch.LaunchSubmitted, by["m1"].Launch.State)
+	assert.Equal(t, "reserved", by["m1"].Launch.IntentState)
+	assert.Equal(t, res.Lines[1].Intent.ID, *by["m1"].Launch.IntentID)
+	assert.Equal(t, launch.LaunchNone, by["v1"].Launch.State, "a campaign outside the plan has no launch")
+	// Today's impressions on a campaign whose intent has not left the outbox
+	// are its old settings delivering, not the launch.
+	e.metric(t, g, "2026-10-12", 100_00)
+	assert.Equal(t, launch.LaunchInReview, list(0)["g1"].Launch.State)
+
+	// The admin approves and executes the raise.
+	_, err = props.Approve(ctx, coretest.Admin, res.Lines[0].Proposal.ID, "go")
+	require.NoError(t, err)
+	_, _, err = props.Execute(ctx, coretest.Admin, res.Lines[0].Proposal.ID, "exec-raise")
+	require.NoError(t, err)
+	g1 = list(0)["g1"]
+	assert.Equal(t, launch.LaunchSubmitted, g1.Launch.State)
+	assert.Nil(t, g1.Launch.DeliveryDay, "reserved, not sent: not delivering")
+
+	// Dispatch: Google takes the raise, Meta refuses the resume. The day's
+	// impressions now count, since the request left today.
+	google := executiontest.New("google_ads", policies.BudgetRaise, policies.BudgetLower, policies.CampaignResume)
+	meta := executiontest.New("meta", policies.CampaignResume)
+	meta.FailNext = &core.Error{Kind: core.KindConflict, Message: "Meta access was rejected; check the app roles and permissions (code 200)"}
+	d := execution.New(e.db, e.policies, props, fakeTokens{}, map[string]execution.Writer{"google_ads": google, "meta": meta}, execution.Config{Clock: e.clock, LiveWritesEnabled: true})
+	_, errs := d.Tick(ctx)
+	require.Empty(t, errs)
+	by = list(0)
+	assert.Equal(t, launch.LaunchDelivering, by["g1"].Launch.State)
+	assert.Equal(t, "submitted", by["g1"].Launch.IntentState)
+	require.NotNil(t, by["g1"].Launch.DeliveryDay)
+	assert.Equal(t, reporting.Day("2026-10-12"), *by["g1"].Launch.DeliveryDay)
+	assert.Equal(t, launch.LaunchFailed, by["m1"].Launch.State)
+	assert.Contains(t, by["m1"].Launch.Note, "Meta access was rejected")
+
+	// A second campaign sent the same way, with figures only from before the
+	// launch, is submitted and then confirmed, never delivering.
+	e.metric(t, v, "2026-10-05", 100_00)
+	plan2 := e.planFor(t, e.verdana, "2026-10-01", "2026-10-31", alloc("google_search", 30_000_00))
+	_, err = props.OpenEnvelopes(ctx, coretest.Admin, plan2, 1, e.accounts())
+	require.NoError(t, err)
+	res2, err := e.launch.Submit(ctx, coretest.Admin, launch.SubmitInput{PlanID: plan2, PlanVersion: 1})
+	require.NoError(t, err)
+	require.Equal(t, launch.StateSubmitted, res2.Lines[0].State, res2.Lines[0].Note)
+	_, errs = d.Tick(ctx)
+	require.Empty(t, errs)
+	v1 = list(0)["v1"]
+	assert.True(t, v1.UnderPlan)
+	assert.Equal(t, launch.LaunchSubmitted, v1.Launch.State, "October 5 is before the launch on October 12")
+	assert.Nil(t, v1.Launch.DeliveryDay)
+	e.clock.Advance(61 * time.Second)
+	_, errs = d.Tick(ctx)
+	require.Empty(t, errs)
+	v1 = list(0)["v1"]
+	assert.Equal(t, launch.LaunchConfirmed, v1.Launch.State, "confirmed existence is not delivery")
+	assert.Equal(t, "externally_confirmed", v1.Launch.IntentState)
+	assert.Nil(t, v1.Launch.DeliveryDay)
+	e.metric(t, v, "2026-10-13", 100_00)
+	v1 = list(0)["v1"]
+	assert.Equal(t, launch.LaunchDelivering, v1.Launch.State)
+	assert.Equal(t, reporting.Day("2026-10-13"), *v1.Launch.DeliveryDay)
 }
