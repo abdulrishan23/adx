@@ -1,4 +1,4 @@
-import type { Campaign, DailyPoint, Platform, Project } from "@/api/models";
+import type { DailyPoint, Platform, Project, SampleCampaign } from "@/api/models";
 import { TIME_ZONE } from "./format";
 
 const DAY = 86_400_000;
@@ -21,7 +21,8 @@ export type AnalyticsSearch = {
   metric: AnalyticsMetric;
 };
 export type AnalyticsPoint = DailyPoint & { deals: number | null; revenueMinor: number | null };
-export type AnalyticsCampaign = Omit<Campaign, "daily"> & {
+// Analytics still runs on the sample campaigns, which carry every figure.
+export type AnalyticsCampaign = Omit<SampleCampaign, "daily"> & {
   daily: (DailyPoint & { deals?: number | null; revenueMinor?: number | null })[];
 };
 export type AnalyticsTotals = {

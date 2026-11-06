@@ -146,7 +146,8 @@ One rule changes: a review belongs to the version it was given on. Saving an edi
 | Analytics | 1 | Mock | Metrics engine (B1.3) |
 | Alerts | 1 | Mock | Anomaly checks (B1.4) |
 | Home, Ask Adx, Present | 1 | Mock | Fronts endpoint and model adapter (B1.3, B1.5) |
-| Projects, Campaigns, Revenue, Portals, Marketers | 1 | Mock, projects live | Metrics engine (B1.3) |
+| Projects, Revenue, Portals, Marketers | 1 | Mock, projects live | Metrics engine (B1.3) |
+| Campaigns | 1 | Live: rows from the launch coverage list joined with the analytics grouped by campaign; qualified, deals and revenue read "Not available" where the engine has none; the sheet's daily chart, ad sets, lead temperature and ads list are hidden until the engine serves them | Proposals rewired for the budget writes; project pacing |
 | Reports | 1 | Mock | Reports and schedules (B1.4) |
 | Data quality | 1 | Mock | Coverage from the lead copy (B1.2) |
 | Leads, lead detail | 1 | GHL live | Stage mapping (B1.2) |

@@ -805,6 +805,12 @@ func TestCampaignsNameThePlanLineAndWhereTheLaunchStands(t *testing.T) {
 	assert.Equal(t, launch.KindUpdate, g1.Kind)
 	assert.True(t, g1.Running)
 	assert.Equal(t, launch.LaunchNone, g1.Launch.State, "nothing submitted yet")
+	// Perform's rows read the channel and the daily budget from here: a
+	// lifetime or unread budget must stay null, never 0.
+	assert.Equal(t, "SEARCH", g1.ChannelType)
+	require.NotNil(t, g1.DailyBudgetMinor)
+	assert.Equal(t, int64(1_000_00), *g1.DailyBudgetMinor)
+	assert.Nil(t, m1.DailyBudgetMinor, "no budget was read for the paused campaign")
 	assert.True(t, m1.UnderPlan)
 	assert.Equal(t, 1, *m1.Line)
 	assert.Equal(t, launch.KindResume, m1.Kind)

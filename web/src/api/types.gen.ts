@@ -759,6 +759,9 @@ export interface CampaignCoverage extends PlanCoverage {
     name: string;
     status: string;
     running: boolean;
+    channelType: string;
+    dailyBudgetMinor: number | null;
+    currency: string;
     projectId: number | null;
     launch: LaunchState;
 }

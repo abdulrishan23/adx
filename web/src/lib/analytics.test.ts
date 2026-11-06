@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANALYTICS_CAMPAIGNS, analytics } from "@/api/mock/analytics";
 import { projectPerformance } from "@/api/mock/project-performance";
-import type { Campaign } from "@/api/models";
+import type { SampleCampaign } from "@/api/models";
 import {
   type AnalyticsCampaign,
   analyticsPeriodLabel,
@@ -23,9 +23,9 @@ const projects = [
 function campaign(
   id: string,
   projectId: number,
-  platform: Campaign["platform"],
+  platform: SampleCampaign["platform"],
   multiplier = 1,
-): Campaign {
+): SampleCampaign {
   return {
     id,
     projectId,
