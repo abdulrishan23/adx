@@ -40,8 +40,14 @@ export function useEnquiries(projectId: number) {
   });
 }
 
+// Resolving, merging or reversing changes which person a lead carries and
+// whose events the score counts, so those reads refresh with the people.
 function invalidate(qc: ReturnType<typeof useQueryClient>) {
-  return () => qc.invalidateQueries({ queryKey: ["crm"] });
+  return () => {
+    qc.invalidateQueries({ queryKey: ["crm"] });
+    qc.invalidateQueries({ queryKey: ["leads"] });
+    qc.invalidateQueries({ queryKey: ["signals"] });
+  };
 }
 
 export function useSyncCRM() {

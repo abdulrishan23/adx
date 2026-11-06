@@ -287,7 +287,10 @@ function Attributions({ attributions }: { attributions: LeadAttribution[] }) {
           <p className="text-xs text-muted-foreground">
             {[
               a.matchedPlatform && `Platform ${a.matchedPlatform}`,
-              a.matchedCampaignRef && `Campaign ${a.matchedCampaignRef}`,
+              // A click id's reference is the id itself, not a campaign.
+              a.matchedCampaignRef &&
+                a.matchLevel !== "click_id" &&
+                `Campaign ${a.matchedCampaignRef}`,
               a.utmSource && `utm_source ${a.utmSource}`,
               a.utmMedium && `utm_medium ${a.utmMedium}`,
               a.hasClickId && "Click id recorded",
