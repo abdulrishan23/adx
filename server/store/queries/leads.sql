@@ -35,16 +35,45 @@ UPDATE leads SET removed_at = sqlc.arg(removed_at)
 WHERE account_id = sqlc.arg(account_id) AND removed_at IS NULL
   AND (last_seen_run_id IS NULL OR last_seen_run_id != sqlc.arg(run_id));
 
+-- A lead row with what the screens read beside it: the person it is linked
+-- to (the active link, never a reversed one), that person's latest
+-- temperature, and the best match level among its attribution records
+-- (1 click id ... 5 none; null when it has no record). person_id is 0 when
+-- the lead is not linked to a person yet.
 -- name: ListLeads :many
-SELECT * FROM leads
-WHERE workspace_id = sqlc.arg(workspace_id)
-  AND removed_at IS NULL
-  AND (sqlc.narg(account_id) IS NULL OR account_id = sqlc.narg(account_id))
-  AND (sqlc.narg(stage) IS NULL OR stage = sqlc.narg(stage))
-  AND (sqlc.narg(status_raw) IS NULL OR status_raw = sqlc.narg(status_raw))
-  AND (sqlc.narg(after_id) IS NULL OR id > sqlc.narg(after_id))
-ORDER BY id
+SELECT sqlc.embed(leads),
+    coalesce((SELECT k.person_id FROM person_links k
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       LIMIT 1), 0) AS person_id,
+    (SELECT sa.temperature FROM score_assessments sa
+       JOIN person_links k ON k.person_id = sa.person_id
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       ORDER BY sa.assessed_at DESC, sa.id DESC LIMIT 1) AS temperature,
+    (SELECT min(CASE la.match_level WHEN 'click_id' THEN 1 WHEN 'platform_lead_id' THEN 2 WHEN 'hashed_contact' THEN 3 WHEN 'utm' THEN 4 ELSE 5 END)
+       FROM lead_attributions la WHERE la.lead_id = leads.id) AS match_rank
+FROM leads
+WHERE leads.workspace_id = sqlc.arg(workspace_id)
+  AND leads.removed_at IS NULL
+  AND (sqlc.narg(account_id) IS NULL OR leads.account_id = sqlc.narg(account_id))
+  AND (sqlc.narg(stage) IS NULL OR leads.stage = sqlc.narg(stage))
+  AND (sqlc.narg(status_raw) IS NULL OR leads.status_raw = sqlc.narg(status_raw))
+  AND (sqlc.narg(after_id) IS NULL OR leads.id > sqlc.narg(after_id))
+ORDER BY leads.id
 LIMIT sqlc.arg(max);
+
+-- name: GetLeadDetail :one
+SELECT sqlc.embed(leads),
+    coalesce((SELECT k.person_id FROM person_links k
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       LIMIT 1), 0) AS person_id,
+    (SELECT sa.temperature FROM score_assessments sa
+       JOIN person_links k ON k.person_id = sa.person_id
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       ORDER BY sa.assessed_at DESC, sa.id DESC LIMIT 1) AS temperature,
+    (SELECT min(CASE la.match_level WHEN 'click_id' THEN 1 WHEN 'platform_lead_id' THEN 2 WHEN 'hashed_contact' THEN 3 WHEN 'utm' THEN 4 ELSE 5 END)
+       FROM lead_attributions la WHERE la.lead_id = leads.id) AS match_rank
+FROM leads
+WHERE leads.id = ? AND leads.workspace_id = ? AND leads.removed_at IS NULL;
 
 -- name: ListLeadsByAccount :many
 SELECT * FROM leads WHERE account_id = ? ORDER BY id;

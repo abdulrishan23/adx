@@ -9,12 +9,10 @@ import { CreativesPage } from "@/engine/routes/creatives";
 import { EvaluationPage } from "@/engine/routes/evaluation";
 import { FunnelPage } from "@/engine/routes/funnel";
 import { LaunchPage } from "@/engine/routes/launch";
-import { LeadsPage } from "@/engine/routes/leads";
 import { LearningPage } from "@/engine/routes/learning";
 import { OpsPage } from "@/engine/routes/ops";
 import { OutreachPage } from "@/engine/routes/outreach";
 import { PagesPage } from "@/engine/routes/pages";
-import { PeoplePage } from "@/engine/routes/people";
 import { PipelinePage } from "@/engine/routes/pipeline";
 import { PlansPage } from "@/engine/routes/plans";
 import { PoliciesPage } from "@/engine/routes/policies";
@@ -45,10 +43,8 @@ export const ENGINE_SCREENS: { path: string; label: string; group: string }[] = 
   { path: "/engine/proposals", label: "Proposals", group: "Perform" },
   { path: "/engine/reports", label: "Reports", group: "Perform" },
   { path: "/engine/alerts", label: "Alerts", group: "Perform" },
-  { path: "/engine/people", label: "People", group: "Convert" },
   { path: "/engine/pipeline", label: "Pipeline", group: "Convert" },
   { path: "/engine/calls", label: "Calls", group: "Convert" },
-  { path: "/engine/leads", label: "Leads", group: "Convert" },
   { path: "/engine/supervisor", label: "Supervisor", group: "Agents" },
   { path: "/engine/workflows", label: "Workflows", group: "Agents" },
   { path: "/engine/settings/agents", label: "Agents", group: "Agents" },
@@ -77,12 +73,10 @@ export const ENGINE_PAGES = {
   evaluation: EvaluationPage,
   funnel: FunnelPage,
   launch: LaunchPage,
-  leads: LeadsPage,
   learning: LearningPage,
   ops: OpsPage,
   outreach: OutreachPage,
   pages: PagesPage,
-  people: PeoplePage,
   pipeline: PipelinePage,
   plans: PlansPage,
   policies: PoliciesPage,

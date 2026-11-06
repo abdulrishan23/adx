@@ -8,7 +8,7 @@ import { StatTile } from "@/components/stat-tile";
 import { StatusChip } from "@/components/ui/status-chip";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { formatNumber, formatPercent } from "@/lib/format";
-import { MATCH_LABEL } from "./leads";
+import { MATCH_LABEL } from "@/lib/leads";
 
 export function DataQualityPage() {
   const dq = useDataQuality();

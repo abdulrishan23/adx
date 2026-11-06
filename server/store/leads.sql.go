@@ -197,6 +197,69 @@ func (q *Queries) GetLeadByExternalID(ctx context.Context, arg GetLeadByExternal
 	return i, err
 }
 
+const getLeadDetail = `-- name: GetLeadDetail :one
+SELECT leads.id, leads.workspace_id, leads.account_id, leads.external_id, leads.first_name, leads.last_name, leads.email, leads.phone, leads.phone_e164, leads.dial_code, leads.source_raw, leads.project_raw, leads.project_id, leads.status_raw, leads.status_observed_at, leads.status_missing_since, leads.stage, leads.mapping_version, leads.provider_added_at, leads.provider_updated_at, leads.first_seen_at, leads.last_seen_at, leads.last_seen_run_id, leads.evidence_id, leads.removed_at,
+    coalesce((SELECT k.person_id FROM person_links k
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       LIMIT 1), 0) AS person_id,
+    (SELECT sa.temperature FROM score_assessments sa
+       JOIN person_links k ON k.person_id = sa.person_id
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       ORDER BY sa.assessed_at DESC, sa.id DESC LIMIT 1) AS temperature,
+    (SELECT min(CASE la.match_level WHEN 'click_id' THEN 1 WHEN 'platform_lead_id' THEN 2 WHEN 'hashed_contact' THEN 3 WHEN 'utm' THEN 4 ELSE 5 END)
+       FROM lead_attributions la WHERE la.lead_id = leads.id) AS match_rank
+FROM leads
+WHERE leads.id = ? AND leads.workspace_id = ? AND leads.removed_at IS NULL
+`
+
+type GetLeadDetailParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+type GetLeadDetailRow struct {
+	Lead        Lead
+	PersonID    interface{}
+	Temperature sql.NullString
+	MatchRank   interface{}
+}
+
+func (q *Queries) GetLeadDetail(ctx context.Context, arg GetLeadDetailParams) (GetLeadDetailRow, error) {
+	row := q.db.QueryRowContext(ctx, getLeadDetail, arg.ID, arg.WorkspaceID)
+	var i GetLeadDetailRow
+	err := row.Scan(
+		&i.Lead.ID,
+		&i.Lead.WorkspaceID,
+		&i.Lead.AccountID,
+		&i.Lead.ExternalID,
+		&i.Lead.FirstName,
+		&i.Lead.LastName,
+		&i.Lead.Email,
+		&i.Lead.Phone,
+		&i.Lead.PhoneE164,
+		&i.Lead.DialCode,
+		&i.Lead.SourceRaw,
+		&i.Lead.ProjectRaw,
+		&i.Lead.ProjectID,
+		&i.Lead.StatusRaw,
+		&i.Lead.StatusObservedAt,
+		&i.Lead.StatusMissingSince,
+		&i.Lead.Stage,
+		&i.Lead.MappingVersion,
+		&i.Lead.ProviderAddedAt,
+		&i.Lead.ProviderUpdatedAt,
+		&i.Lead.FirstSeenAt,
+		&i.Lead.LastSeenAt,
+		&i.Lead.LastSeenRunID,
+		&i.Lead.EvidenceID,
+		&i.Lead.RemovedAt,
+		&i.PersonID,
+		&i.Temperature,
+		&i.MatchRank,
+	)
+	return i, err
+}
+
 const insertLeadAttribution = `-- name: InsertLeadAttribution :exec
 INSERT INTO lead_attributions
     (lead_id, observed_at, is_first, utm_source, utm_medium, utm_campaign, utm_content, utm_term, gclid, fbclid,
@@ -335,14 +398,24 @@ func (q *Queries) ListLeadAttributions(ctx context.Context, leadID int64) ([]Lea
 }
 
 const listLeads = `-- name: ListLeads :many
-SELECT id, workspace_id, account_id, external_id, first_name, last_name, email, phone, phone_e164, dial_code, source_raw, project_raw, project_id, status_raw, status_observed_at, status_missing_since, stage, mapping_version, provider_added_at, provider_updated_at, first_seen_at, last_seen_at, last_seen_run_id, evidence_id, removed_at FROM leads
-WHERE workspace_id = ?1
-  AND removed_at IS NULL
-  AND (?2 IS NULL OR account_id = ?2)
-  AND (?3 IS NULL OR stage = ?3)
-  AND (?4 IS NULL OR status_raw = ?4)
-  AND (?5 IS NULL OR id > ?5)
-ORDER BY id
+SELECT leads.id, leads.workspace_id, leads.account_id, leads.external_id, leads.first_name, leads.last_name, leads.email, leads.phone, leads.phone_e164, leads.dial_code, leads.source_raw, leads.project_raw, leads.project_id, leads.status_raw, leads.status_observed_at, leads.status_missing_since, leads.stage, leads.mapping_version, leads.provider_added_at, leads.provider_updated_at, leads.first_seen_at, leads.last_seen_at, leads.last_seen_run_id, leads.evidence_id, leads.removed_at,
+    coalesce((SELECT k.person_id FROM person_links k
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       LIMIT 1), 0) AS person_id,
+    (SELECT sa.temperature FROM score_assessments sa
+       JOIN person_links k ON k.person_id = sa.person_id
+       WHERE k.workspace_id = leads.workspace_id AND k.kind = 'lead' AND k.ref = CAST(leads.id AS TEXT) AND k.reversed_at IS NULL
+       ORDER BY sa.assessed_at DESC, sa.id DESC LIMIT 1) AS temperature,
+    (SELECT min(CASE la.match_level WHEN 'click_id' THEN 1 WHEN 'platform_lead_id' THEN 2 WHEN 'hashed_contact' THEN 3 WHEN 'utm' THEN 4 ELSE 5 END)
+       FROM lead_attributions la WHERE la.lead_id = leads.id) AS match_rank
+FROM leads
+WHERE leads.workspace_id = ?1
+  AND leads.removed_at IS NULL
+  AND (?2 IS NULL OR leads.account_id = ?2)
+  AND (?3 IS NULL OR leads.stage = ?3)
+  AND (?4 IS NULL OR leads.status_raw = ?4)
+  AND (?5 IS NULL OR leads.id > ?5)
+ORDER BY leads.id
 LIMIT ?6
 `
 
@@ -355,7 +428,19 @@ type ListLeadsParams struct {
 	Max         int64
 }
 
-func (q *Queries) ListLeads(ctx context.Context, arg ListLeadsParams) ([]Lead, error) {
+type ListLeadsRow struct {
+	Lead        Lead
+	PersonID    interface{}
+	Temperature sql.NullString
+	MatchRank   interface{}
+}
+
+// A lead row with what the screens read beside it: the person it is linked
+// to (the active link, never a reversed one), that person's latest
+// temperature, and the best match level among its attribution records
+// (1 click id ... 5 none; null when it has no record). person_id is 0 when
+// the lead is not linked to a person yet.
+func (q *Queries) ListLeads(ctx context.Context, arg ListLeadsParams) ([]ListLeadsRow, error) {
 	rows, err := q.db.QueryContext(ctx, listLeads,
 		arg.WorkspaceID,
 		arg.AccountID,
@@ -368,35 +453,38 @@ func (q *Queries) ListLeads(ctx context.Context, arg ListLeadsParams) ([]Lead, e
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Lead{}
+	items := []ListLeadsRow{}
 	for rows.Next() {
-		var i Lead
+		var i ListLeadsRow
 		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AccountID,
-			&i.ExternalID,
-			&i.FirstName,
-			&i.LastName,
-			&i.Email,
-			&i.Phone,
-			&i.PhoneE164,
-			&i.DialCode,
-			&i.SourceRaw,
-			&i.ProjectRaw,
-			&i.ProjectID,
-			&i.StatusRaw,
-			&i.StatusObservedAt,
-			&i.StatusMissingSince,
-			&i.Stage,
-			&i.MappingVersion,
-			&i.ProviderAddedAt,
-			&i.ProviderUpdatedAt,
-			&i.FirstSeenAt,
-			&i.LastSeenAt,
-			&i.LastSeenRunID,
-			&i.EvidenceID,
-			&i.RemovedAt,
+			&i.Lead.ID,
+			&i.Lead.WorkspaceID,
+			&i.Lead.AccountID,
+			&i.Lead.ExternalID,
+			&i.Lead.FirstName,
+			&i.Lead.LastName,
+			&i.Lead.Email,
+			&i.Lead.Phone,
+			&i.Lead.PhoneE164,
+			&i.Lead.DialCode,
+			&i.Lead.SourceRaw,
+			&i.Lead.ProjectRaw,
+			&i.Lead.ProjectID,
+			&i.Lead.StatusRaw,
+			&i.Lead.StatusObservedAt,
+			&i.Lead.StatusMissingSince,
+			&i.Lead.Stage,
+			&i.Lead.MappingVersion,
+			&i.Lead.ProviderAddedAt,
+			&i.Lead.ProviderUpdatedAt,
+			&i.Lead.FirstSeenAt,
+			&i.Lead.LastSeenAt,
+			&i.Lead.LastSeenRunID,
+			&i.Lead.EvidenceID,
+			&i.Lead.RemovedAt,
+			&i.PersonID,
+			&i.Temperature,
+			&i.MatchRank,
 		); err != nil {
 			return nil, err
 		}

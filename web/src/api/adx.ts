@@ -40,9 +40,7 @@ import type {
   Funnel,
   Guardrails,
   LandingPage,
-  Lead,
   LeadEnrichment,
-  LeadsSummary,
   Lists,
   MarketerRow,
   MarketRow,
@@ -175,30 +173,6 @@ export function useFunnel() {
   return useQuery({
     queryKey: ["funnel", scope],
     queryFn: () => get<Funnel>(`/api/funnel?${qs(scope)}`, () => mock.funnel(scope)),
-  });
-}
-
-export function useLeads() {
-  const scope = useScope();
-  return useQuery({
-    queryKey: ["leads", scope],
-    queryFn: () => get<Lead[]>(`/api/leads?${qs(scope)}`, () => mock.leads(scope)),
-  });
-}
-
-export function useLeadsSummary() {
-  const scope = useScope();
-  return useQuery({
-    queryKey: ["leads-summary", scope],
-    queryFn: () =>
-      get<LeadsSummary>(`/api/leads/summary?${qs(scope)}`, () => mock.leadsSummary(scope)),
-  });
-}
-
-export function useLead(id: number) {
-  return useQuery({
-    queryKey: ["lead", id],
-    queryFn: () => get<Lead | null>(`/api/leads/${id}`, () => mock.lead(id)),
   });
 }
 

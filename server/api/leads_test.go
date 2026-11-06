@@ -22,8 +22,9 @@ import (
 )
 
 // Catches: the funnel saved by a non-admin, an import started by a viewer, an
-// import for an unconnected account answering 500 instead of 404, and the
-// unconfigured funnel not reaching the screen.
+// import for an unconnected account answering 500 instead of 404, the
+// unconfigured funnel not reaching the screen, and a missing or malformed
+// lead id answering anything but 404 or 400.
 func TestLeadsRoutes(t *testing.T) {
 	db := storetest.Open(t)
 	authn := userstest.NewAuthentik()
@@ -50,6 +51,11 @@ func TestLeadsRoutes(t *testing.T) {
 	res, body = get(t, e.srv, "/api/settings/funnel", viewer, nil)
 	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.Contains(t, body, `"configured":false`)
+	res, body = get(t, e.srv, "/api/leads/7", viewer, nil)
+	assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	assert.Contains(t, body, "lead 7 not found")
+	res, _ = get(t, e.srv, "/api/leads/seven", viewer, nil)
+	assert.Equal(t, http.StatusBadRequest, res.StatusCode)
 
 	send := func(method string, cookie *http.Cookie, path, json string) *http.Response {
 		req, _ := http.NewRequest(method, e.srv.URL+path, strings.NewReader(json))

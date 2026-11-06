@@ -25,10 +25,11 @@ export function usePutScoringRules() {
   });
 }
 
-export function usePersonScore(id: number) {
+export function usePersonScore(id: number, enabled = true) {
   return useQuery({
     queryKey: ["signals", "person", id],
     queryFn: () => getJSON<ScoreView>(`/api/signals/people/${id}`),
+    enabled,
   });
 }
 

@@ -249,6 +249,7 @@ func NewRouter(d Deps) http.Handler {
 		if h.leads != nil {
 			r.Get("/api/leads", h.listLeads)
 			r.Get("/api/leads/coverage", h.leadCoverage)
+			r.Get("/api/leads/{id}", h.getLead)
 			r.Post("/api/leads/import", h.importLeads)
 			r.Get("/api/settings/funnel", h.getFunnel)
 			r.Put("/api/settings/funnel", h.putFunnel)

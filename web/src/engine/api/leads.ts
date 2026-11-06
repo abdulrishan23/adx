@@ -1,33 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type {
-  Coverage,
-  FunnelDocument,
-  FunnelMapping,
-  FunnelState,
-  ImportLeadsInput,
-  LeadsResponse,
-  StartRunResponse,
-} from "@/api/types.gen";
-import { getJSON, postJSON } from "./client";
-
-export function useLeads(params: { stage?: string; status?: string; accountId?: number }) {
-  const search = new URLSearchParams();
-  if (params.stage) search.set("stage", params.stage);
-  if (params.status) search.set("status", params.status);
-  if (params.accountId) search.set("account_id", String(params.accountId));
-  const qs = search.toString();
-  return useQuery({
-    queryKey: ["leads", params],
-    queryFn: () => getJSON<LeadsResponse>(`/api/leads${qs ? `?${qs}` : ""}`),
-  });
-}
-
-export function useLeadCoverage() {
-  return useQuery({
-    queryKey: ["leads", "coverage"],
-    queryFn: () => getJSON<Coverage>("/api/leads/coverage"),
-  });
-}
+import type { FunnelDocument, FunnelMapping, FunnelState } from "@/api/types.gen";
+import { getJSON } from "./client";
 
 export function useFunnel() {
   return useQuery({
@@ -58,13 +31,5 @@ export function usePutFunnel() {
       queryClient.invalidateQueries({ queryKey: ["funnel"] });
       queryClient.invalidateQueries({ queryKey: ["leads"] });
     },
-  });
-}
-
-export function useImportLeads() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: ImportLeadsInput) => postJSON<StartRunResponse>("/api/leads/import", input),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["runs"] }),
   });
 }

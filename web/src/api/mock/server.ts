@@ -7,16 +7,13 @@ import type {
   Funnel,
   FunnelRow,
   FunnelStage,
-  Lead,
-  LeadFilter,
-  LeadsSummary,
   MarketRow,
   Proposal,
   SampleCampaign,
   Scope,
 } from "../models";
 import { markets as splitMarkets } from "./brief";
-import { ALERTS, CAMPAIGNS, CONNECTIONS, DAY, LEADS, now, PROJECTS, PROPOSALS } from "./data";
+import { ALERTS, CAMPAIGNS, CONNECTIONS, DAY, now, PROJECTS, PROPOSALS } from "./data";
 import { source } from "./sources";
 
 const inScope = (c: SampleCampaign, scope: Scope) =>
@@ -119,52 +116,6 @@ export function funnel(scope: Scope): Funnel {
     byProject: rows,
     months,
   };
-}
-
-const olderThan = (iso: string, days: number) => now.getTime() - Date.parse(iso) > days * DAY;
-
-export function leads(scope: Scope): Lead[] {
-  return LEADS.filter((l) => scope.projectId === "all" || l.projectId === scope.projectId);
-}
-
-export function matchesFilter(l: Lead, f: LeadFilter): boolean {
-  switch (f) {
-    case "hot_no_status":
-      return l.temperature === "hot" && !l.status;
-    case "no_status_7d":
-      return !l.status && olderThan(l.arrivedAt, 7);
-    case "back_in_play":
-      return l.status === "Not Interested" && l.signals.some((s) => s.role === "hot");
-    case "relabelled":
-      return l.source !== l.originalSource;
-  }
-}
-
-export function leadsSummary(scope: Scope): LeadsSummary {
-  const all = leads(scope);
-  const count = (f: LeadFilter) => all.filter((l) => matchesFilter(l, f)).length;
-  const hotNoStatus = count("hot_no_status");
-  return {
-    headline:
-      hotNoStatus > 0
-        ? { text: `${hotNoStatus} hot leads have no status yet`, filter: "hot_no_status" }
-        : { text: "Every hot lead has been picked up", filter: null },
-    stats: [
-      {
-        key: "hot_no_status",
-        label: "hot, no status",
-        count: hotNoStatus,
-        urgent: hotNoStatus > 0,
-      },
-      { key: "no_status_7d", label: "no status after 7 days", count: count("no_status_7d") },
-      { key: "back_in_play", label: "back in play", count: count("back_in_play") },
-      { key: "relabelled", label: "source recovered", count: count("relabelled") },
-    ],
-  };
-}
-
-export function lead(id: number): Lead | null {
-  return LEADS.find((l) => l.id === id) ?? null;
 }
 
 // Approved changes take a few seconds to apply, as a real API call would.

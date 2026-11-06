@@ -100,6 +100,45 @@ type Lead struct {
 	FirstSeenAt        time.Time  `json:"firstSeenAt"`
 	LastSeenAt         time.Time  `json:"lastSeenAt"`
 	EvidenceID         *int64     `json:"evidenceId"`
+	// MatchLevel is the best level among the lead's attribution records
+	// (reference.md: click_id, platform_lead_id, hashed_contact, utm,
+	// none). A lead with no attribution record is none.
+	MatchLevel string `json:"matchLevel"`
+	// PersonID is the person this lead is linked to (core/crm), or null
+	// until the records are resolved.
+	PersonID *int64 `json:"personId"`
+	// Temperature is the linked person's latest assessment (core/signals):
+	// hot, warm or cold. Null when there is no person or no assessment
+	// yet, which the screens show as not assessed, never as cold.
+	Temperature *string `json:"temperature"`
+}
+
+// LeadAttribution is one of the CRM's attribution records for a lead, with
+// how surely it ties the lead to a campaign.
+type LeadAttribution struct {
+	ID                 int64     `json:"id"`
+	ObservedAt         time.Time `json:"observedAt"`
+	IsFirst            bool      `json:"isFirst"`
+	UTMSource          *string   `json:"utmSource"`
+	UTMMedium          *string   `json:"utmMedium"`
+	UTMCampaign        *string   `json:"utmCampaign"`
+	UTMContent         *string   `json:"utmContent"`
+	UTMTerm            *string   `json:"utmTerm"`
+	HasClickID         bool      `json:"hasClickId"`
+	Referrer           *string   `json:"referrer"`
+	LandingURL         *string   `json:"landingUrl"`
+	MatchLevel         string    `json:"matchLevel"`
+	MatchConfidence    string    `json:"matchConfidence"`
+	MatchedPlatform    *string   `json:"matchedPlatform"`
+	MatchedCampaignRef *string   `json:"matchedCampaignRef"`
+}
+
+// LeadDetail is one lead with its attribution records, for the lead screen.
+// The person, score and sales brief behind it are read from their own
+// services by PersonID.
+type LeadDetail struct {
+	Lead         Lead              `json:"lead"`
+	Attributions []LeadAttribution `json:"attributions"`
 }
 
 // Coverage is the data-quality view: the share of leads that have what the
@@ -176,10 +215,48 @@ func (l *Leads) List(ctx context.Context, actor core.Actor, f ListFilter) ([]Lea
 	}
 	out := make([]Lead, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, l.fromRow(r, mapping))
+		out = append(out, l.fromRow(r.Lead, mapping, r.PersonID, r.Temperature, r.MatchRank))
 	}
 	return out, nil
 }
+
+// Get returns one lead with its attribution records. A lead of another
+// workspace, or one removed from the CRM, is not found.
+func (l *Leads) Get(ctx context.Context, actor core.Actor, id int64) (LeadDetail, error) {
+	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
+		return LeadDetail{}, core.ErrForbidden
+	}
+	row, err := l.db.Reader().GetLeadDetail(ctx, store.GetLeadDetailParams{ID: id, WorkspaceID: actor.WorkspaceID})
+	if errors.Is(err, sql.ErrNoRows) {
+		return LeadDetail{}, core.NotFound("lead %d not found", id)
+	}
+	if err != nil {
+		return LeadDetail{}, err
+	}
+	mapping, err := l.currentFunnel(ctx, actor.WorkspaceID)
+	if err != nil {
+		return LeadDetail{}, err
+	}
+	attrs, err := l.db.Reader().ListLeadAttributions(ctx, id)
+	if err != nil {
+		return LeadDetail{}, err
+	}
+	out := LeadDetail{Lead: l.fromRow(row.Lead, mapping, row.PersonID, row.Temperature, row.MatchRank), Attributions: make([]LeadAttribution, 0, len(attrs))}
+	for _, a := range attrs {
+		out.Attributions = append(out.Attributions, LeadAttribution{
+			ID: a.ID, ObservedAt: a.ObservedAt.UTC(), IsFirst: a.IsFirst != 0,
+			UTMSource: nullStr(a.UtmSource), UTMMedium: nullStr(a.UtmMedium), UTMCampaign: nullStr(a.UtmCampaign),
+			UTMContent: nullStr(a.UtmContent), UTMTerm: nullStr(a.UtmTerm), HasClickID: a.Gclid.Valid || a.Fbclid.Valid,
+			Referrer: nullStr(a.Referrer), LandingURL: nullStr(a.LandingUrl),
+			MatchLevel: a.MatchLevel, MatchConfidence: a.MatchConfidence,
+			MatchedPlatform: nullStr(a.MatchedPlatform), MatchedCampaignRef: nullStr(a.MatchedCampaignRef),
+		})
+	}
+	return out, nil
+}
+
+// matchLevels is the store's rank, best first, as fromRow reads it back.
+var matchLevels = []string{"click_id", "platform_lead_id", "hashed_contact", "utm", "none"}
 
 func (l *Leads) Coverage(ctx context.Context, actor core.Actor, accountID int64) (Coverage, error) {
 	if !actor.AtLeast(core.RoleViewer) || actor.WorkspaceID == 0 {
@@ -450,7 +527,13 @@ func (l *Leads) ingest(ctx context.Context, actor core.Actor, runID, accountID i
 			return Lead{}, err
 		}
 	}
-	return l.fromRow(row, mapping), nil
+	// A fresh ingest has no person link yet and its temperature is the
+	// person's, so the row is read back for the figures the list carries.
+	full, err := l.db.Reader().GetLeadDetail(ctx, store.GetLeadDetailParams{ID: row.ID, WorkspaceID: actor.WorkspaceID})
+	if err != nil {
+		return Lead{}, err
+	}
+	return l.fromRow(full.Lead, mapping, full.PersonID, full.Temperature, full.MatchRank), nil
 }
 
 // matchAttribution grades how surely an attribution record ties the lead to
@@ -549,7 +632,7 @@ func normalizePhone(raw, country string) (e164, dial string) {
 	return "+" + digits, ""
 }
 
-func (l *Leads) fromRow(r store.Lead, mapping *FunnelMapping) Lead {
+func (l *Leads) fromRow(r store.Lead, mapping *FunnelMapping, personID interface{}, temperature sql.NullString, matchRank interface{}) Lead {
 	out := Lead{
 		ID: r.ID, AccountID: r.AccountID, ExternalID: r.ExternalID,
 		FirstName: nullStr(r.FirstName), LastName: nullStr(r.LastName), Email: nullStr(r.Email), Phone: nullStr(r.Phone),
@@ -572,6 +655,17 @@ func (l *Leads) fromRow(r store.Lead, mapping *FunnelMapping) Lead {
 		if s := mapping.Document.sourceFor(r.SourceRaw.String); s != "" {
 			out.Source = &s
 		}
+	}
+	if id := nullSum(personID); id != 0 {
+		out.PersonID = &id
+	}
+	if temperature.Valid && temperature.String != "" {
+		t := temperature.String
+		out.Temperature = &t
+	}
+	out.MatchLevel = "none"
+	if rank := nullSum(matchRank); rank >= 1 && int(rank) <= len(matchLevels) {
+		out.MatchLevel = matchLevels[rank-1]
 	}
 	return out
 }

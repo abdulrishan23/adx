@@ -2,10 +2,11 @@ import { Dialog } from "@base-ui/react/dialog";
 import { useNavigate } from "@tanstack/react-router";
 import { Megaphone, MessageSquareText, Search, UserRound } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { useCampaigns, useLeads } from "@/api/adx";
-import { projectOf } from "@/api/mock/data";
+import { useCampaigns } from "@/api/adx";
+import { useLeads } from "@/api/leads";
 import { navFor } from "@/app/nav";
 import { useSession } from "@/app/session";
+import { leadName } from "@/lib/leads";
 import { cn } from "@/lib/utils";
 
 type Item = {
@@ -95,12 +96,12 @@ function Palette({ onClose }: { onClose: () => void }) {
       }
     }
     if (q) {
-      for (const l of (leads.data ?? []).filter((l) => has(l.name)).slice(0, LIMIT)) {
+      for (const l of (leads.data ?? []).filter((l) => has(leadName(l))).slice(0, LIMIT)) {
         out.push({
           id: `lead-${l.id}`,
           group: "Leads",
-          label: l.name,
-          hint: `${l.projectId ? projectOf(l.projectId) : "No project"} · ${l.owner}`,
+          label: leadName(l),
+          hint: `${l.projectRaw ?? "No project"} · ${l.statusRaw ?? "No status"}`,
           icon: <UserRound />,
           run: go(() => navigate({ to: "/leads/$leadId", params: { leadId: String(l.id) } })),
         });

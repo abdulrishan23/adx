@@ -40,6 +40,19 @@ func (h *handlers) listLeads(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+func (h *handlers) getLead(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathID(w, r, "id", "lead")
+	if !ok {
+		return
+	}
+	d, err := h.leads.Get(r.Context(), actorFrom(r), id)
+	if err != nil {
+		h.fail(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, d)
+}
+
 func (h *handlers) leadCoverage(w http.ResponseWriter, r *http.Request) {
 	accountID, _ := strconv.ParseInt(r.URL.Query().Get("account_id"), 10, 64)
 	cov, err := h.leads.Coverage(r.Context(), actorFrom(r), accountID)

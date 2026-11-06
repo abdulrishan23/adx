@@ -13,6 +13,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/coretest"
+	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/leads"
 	"github.com/WokeWorks/adx/server/core/runs"
@@ -307,6 +308,93 @@ func TestAttributionMatchLevels(t *testing.T) {
 	cov, err := e.leads.Coverage(t.Context(), coretest.Viewer, 0)
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), cov.MatchLevels["click_id"])
+}
+
+// Catches: a lead with a click id and a UTM record shown at the weaker
+// level, a lead with no attribution record shown as anything but none, a
+// lead given a person before the records are resolved, a reversed link
+// still counted as the person, the person's first assessment shown instead
+// of the latest, and a lead of another workspace or a missing id answering
+// anything but not found.
+func TestListCarriesMatchLevelPersonAndTemperature(t *testing.T) {
+	e := setup(t)
+	_, err := e.leads.PutFunnel(t.Context(), coretest.Admin, mapping())
+	require.NoError(t, err)
+	both := contact("c-1", "+971501234567", "Follow Up")
+	both.Attributions = []leads.Attribution{
+		{UTMSource: "google", UTMMedium: "cpc", UTMCampaign: "wadi-search"},
+		{IsFirst: true, UTMSource: "Meta", FBCLID: "fb.1.abc"},
+	}
+	_, err = e.leads.Ingest(t.Context(), coretest.Marketer, e.account, both)
+	require.NoError(t, err)
+	_, err = e.leads.Ingest(t.Context(), coretest.Marketer, e.account, contact("c-2", "+971501234568", "No Answer"))
+	require.NoError(t, err)
+	utm := contact("c-3", "+971501234569", "")
+	utm.Attributions = []leads.Attribution{{UTMSource: "Meta", UTMCampaign: "wadi-launch"}}
+	_, err = e.leads.Ingest(t.Context(), coretest.Marketer, e.account, utm)
+	require.NoError(t, err)
+
+	list, err := e.leads.List(t.Context(), coretest.Viewer, leads.ListFilter{})
+	require.NoError(t, err)
+	require.Len(t, list, 3)
+	assert.Equal(t, "click_id", list[0].MatchLevel)
+	assert.Equal(t, "none", list[1].MatchLevel)
+	assert.Equal(t, "utm", list[2].MatchLevel)
+	for _, l := range list {
+		assert.Nil(t, l.PersonID, "no person before the records are resolved")
+		assert.Nil(t, l.Temperature, "no temperature before an assessment")
+	}
+
+	people := crm.New(e.db, evidence.New(e.db, e.clock), crm.Config{Clock: e.clock})
+	linked, err := people.Sync(t.Context(), coretest.Marketer)
+	require.NoError(t, err)
+	assert.Equal(t, 3, linked)
+	list, err = e.leads.List(t.Context(), coretest.Viewer, leads.ListFilter{})
+	require.NoError(t, err)
+	require.NotNil(t, list[0].PersonID)
+	require.NotNil(t, list[1].PersonID)
+	personID := *list[0].PersonID
+
+	// Two assessments: the latest wins, whatever order the rows were written in.
+	for i, temp := range []string{"cold", "hot"} {
+		_, err = e.db.Writer().CreateScoreAssessment(t.Context(), store.CreateScoreAssessmentParams{
+			WorkspaceID: core.DefaultWorkspace, PersonID: personID, Trigger: "test", Temperature: sql.NullString{String: temp, Valid: true},
+			Explanation: "{}", AssessedAt: e.clock.Now().Add(time.Duration(i) * time.Hour),
+		})
+		require.NoError(t, err)
+	}
+	detail, err := people.Get(t.Context(), coretest.Viewer, *list[1].PersonID)
+	require.NoError(t, err)
+	require.Len(t, detail.Links, 1)
+	_, err = people.ReverseLink(t.Context(), coretest.Marketer, detail.Links[0].ID, "wrong person")
+	require.NoError(t, err)
+
+	list, err = e.leads.List(t.Context(), coretest.Viewer, leads.ListFilter{})
+	require.NoError(t, err)
+	require.NotNil(t, list[0].Temperature)
+	assert.Equal(t, "hot", *list[0].Temperature)
+	assert.Nil(t, list[1].PersonID, "a reversed link is not the person")
+	assert.Nil(t, list[1].Temperature)
+
+	got, err := e.leads.Get(t.Context(), coretest.Viewer, list[0].ID)
+	require.NoError(t, err)
+	assert.Equal(t, "click_id", got.Lead.MatchLevel)
+	assert.Equal(t, "hot", *got.Lead.Temperature)
+	require.Len(t, got.Attributions, 2)
+	assert.Equal(t, "utm", got.Attributions[0].MatchLevel)
+	assert.False(t, got.Attributions[0].HasClickID)
+	assert.Equal(t, "click_id", got.Attributions[1].MatchLevel)
+	assert.True(t, got.Attributions[1].HasClickID)
+	assert.True(t, got.Attributions[1].IsFirst)
+
+	_, err = e.leads.Get(t.Context(), coretest.Viewer, 999)
+	var ce *core.Error
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindNotFound, ce.Kind)
+	other := core.Actor{UserID: coretest.Admin.UserID, Role: core.RoleAdmin, WorkspaceID: core.DefaultWorkspace + 1}
+	_, err = e.leads.Get(t.Context(), other, list[0].ID)
+	require.ErrorAs(t, err, &ce)
+	assert.Equal(t, core.KindNotFound, ce.Kind)
 }
 
 // Catches: a viewer saving the funnel, an unknown stage being stored, and a

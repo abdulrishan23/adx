@@ -2431,6 +2431,34 @@ export interface Lead {
     firstSeenAt: string;
     lastSeenAt: string;
     evidenceId: number | null;
+    matchLevel: string;
+    personId: number | null;
+    temperature: string | null;
+}
+
+// From leads/leads.go
+export interface LeadAttribution {
+    id: number;
+    observedAt: string;
+    isFirst: boolean;
+    utmSource: string | null;
+    utmMedium: string | null;
+    utmCampaign: string | null;
+    utmContent: string | null;
+    utmTerm: string | null;
+    hasClickId: boolean;
+    referrer: string | null;
+    landingUrl: string | null;
+    matchLevel: string;
+    matchConfidence: string;
+    matchedPlatform: string | null;
+    matchedCampaignRef: string | null;
+}
+
+// From leads/leads.go
+export interface LeadDetail {
+    lead: Lead;
+    attributions: LeadAttribution[];
 }
 
 // From fronts/fronts.go
