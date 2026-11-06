@@ -20,6 +20,7 @@ import (
 
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/calls"
+	"github.com/WokeWorks/adx/server/core/conversations"
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/execution"
 	"github.com/WokeWorks/adx/server/core/outreach"
@@ -122,6 +123,7 @@ type Config struct {
 	Workflows     *workflows.Workflows
 	Calls         *calls.Calls
 	Qualification *qualification.Qualification
+	Conversations *conversations.Conversations
 	Outreach      *outreach.Outreach
 	CRM           *crm.CRM
 	Policies      *policies.Policies
@@ -504,6 +506,46 @@ func (s *Supervisor) Inbox(ctx context.Context, actor core.Actor) ([]InboxItem, 
 			items = append(items, InboxItem{Kind: "call_reading", Ref: c.CallID, Severity: "info", Title: "A call's reading waits for a person", Detail: c.ReviewReason, Actions: []string{"confirm", "correct"}, Since: c.UpdatedAt})
 		}
 	}
+	if s.cfg.Conversations != nil {
+		if w, err := s.cfg.Conversations.Pending(ctx, actor); err == nil {
+			for _, h := range w.Handoffs {
+				sev, title := "warning", "A WhatsApp conversation waits for a person"
+				switch h.HandoffKind {
+				case conversations.HandoffRequestedHuman:
+					sev, title = "urgent", "A WhatsApp lead asked for a person"
+				case conversations.HandoffObjection:
+					title = "A WhatsApp lead pushed back and no fact answers it"
+				case conversations.HandoffOutsideFacts:
+					title = "The agent's reply quoted something not approved"
+				case conversations.HandoffQuestion:
+					title = "A WhatsApp lead asked something the facts do not carry"
+				case conversations.HandoffNoModel:
+					title = "A WhatsApp lead wrote in and no model is configured"
+				}
+				who := h.PersonName
+				if who == "" {
+					who = h.Address
+				}
+				items = append(items, InboxItem{Kind: "conversation", Ref: h.ID, Severity: sev, Title: title + ": " + who, Detail: h.StateReason, Actions: []string{"take", "hand_back", "close"}, Since: sinceOf(h.HandoffAt, h.UpdatedAt)})
+			}
+			for _, d := range w.Drafts {
+				if d.Handoff == conversations.HandoffOutsideFacts {
+					continue // the handoff item above carries it; the draft cannot be approved
+				}
+				title := "A WhatsApp reply waits for approval"
+				if d.State == "held" {
+					title = "A WhatsApp reply is held"
+				}
+				items = append(items, InboxItem{Kind: "conversation_reply", Ref: d.ID, Severity: "info", Title: title, Detail: d.Reason, Actions: []string{"approve", "discard"}, Since: d.OccurredAt})
+			}
+			for _, f := range w.Failed {
+				items = append(items, InboxItem{Kind: "conversation_reply", Ref: f.ID, Severity: "warning", Title: "A WhatsApp message failed to send", Detail: f.Reason, Actions: []string{"approve", "discard"}, Since: f.OccurredAt})
+			}
+			for _, c := range w.Readings {
+				items = append(items, InboxItem{Kind: "conversation_reading", Ref: c.ID, Severity: "info", Title: "A WhatsApp conversation's reading waits for a person", Detail: c.ReviewReason, Actions: []string{"confirm"}, Since: c.UpdatedAt})
+			}
+		}
+	}
 	if rows, err := s.db.Reader().ListCallsByState(ctx, store.ListCallsByStateParams{WorkspaceID: ws, State: "unknown", Limit: 100}); err == nil {
 		for _, c := range rows {
 			items = append(items, InboxItem{Kind: "call", Ref: c.ID, Severity: "urgent", Title: "A call has an unknown result", Detail: c.Reason, Actions: []string{"reconcile"}, Since: c.UpdatedAt})
@@ -594,6 +636,24 @@ func (s *Supervisor) Act(ctx context.Context, actor core.Actor, in ActionInput) 
 			return nil, core.Unavailable(nil, "qualification is not wired")
 		}
 		return s.cfg.Qualification.Confirm(ctx, actor, in.Ref)
+	case "conversation/take", "conversation/hand_back", "conversation/close", "conversation_reply/approve", "conversation_reply/discard", "conversation_reading/confirm":
+		if s.cfg.Conversations == nil {
+			return nil, core.Unavailable(nil, "conversations are not wired")
+		}
+		switch in.Kind + "/" + in.Action {
+		case "conversation/take":
+			return s.cfg.Conversations.Take(ctx, actor, in.Ref, in.Note)
+		case "conversation/hand_back":
+			return s.cfg.Conversations.HandBack(ctx, actor, in.Ref)
+		case "conversation/close":
+			return s.cfg.Conversations.Close(ctx, actor, in.Ref, in.Note)
+		case "conversation_reply/approve":
+			return s.cfg.Conversations.Approve(ctx, actor, in.Ref)
+		case "conversation_reply/discard":
+			return s.cfg.Conversations.Discard(ctx, actor, in.Ref, in.Note)
+		default:
+			return s.cfg.Conversations.Confirm(ctx, actor, in.Ref)
+		}
 	case "field_conflict/keep_ours", "field_conflict/take_theirs":
 		if s.cfg.Outreach == nil {
 			return nil, core.Unavailable(nil, "outreach is not wired")
@@ -687,6 +747,13 @@ func conflictFromRow(r store.SupervisorConflict) RecommendationConflict {
 		c.ResolvedAt = &t
 	}
 	return c
+}
+
+func sinceOf(at *time.Time, fallback time.Time) time.Time {
+	if at != nil {
+		return *at
+	}
+	return fallback
 }
 
 func dayStart(t time.Time) time.Time {

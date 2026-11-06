@@ -23,6 +23,7 @@ import { CampaignsPage } from "@/routes/campaigns";
 import { ComingSoonPage } from "@/routes/coming-soon";
 import { ConnectGhlPage } from "@/routes/connect-ghl";
 import { ConnectionsPage } from "@/routes/connections";
+import { ConvertInboxPage } from "@/routes/convert-inbox";
 import { CreativeConceptsPage } from "@/routes/creative/concepts";
 import { CreativeLibraryPage, type LibrarySection } from "@/routes/creative/library";
 import { CreativeProducerPage } from "@/routes/creative/producer";
@@ -596,7 +597,7 @@ const routeTree = rootRoute.addChildren([
     projectPageRoute,
     page("/studio/launch", LaunchPage),
     page("/convert/calls", ComingSoonPage),
-    page("/convert/inbox", ComingSoonPage),
+    page("/convert/inbox", ConvertInboxPage),
     page("/convert/crm", ComingSoonPage),
     page("/workflows", ComingSoonPage),
     analyticsRoute,

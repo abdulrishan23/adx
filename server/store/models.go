@@ -1545,6 +1545,69 @@ type SupervisorConflict struct {
 	ResolvedAt  sql.NullTime
 }
 
+type Thread struct {
+	ID             int64
+	WorkspaceID    int64
+	PersonID       int64
+	EnquiryID      sql.NullInt64
+	Channel        string
+	Address        string
+	State          string
+	StateReason    string
+	HandoffKind    string
+	HandoffAt      sql.NullTime
+	Language       string
+	LastInboundAt  sql.NullTime
+	LastOutboundAt sql.NullTime
+	Summary        string
+	Answers        string
+	Outcome        string
+	Confidence     string
+	RequestedHuman int64
+	ReviewStatus   string
+	ReviewReason   string
+	ReadAt         sql.NullTime
+	ReadTurns      int64
+	AppliedKey     string
+	AppliedVersion int64
+	AppliedAt      sql.NullTime
+	AppliedDetail  string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type ThreadCorrection struct {
+	ID        int64
+	ThreadID  int64
+	Outcome   string
+	Answers   string
+	Note      string
+	CreatedBy sql.NullInt64
+	CreatedAt time.Time
+}
+
+type ThreadTurn struct {
+	ID             int64
+	ThreadID       int64
+	Direction      string
+	Author         string
+	Kind           string
+	Body           string
+	State          string
+	Reason         string
+	Handoff        string
+	ProviderRef    string
+	IdempotencyKey string
+	Claims         string
+	EvidenceID     sql.NullInt64
+	CreatedBy      sql.NullInt64
+	ApprovedBy     sql.NullInt64
+	OccurredAt     time.Time
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+	SentAt         sql.NullTime
+}
+
 type User struct {
 	ID            int64
 	Email         string

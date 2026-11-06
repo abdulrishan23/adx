@@ -31,6 +31,7 @@ import (
 	"github.com/WokeWorks/adx/server/core/calls"
 	"github.com/WokeWorks/adx/server/core/campaigns"
 	"github.com/WokeWorks/adx/server/core/connections"
+	"github.com/WokeWorks/adx/server/core/conversations"
 	"github.com/WokeWorks/adx/server/core/creative"
 	"github.com/WokeWorks/adx/server/core/crm"
 	"github.com/WokeWorks/adx/server/core/evaluation"
@@ -156,6 +157,12 @@ type config struct {
 	// empty keeps the adapter off.
 	WhatsAppAccessToken   string `env:"ADX_WHATSAPP_ACCESS_TOKEN"`
 	WhatsAppPhoneNumberID string `env:"ADX_WHATSAPP_PHONE_NUMBER_ID"`
+	// Inbound WhatsApp (BD-69): Meta signs every webhook delivery with the
+	// app secret and verifies the endpoint once with the token. Both empty
+	// keeps the webhook off; conversations can still be walked in dev
+	// through the simulate endpoint.
+	WhatsAppAppSecret   string `env:"ADX_WHATSAPP_APP_SECRET"`
+	WhatsAppVerifyToken string `env:"ADX_WHATSAPP_VERIFY_TOKEN"`
 	// OutreachEmailSubject is the subject line of outreach mail.
 	OutreachEmailSubject string `env:"ADX_OUTREACH_EMAIL_SUBJECT"`
 	SMTPPort             int    `env:"ADX_SMTP_PORT" envDefault:"587"`
@@ -461,7 +468,19 @@ func run() error {
 	// write is propose_change, which is a proposal under policy. With no
 	// model the runner is absent and ready tasks are held with the reason.
 	qualificationService := qualification.New(db, evidenceStore, qualification.Config{Calls: callService, Speech: speech, Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, AmbienceGain: cfg.VoiceAmbienceGain})
-	supervisorService := supervisor.New(db, supervisor.Config{Proposals: proposalService, Execution: executionService, Calls: callService, Qualification: qualificationService, Outreach: outreachService, CRM: crmService, Policies: policyService})
+	// The text qualification agent (BD-69) sends through the same WhatsApp
+	// adapter as outreach, so it is wired only with live writes on; the
+	// channel mode in the outreach config still gates every reply.
+	conversationsCfg := conversations.Config{Model: model, Outreach: outreachService, Signals: signalService, CRM: crmService, Brands: brandService, Policies: policyService}
+	if cfg.LiveWrites && (cfg.WhatsAppAccessToken != "" || cfg.WhatsAppPhoneNumberID != "") {
+		wa, err := whatsapp.New(whatsapp.Config{AccessToken: cfg.WhatsAppAccessToken, PhoneNumberID: cfg.WhatsAppPhoneNumberID})
+		if err != nil {
+			return fmt.Errorf("ADX_WHATSAPP_*: %w", err)
+		}
+		conversationsCfg.Messenger, conversationsCfg.Templates = wa, wa
+	}
+	conversationsService := conversations.New(db, evidenceStore, conversationsCfg)
+	supervisorService := supervisor.New(db, supervisor.Config{Proposals: proposalService, Execution: executionService, Calls: callService, Qualification: qualificationService, Conversations: conversationsService, Outreach: outreachService, CRM: crmService, Policies: policyService})
 	frontsService := fronts.New(fronts.Config{Alerts: alertsService, Supervisor: supervisorService, Reporting: reportingService, Runs: runsService, Plans: planService, Execution: executionService, Studio: studioService, Leads: leadsService})
 	workflowDispatch := &workflows.CoreDispatcher{Proposals: proposalService, Recommender: supervisorService, Reads: workflowReads(reportingService, leadsService, alertsService, connections)}
 	var workflowRunner workflows.Runner
@@ -633,46 +652,48 @@ func run() error {
 
 	srv := &http.Server{
 		Handler: api.NewRouter(api.Deps{
-			Log:           log,
-			Dev:           dev,
-			Projects:      projects.New(db),
-			Connections:   connections,
-			Ops:           readiness,
-			Identity:      sessions,
-			DevUser:       devUser,
-			Policies:      policyService,
-			Runs:          runsService,
-			Leads:         leadsService,
-			Reporting:     reportingService,
-			Reports:       reportsService,
-			Alerts:        alertsService,
-			Assistant:     assistantService,
-			Creative:      creativeService,
-			Studio:        studioService,
-			Campaigns:     campaignService,
-			Brands:        brandService,
-			Research:      researchService,
-			Plans:         planService,
-			Launch:        launchService,
-			Fronts:        frontsService,
-			Pages:         pageService,
-			Measurement:   measurementService,
-			Proposals:     proposalService,
-			Execution:     executionService,
-			CRM:           crmService,
-			Signals:       signalService,
-			Outreach:      outreachService,
-			Calls:         callService,
-			Qualification: qualificationService,
-			Evaluation:    evaluationService,
-			Pipeline:      pipelineService,
-			Registry:      registryService,
-			Workflows:     workflowService,
-			Supervisor:    supervisorService,
-			Learning:      learningService,
-			Workspaces:    workspaces.New(db, nil),
-			WebhookSecret: cfg.WebhookSecret,
-			Wiring:        wiring(cfg, adPlatforms, connections != nil, channels, speech != nil, model != nil, mailer != nil),
+			Log:             log,
+			Dev:             dev,
+			Projects:        projects.New(db),
+			Connections:     connections,
+			Ops:             readiness,
+			Identity:        sessions,
+			DevUser:         devUser,
+			Policies:        policyService,
+			Runs:            runsService,
+			Leads:           leadsService,
+			Reporting:       reportingService,
+			Reports:         reportsService,
+			Alerts:          alertsService,
+			Assistant:       assistantService,
+			Creative:        creativeService,
+			Studio:          studioService,
+			Campaigns:       campaignService,
+			Brands:          brandService,
+			Research:        researchService,
+			Plans:           planService,
+			Launch:          launchService,
+			Fronts:          frontsService,
+			Pages:           pageService,
+			Measurement:     measurementService,
+			Proposals:       proposalService,
+			Execution:       executionService,
+			CRM:             crmService,
+			Signals:         signalService,
+			Outreach:        outreachService,
+			Calls:           callService,
+			Qualification:   qualificationService,
+			Evaluation:      evaluationService,
+			Pipeline:        pipelineService,
+			Registry:        registryService,
+			Workflows:       workflowService,
+			Supervisor:      supervisorService,
+			Conversations:   conversationsService,
+			Learning:        learningService,
+			Workspaces:      workspaces.New(db, nil),
+			WebhookSecret:   cfg.WebhookSecret,
+			WhatsAppWebhook: api.WhatsAppWebhookConfig{AppSecret: cfg.WhatsAppAppSecret, VerifyToken: cfg.WhatsAppVerifyToken, PhoneNumberID: cfg.WhatsAppPhoneNumberID},
+			Wiring:          wiring(cfg, adPlatforms, connections != nil, channels, speech != nil, model != nil, mailer != nil),
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -900,7 +921,7 @@ func configuredMessengers(cfg config, mailer reports.Mailer) ([]outreach.Messeng
 
 // wiring records what this process configured, for the capability matrix.
 func wiring(cfg config, platforms map[string]connections.AdsPlatform, ghl bool, channels []string, speech, model, mail bool) connections.Wiring {
-	w := connections.Wiring{LiveWrites: cfg.LiveWrites, Channels: channels, Telecom: cfg.TelecomRoute, Speech: speech, Model: model, Webhooks: cfg.WebhookSecret != "", Mail: mail}
+	w := connections.Wiring{LiveWrites: cfg.LiveWrites, Channels: channels, Telecom: cfg.TelecomRoute, Speech: speech, Model: model, Webhooks: cfg.WebhookSecret != "", WhatsAppInbound: cfg.WhatsAppAppSecret != "", Mail: mail}
 	for name := range platforms {
 		w.Providers = append(w.Providers, name)
 	}

@@ -24,6 +24,8 @@ import (
 	"github.com/WokeWorks/adx/server/core"
 	"github.com/WokeWorks/adx/server/core/brands"
 	"github.com/WokeWorks/adx/server/core/campaigns"
+	"github.com/WokeWorks/adx/server/core/crm"
+	"github.com/WokeWorks/adx/server/core/evidence"
 	"github.com/WokeWorks/adx/server/core/studio"
 	"github.com/WokeWorks/adx/server/store"
 	"github.com/WokeWorks/adx/server/store/blobs"
@@ -222,11 +224,15 @@ func runSeedDemo(args []string) error {
 			slog.Info("seed-demo: logo added", "project", d.name)
 		}
 	}
-	if added == 0 && logos == 0 && camps == 0 && !filled {
-		slog.Info("seed-demo: every demo project, campaign and logo is already there, nothing done")
+	threads, err := seedConversations(ctx, db, crm.New(db, evidence.New(db, core.SystemClock{}), crm.Config{}), marketer)
+	if err != nil {
+		return fmt.Errorf("conversations: %w", err)
+	}
+	if added == 0 && logos == 0 && camps == 0 && !filled && threads == 0 {
+		slog.Info("seed-demo: every demo project, campaign, logo and conversation is already there, nothing done")
 		return nil
 	}
-	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos, "filled", filled)
+	slog.Info("seed-demo done", "projects", added, "campaigns", camps, "logos", logos, "filled", filled, "conversations", threads)
 	return nil
 }
 

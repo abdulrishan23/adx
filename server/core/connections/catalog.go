@@ -34,6 +34,8 @@ type Wiring struct {
 	Model   bool
 	// Webhooks is whether GoHighLevel events are accepted.
 	Webhooks bool
+	// WhatsAppInbound is whether Meta's WhatsApp webhook is mounted.
+	WhatsAppInbound bool
 	// Mail is whether an SMTP relay is configured for reports and links.
 	Mail bool
 	// Providers lists the ad platforms with app credentials (google_ads, meta)
@@ -76,8 +78,9 @@ func Catalog(w Wiring) []ConnectorCapability {
 		{"meta", "read.pixel", "read", false, "no Pixel or Conversions API integration; the measurement check records it as unsupported", false},
 		{"meta", "publish.organic", "publish", false, "no publishing to Pages or Instagram", false},
 		{"whatsapp", "write.message", "write", true, "sends an approved draft as plain text inside Meta's 24-hour window; needs ADX_LIVE_WRITES, ADX_WHATSAPP_* and the channel mode on", has(w.Channels, "whatsapp")},
-		{"whatsapp", "write.template", "write", false, "no template messages; outside the 24-hour window the send fails with Meta's reason", false},
-		{"whatsapp", "read.replies", "read", false, "no inbound WhatsApp webhook; replies are observed through the CRM", false},
+		{"whatsapp", "write.template", "write", true, "sends a pre-approved template by name outside the 24-hour window; no catalogue is configured, so the agent holds such replies until Reportage supplies one", false},
+		{"whatsapp", "read.replies", "read", true, "customer messages and delivery statuses through Meta's signed webhook; needs ADX_WHATSAPP_APP_SECRET and ADX_WHATSAPP_VERIFY_TOKEN", w.WhatsAppInbound},
+		{"whatsapp", "read.media", "read", false, "pictures, documents and voice notes are not fetched; the thread shows that one arrived and the agent says it cannot read it", false},
 		{"email", "write.message", "write", true, "sends an approved draft through the SMTP relay; needs ADX_LIVE_WRITES, ADX_SMTP_* and the channel mode on", has(w.Channels, "email")},
 		{"email", "read.replies", "read", false, "no mailbox is read", false},
 		{"telephony", "voice.call", "write", true, "places a qualification call through the configured route; needs ADX_TELECOM_ROUTE and a calling policy naming the same route", w.Telecom != ""},

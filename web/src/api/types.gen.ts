@@ -895,6 +895,9 @@ export interface Change {
     undefined: boolean;
 }
 
+// From conversations/conversations.go
+export const Channel = "whatsapp";
+
 // From plans/plans.go
 export interface ChannelInfo {
     key: string;
@@ -1145,6 +1148,11 @@ export interface Conversation {
     title: string;
     createdAt: string;
     updatedAt: string;
+}
+
+// From api/conversations.go
+export interface ConversationMessageInput {
+    body: string;
 }
 
 // From api/assistant.go
@@ -1900,6 +1908,24 @@ export interface HaltInput {
     reason: string;
 }
 
+// From conversations/conversations.go
+export const HandoffNoModel = "no_model";
+
+// From conversations/conversations.go
+export const HandoffObjection = "objection";
+
+// From conversations/conversations.go
+export const HandoffOutsideFacts = "outside_facts";
+
+// From conversations/conversations.go
+export const HandoffQuestion = "question";
+
+// From conversations/conversations.go
+export const HandoffRequestedHuman = "requested_human";
+
+// From conversations/conversations.go
+export const HandoffStop = "stop";
+
 // From connections/accounts.go
 export type Health = "connected" | "failed" | "needs_permission" | "stale";
 
@@ -2016,6 +2042,18 @@ export interface ImportsResponse {
     imports: ImportBatch[];
 }
 
+// From conversations/conversations.go
+export interface InboundMessage {
+    channel: string;
+    providerRef: string;
+    from: string;
+    profileName: string;
+    kind: string;
+    body: string;
+    unsupported: string;
+    receivedAt: string;
+}
+
 // From fronts/fronts.go
 export interface Inbox {
     summary: string;
@@ -2066,6 +2104,11 @@ export interface IndustryState {
 // From api/learning.go
 export interface InsightsResponse {
     insights: MemoryInsight[];
+}
+
+// From api/conversations.go
+export interface InstructionsResponse {
+    instructions: string;
 }
 
 // From proposals/proposals.go
@@ -2825,6 +2868,11 @@ export interface NotSetUp {
     name: string;
 }
 
+// From api/conversations.go
+export interface NoteInput {
+    note: string;
+}
+
 // From outreach/outreach.go
 export interface Objection {
     id: number;
@@ -2976,6 +3024,9 @@ export interface OpportunityDetail {
     tasks: FollowUpTask[];
     interactions: Interaction[];
 }
+
+// From conversations/reading.go
+export const OutcomeKind = "conversation_outcome";
 
 // From outreach/outreach.go
 export interface OutreachConfig {
@@ -4027,6 +4078,18 @@ export interface Reply {
     turns: Turn[];
 }
 
+// From conversations/agent.go
+export interface ReplyDecision {
+    reply: string;
+    language: string;
+    handoff: string;
+    handoffNote: string;
+    project: string;
+    // embedded anonymous struct, please fix by naming it
+    objection: unknown | null;
+    done: boolean;
+}
+
 // From reports/reports.go
 export interface Report {
     id: number;
@@ -4709,8 +4772,14 @@ export interface Stat {
 // From runs/runs.go
 export type State = "failed" | "interrupted" | "partial" | "queued" | "running" | "succeeded";
 
+// From conversations/conversations.go
+export const StateAgent = "agent";
+
 // From launch/submit.go
 export const StateAwaitingApproval = "awaiting_approval";
+
+// From conversations/conversations.go
+export const StateClosed = "closed";
 
 // From launch/submit.go
 export const StateDenied = "denied";
@@ -4721,6 +4790,9 @@ export const StateExhausted = "exhausted";
 // From launch/submit.go
 export const StateHeld = "held";
 
+// From conversations/conversations.go
+export const StatePerson = "person";
+
 // From launch/submit.go
 export const StateSkipped = "skipped";
 
@@ -4729,6 +4801,9 @@ export const StateSubmitted = "submitted";
 
 // From launch/submit.go
 export const StateUnchanged = "unchanged";
+
+// From conversations/conversations.go
+export const StateWaiting = "waiting";
 
 // From api/crm.go
 export interface StatedAttributeInput {
@@ -4739,6 +4814,15 @@ export interface StatedAttributeInput {
 
 // From users/users.go
 export type Status = "active" | "disabled" | "invited";
+
+// From conversations/conversations.go
+export interface StatusUpdate {
+    channel: string;
+    providerRef: string;
+    status: string;
+    error: string;
+    at: string;
+}
 
 // From pages/pages.go
 export interface Submission {
@@ -4882,6 +4966,116 @@ export interface TestHypothesis {
     hypothesis: string;
     metric: string;
     windowDays: number;
+}
+
+// From conversations/conversations.go
+export interface Thread {
+    id: number;
+    personId: number;
+    enquiryId: number | null;
+    channel: string;
+    address: string;
+    state: string;
+    stateReason: string;
+    handoffKind: string;
+    handoffAt: string | null;
+    language: string;
+    lastInboundAt: string | null;
+    lastOutboundAt: string | null;
+    windowClosesAt: string | null;
+    summary: string;
+    answers: Record<string, ReadingAnswer> | null;
+    outcome: string;
+    confidence: string;
+    requestedHuman: boolean;
+    reviewStatus: string;
+    reviewReason: string;
+    readAt: string | null;
+    readTurns: number;
+    appliedKey: string;
+    appliedVersion: number;
+    appliedAt: string | null;
+    applied: AppliedDetail;
+    createdAt: string;
+    updatedAt: string;
+}
+
+// From conversations/conversations.go
+export interface ThreadCorrection {
+    id: number;
+    conversationId: number;
+    outcome: string;
+    answers: Record<string, ReadingAnswer> | null;
+    note: string;
+    createdBy: number | null;
+    createdAt: string;
+}
+
+// From conversations/conversations.go
+export interface ThreadDetail {
+    conversation: Thread;
+    person: Person;
+    projectName: string;
+    turns: ThreadTurn[];
+    corrections: ThreadCorrection[];
+}
+
+// From conversations/conversations.go
+export interface ThreadReceived {
+    conversation: Thread;
+    turn: ThreadTurn;
+    duplicate: boolean;
+    reply: ThreadTurn | null;
+}
+
+// From conversations/conversations.go
+export interface ThreadSummary extends Thread {
+    personName: string;
+    projectName: string;
+    lastBody: string;
+    lastFrom: string;
+    pending: number;
+}
+
+// From conversations/conversations.go
+export interface ThreadTurn {
+    id: number;
+    conversationId: number;
+    direction: string;
+    author: string;
+    kind: string;
+    body: string;
+    state: string;
+    reason: string;
+    handoff: string;
+    providerRef: string;
+    claims: ClaimReport | null;
+    evidenceId: number | null;
+    createdBy: number | null;
+    approvedBy: number | null;
+    occurredAt: string;
+    sentAt: string | null;
+}
+
+// From conversations/conversations.go
+export interface ThreadsReadiness {
+    modelReady: boolean;
+    messenger: string;
+    channelMode: string;
+    reasons: string[];
+}
+
+// From api/conversations.go
+export interface ThreadsResponse {
+    conversations: ThreadSummary[];
+}
+
+// From conversations/conversations.go
+export interface ThreadsWaiting {
+    handoffs: ThreadSummary[];
+    drafts: ThreadTurn[];
+    readings: Thread[];
+    failed: ThreadTurn[];
 }
 
 // From assistant/assistant.go
@@ -5086,6 +5280,15 @@ export interface WebhookResponse {
     ignored: string;
     duplicate: boolean;
     eventId: number;
+}
+
+// From api/conversations.go
+export interface WhatsAppWebhookResponse {
+    messages: number;
+    replies: number;
+    statuses: number;
+    duplicate: number;
+    ignored: string[];
 }
 
 // From fronts/fronts.go

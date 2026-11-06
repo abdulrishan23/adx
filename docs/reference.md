@@ -71,6 +71,7 @@ Money is in AED, converted at the rate on the day. Google and Meta conversions a
 - **Temperature.** Hot, warm or cold, set from fit and intent. ADX writes it to GoHighLevel in its own fields.
 - **Signal.** A behaviour that changes the intent score, such as a second form, a WhatsApp tap on the thank-you screen, a pricing or floor plan page view, or a status moving back to Follow Up. Website signals only count once a visit is tied to a lead (D-30). Each source has its own signal set, so a lead who never visits the site isn't marked down for it: WhatsApp replies, call outcomes, email opens and repeat enquiries stand in.
 - **Tracked link.** A link to the website carrying a signed token for one lead. ADX writes it to the lead's `adx_link` field, GoHighLevel's message carries it, and a tap ties that visitor to the lead. Off until Reportage approves it (D-30).
+- **Conversation.** A WhatsApp thread with one person, run by the text agent from the sales brief and the approved facts until it hands to a person (a request for a person, an objection no fact answers, a question the facts don't carry, a reply that quoted something not approved) or closes. Its reading feeds the score and the enquiry's stage the way a call reading does.
 - **Page catalogue.** A table that maps each website URL to its project, page type, intent weight and market. ADX drafts it by crawling the site, and a marketer confirms it.
 
 A phone country code shows where someone lives, not their nationality. Buyers from India who live in the UAE have +971 numbers (see D-10).
